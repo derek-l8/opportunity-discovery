@@ -1,0 +1,107 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://opportunity-discovery/schemas/source-health.schema.json",
+  "title": "Source health report",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "generated_at",
+    "summary",
+    "sources"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "1.0"
+    },
+    "generated_at": {
+      "type": "string"
+    },
+    "summary": {
+      "type": "object"
+    },
+    "sources": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "source_id",
+          "adapter",
+          "health_state",
+          "validation_status"
+        ],
+        "properties": {
+          "source_id": {
+            "type": "string"
+          },
+          "display_name": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "organization": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "adapter": {
+            "type": "string"
+          },
+          "enabled": {
+            "type": "boolean"
+          },
+          "landing_url": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "validation_status": {
+            "type": "string"
+          },
+          "last_validated": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "health_state": {
+            "enum": [
+              "healthy",
+              "valid-empty",
+              "degraded",
+              "check-failed",
+              "rate-limited",
+              "format-changed",
+              "disabled",
+              "quarantined",
+              "pending-check",
+              "validated",
+              "validated-empty-ok",
+              "failed"
+            ]
+          },
+          "last_check": {
+            "type": [
+              "object",
+              "null"
+            ]
+          },
+          "provenance_note": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "quarantine_reason": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      }
+    }
+  }
+}

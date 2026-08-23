@@ -1,0 +1,64 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://opportunity-discovery/schemas/run-summary.schema.json",
+  "title": "Collection run summary",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "run_id",
+    "started_at"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "1.0"
+    },
+    "run_id": {
+      "type": "string"
+    },
+    "started_at": {
+      "type": "string"
+    },
+    "finished_at": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "mode": {
+      "type": "string"
+    },
+    "exit_code": {
+      "type": "integer"
+    },
+    "sources_attempted": {
+      "type": "integer"
+    },
+    "sources_succeeded": {
+      "type": "integer"
+    },
+    "sources_failed": {
+      "type": "integer"
+    },
+    "records_seen": {
+      "type": "integer"
+    },
+    "opportunities_new": {
+      "type": "integer"
+    },
+    "opportunities_changed": {
+      "type": "integer"
+    },
+    "opportunities_closed": {
+      "type": "integer"
+    },
+    "review_queue_count": {
+      "type": "integer"
+    },
+    "detail": {
+      "type": "object"
+    },
+    "artifacts": {
+      "type": "object"
+    }
+  }
+}

@@ -1,0 +1,23 @@
+{
+  "jobs": [
+    {
+      "id": 1001,
+      "title": "FPGA Design Intern",
+      "jobUrl": "https://acmechips.example.com/apply/1001",
+      "location": "Santa Clara, CA",
+      "posted": "2026-07-28",
+      "season": "Summer 2027",
+      "deadline": "2026-10-15",
+      "compensation": "$40/hr plus relocation support",
+      "description": "RTL design and verification for next-gen FPGA fabrics. Requires resume and transcript.",
+      "type": "Internship"
+    },
+    {
+      "id": 1002,
+      "title": "Embedded Firmware Intern",
+      "jobUrl": "https://acmechips.example.com/apply/1002?utm_source=x&reqid=1002",
+      "location": "Remote, USA",
+      "description": "RTOS bring-up on microcontrollers."
+    }
+  ]
+}

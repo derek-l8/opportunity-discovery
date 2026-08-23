@@ -1,0 +1,54 @@
+# opportunity-discovery engine configuration.
+# All paths are relative to the repository root unless absolute.
+
+log_level = "INFO"
+log_retention_days = 14
+source_check_retention_days = 180
+sources_file = "config/sources.toml"
+
+[paths]
+data_dir = "data"
+output_dir = "output"
+logs_dir = "logs"
+
+[fetch]
+max_concurrency = 6                      # bounded concurrent fetching
+per_domain_min_interval_seconds = 1.5    # polite per-domain throttle
+timeout_seconds = 20
+max_retries = 3                          # transient failures only
+backoff_base_seconds = 1.5               # exponential backoff base
+backoff_max_seconds = 30
+respect_robots = true                    # honor robots.txt on HTML/RSS/sitemap lanes
+cache_days = 30                          # raw response cache retention
+
+[season]
+# Season logic is configuration-driven; change these values per cycle.
+target_season = "summer-2027"
+
+[season.season_aliases]
+"su27" = "summer-2027"
+"summer27" = "summer-2027"
+"f26" = "fall-2026"
+"spr27" = "spring-2027"
+
+[change_detection]
+closed_after_consecutive_successes = 3   # conservative closure rule
+
+[export]
+schema_version = "1.0"
+packet_char_limit = 120000               # compact packet budget; pagination beyond this
+excerpt_chars = 600                      # bounded excerpts, never full pages
+
+[scoring]
+review_queue_threshold = 0.5
+bonus_paid = 2.0
+bonus_funded = 2.0
+bonus_deadline_known = 0.25
+bonus_remote = 0.25
+penalty_unfunded_distant_event = 1.5
+coop_suppress = true                     # suppress school-term co-ops from review queue
+online_hackathon_suppress = true         # suppress low-signal online hackathons
+unpaid_retention_score_floor = 1.5       # unpaid kept only with exceptional generic signals
+
+# Keyword families are defined in code (scoring.py) and can be extended here,
+# e.g. [scoring.families.quant-tech] patterns = ["\\bquant\\b"]

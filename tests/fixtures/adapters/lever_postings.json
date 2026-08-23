@@ -1,0 +1,19 @@
+[
+  {
+    "id": "aa-bb-01",
+    "text": "Hardware Engineering Intern",
+    "hostedUrl": "https://jobs.lever.co/acmehw/aa-bb-01",
+    "createdAt": 1754800000000,
+    "categories": {"location": "Boston, MA", "commitment": "Internship"},
+    "workplaceType": "On-site",
+    "description": "PCB design and signal integrity testing."
+  },
+  {
+    "id": "cc-dd-02",
+    "text": "Remote Software Intern",
+    "hostedUrl": "https://jobs.lever.co/acmehw/cc-dd-02",
+    "createdAt": 1754900000000,
+    "categories": {"location": "Anywhere", "commitment": "Internship"},
+    "workplaceType": "Remote"
+  }
+]

@@ -1,0 +1,288 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://opportunity-discovery/schemas/candidate.schema.json",
+  "title": "Normalized public opportunity lead (unverified)",
+  "type": "object",
+  "required": [
+    "opportunity_id",
+    "lead_state",
+    "title",
+    "canonical_url",
+    "remote_signal",
+    "application_effort_estimate",
+    "change_type",
+    "first_seen",
+    "last_seen",
+    "provenance"
+  ],
+  "properties": {
+    "opportunity_id": {
+      "type": "string"
+    },
+    "lead_state": {
+      "enum": [
+        "unverified-lead"
+      ]
+    },
+    "organization": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "title": {
+      "type": "string"
+    },
+    "aliases": {
+      "type": "array",
+      "items": {
+        "type": [
+          "string",
+          "null"
+        ]
+      }
+    },
+    "category": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "canonical_url": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "official_url": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "provider": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "provider_req_id": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "location_text": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "location_components": {
+      "type": "object",
+      "properties": {
+        "city": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "state": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "country": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      }
+    },
+    "remote_signal": {
+      "enum": [
+        "remote",
+        "hybrid",
+        "in-person",
+        "unknown"
+      ]
+    },
+    "season": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "employment_type": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "posted_date": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "stated_deadline": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "deadline_timezone": {
+      "type": "string"
+    },
+    "compensation_text": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "relocation_text": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "description_excerpt": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "description_hash": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "class_year_language": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "graduation_window_language": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "major_language": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "work_auth_language": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "requested_application_components": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "application_effort_estimate": {
+      "enum": [
+        "quick",
+        "moderate",
+        "substantial",
+        "unknown"
+      ]
+    },
+    "role_family_tags": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "signals": {
+      "type": "object"
+    },
+    "score_components": {
+      "type": "object"
+    },
+    "generic_score": {
+      "type": "number"
+    },
+    "reason_codes": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "change_type": {
+      "enum": [
+        "new",
+        "no-change",
+        "reopened",
+        "apparently-closed",
+        "deadline-changed",
+        "materially-changed",
+        "check-failed"
+      ]
+    },
+    "active": {
+      "type": "boolean"
+    },
+    "first_seen": {
+      "type": "string"
+    },
+    "last_seen": {
+      "type": "string"
+    },
+    "last_changed": {
+      "type": "string"
+    },
+    "last_successful_check": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "provenance": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": [
+          "source_id",
+          "evidence"
+        ],
+        "properties": {
+          "source_id": {
+            "type": "string"
+          },
+          "url": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "evidence": {
+            "enum": [
+              "source-stated",
+              "inferred-signal",
+              "unverified-lead",
+              "unknown"
+            ]
+          },
+          "first_seen": {
+            "type": "string"
+          },
+          "last_seen": {
+            "type": "string"
+          }
+        }
+      }
+    }
+  }
+}

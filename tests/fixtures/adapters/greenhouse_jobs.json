@@ -1,0 +1,20 @@
+{
+  "jobs": [
+    {
+      "id": 5001,
+      "title": "FPGA Design Intern",
+      "absolute_url": "https://boards.greenhouse.io/acmesilicon/jobs/5001",
+      "updated_at": "2026-08-01T12:00:00-04:00",
+      "offices": [{"name": "Santa Clara, CA"}],
+      "content": "<p>RTL design and verification for FPGA fabrics. Requires resume and transcript.</p>"
+    },
+    {
+      "id": 5002,
+      "title": "Remote Embedded Software Intern",
+      "absolute_url": "https://boards.greenhouse.io/acmesilicon/jobs/5002?utm_source=twitter",
+      "updated_at": "2026-08-02T12:00:00Z",
+      "offices": [{"name": "Remote, USA"}],
+      "content": "<p>Firmware in C for microcontrollers.</p>"
+    }
+  ]
+}

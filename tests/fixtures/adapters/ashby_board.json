@@ -1,0 +1,21 @@
+{
+  "jobs": [
+    {
+      "id": "e100",
+      "title": "Robotics Perception Intern",
+      "jobUrl": "https://jobs.ashbyhq.com/acmerobotics/e100",
+      "location": "San Francisco, CA",
+      "publishedAt": "2026-08-05T00:00:00.000Z",
+      "employmentType": "Full-time",
+      "descriptionPlain": "Build SLAM and perception pipelines."
+    },
+    {
+      "id": "e200",
+      "title": "Remote Firmware Contractor",
+      "jobUrl": "https://jobs.ashbyhq.com/acmerobotics/e200",
+      "location": "Remote",
+      "publishedAt": "2026-08-06T00:00:00.000Z",
+      "employmentType": "Contractor"
+    }
+  ]
+}

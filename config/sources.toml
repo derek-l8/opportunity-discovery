@@ -1,0 +1,4084 @@
+# Public source registry for opportunity-discovery.
+# Human-editable. Each [[sources]] table is one source lane.
+#
+# Validation contract: a source is enabled+validated only when a live probe
+# confirmed identity, adapter fit, and expected format on the recorded date.
+# Failed candidates are kept as disabled/quarantined entries with reasons;
+# they never count as validated and never break runs.
+
+[[sources]]
+source_id = "agg-zshah-internships-csv"
+display_name = "Automated Summer 2027 / Fall 2026 Tech Internships (community CSV)"
+organization = "Community aggregator"
+adapter = "csvfeed"
+landing_url = "https://github.com/zshah101/Automated-List-Of-Summer-2027-and-Fall-2026-Tech-Internships"
+endpoint_config = { url = "https://raw.githubusercontent.com/zshah101/Automated-List-Of-Summer-2027-and-Fall-2026-Tech-Internships/main/data/internships.csv", columns = { title = "title", canonical_url = "url", organization = "company", location_text = "location", season = "season", compensation_text = "salary" } }
+categories = ["internship", "aggregator"]
+tags = ["aggregate-feed", "csv"]
+cadence_hours = 12
+validation_status = "validated"
+last_validated = "2026-08-22"
+provenance_note = "live CSV fetch verified 2026-08-22; aggregator provenance only"
+
+[[sources]]
+source_id = "agg-applyguy-2027-json"
+display_name = "ApplyGuy 2027 Internships (community JSON)"
+organization = "Community aggregator"
+adapter = "jsonfeed"
+landing_url = "https://github.com/ApplyGuy/2027-Internships"
+endpoint_config = { url = "https://raw.githubusercontent.com/ApplyGuy/2027-Internships/main/data/internships.json", records_path = "jobs", fields = { title = "title", canonical_url = "listingUrl", organization = "company", location_text = "location", season = "season", posted_date = "posted" } }
+categories = ["internship", "aggregator"]
+tags = ["aggregate-feed", "json"]
+cadence_hours = 12
+validation_status = "validated"
+last_validated = "2026-08-22"
+provenance_note = "live JSON fetch verified 2026-08-22"
+
+[[sources]]
+source_id = "agg-simplify-summer2027"
+display_name = "Pitt CSC & Simplify Summer 2027 Internships (GitHub list)"
+organization = "Community aggregator"
+adapter = "githublist"
+landing_url = "https://github.com/SimplifyJobs/Summer2027-Internships"
+endpoint_config = { url = "https://raw.githubusercontent.com/SimplifyJobs/Summer2027-Internships/dev/README.md", format = "html_table", columns = { title = "role", canonical_url = "application", organization = "company", location_text = "location" } }
+categories = ["internship", "aggregator"]
+tags = ["aggregate-feed", "github-list"]
+cadence_hours = 12
+validation_status = "validated"
+last_validated = "2026-08-22"
+provenance_note = "README HTML tables verified parseable 2026-08-22"
+
+[[sources]]
+source_id = "workday-intel-external"
+display_name = "Intel"
+organization = "Intel Corporation"
+adapter = "workday"
+landing_url = "https://intel.wd1.myworkdayjobs.com/External"
+endpoint_config = { url = "https://intel.wd1.myworkdayjobs.com/External", tenant = "intel", site = "External" }
+categories = ["internship", "early-career", "semiconductor"]
+tags = ["ats", "official-board"]
+cadence_hours = 24
+official_source = true
+validation_status = "validated"
+last_validated = "2026-08-22"
+provenance_note = "CXS POST verified 2026-08-22 (total=642)"
+
+[[sources]]
+source_id = "prog-nasa-internships"
+display_name = "NASA Internship Programs"
+organization = "NASA"
+adapter = "htmllist"
+landing_url = "https://www.nasa.gov/learning-resources/internship-programs/"
+endpoint_config = { url = "https://www.nasa.gov/learning-resources/internship-programs/", item_selector = "main ul li", title_selector = "a" }
+categories = ["program", "public-service"]
+tags = ["program-page", "html-selectors"]
+cadence_hours = 48
+official_source = true
+validation_status = "validated"
+last_validated = "2026-08-22"
+provenance_note = "selector probe: 5 items, 3 good links (2026-08-22)"
+
+[[sources]]
+source_id = "prog-pathways-to-science"
+display_name = "Pathways to Science program listings"
+organization = "Pathways to Science"
+adapter = "htmllist"
+landing_url = "https://pathwaystoscience.org/programs.asp"
+endpoint_config = { url = "https://pathwaystoscience.org/programs.asp?sort=&submit=Search", item_selector = "table tr", title_selector = "td a" }
+categories = ["research", "program"]
+tags = ["program-page", "html-selectors"]
+cadence_hours = 48
+official_source = true
+validation_status = "validated"
+last_validated = "2026-08-22"
+provenance_note = "selector probe: 8 items, 8 good (2026-08-22)"
+
+[[sources]]
+source_id = "prog-doe-suli"
+display_name = "DOE Science Undergraduate Laboratory Internships (SULI)"
+organization = "U.S. DOE"
+adapter = "htmllist"
+landing_url = "https://science.osti.gov/wdts/suli"
+endpoint_config = { url = "https://science.osti.gov/wdts/suli", item_selector = "main ul li", title_selector = "a" }
+categories = ["research", "program", "funded"]
+tags = ["program-page", "html-selectors"]
+cadence_hours = 48
+official_source = true
+validation_status = "validated"
+last_validated = "2026-08-22"
+provenance_note = "selector probe: 12 items, 12 good (2026-08-22)"
+
+[[sources]]
+source_id = "prog-doe-csgf"
+display_name = "DOE Computational Science Graduate Fellowship"
+organization = "Krell Institute"
+adapter = "htmllist"
+landing_url = "https://www.krellinst.org/csgf/"
+endpoint_config = { url = "https://www.krellinst.org/csgf/", item_selector = "main ul li", title_selector = "a" }
+categories = ["research", "fellowship", "funded"]
+tags = ["program-page", "html-selectors"]
+cadence_hours = 48
+official_source = true
+validation_status = "validated"
+last_validated = "2026-08-22"
+provenance_note = "selector probe: 26 items, 14 good (2026-08-22)"
+
+[[sources]]
+source_id = "ucla-samueli-news-opportunities"
+display_name = "UCLA Samueli news & opportunities"
+organization = "UCLA Samueli School of Engineering"
+adapter = "htmllist"
+landing_url = "https://samueli.ucla.edu/news/"
+endpoint_config = { url = "https://samueli.ucla.edu/news/", item_selector = "article", title_selector = "h2 a, h3 a" }
+categories = ["university", "research"]
+tags = ["program-page", "html-selectors"]
+cadence_hours = 48
+official_source = true
+validation_status = "validated"
+last_validated = "2026-08-22"
+provenance_note = "selector probe: 4 items, 4 good (2026-08-22)"
+
+[[sources]]
+source_id = "greenhouse-andurilindustries"
+display_name = "Anduril"
+organization = "Anduril"
+adapter = "greenhouse"
+landing_url = "https://boards.greenhouse.io/andurilindustries"
+endpoint_config = { board = "andurilindustries" }
+categories = ["internship", "early-career"]
+tags = ["ats", "official-board"]
+cadence_hours = 24
+official_source = true
+validation_status = "validated"
+last_validated = "2026-08-22"
+provenance_note = "discovered via public aggregate feeds; live probe returned 2238 postings (2026-08-22)"
+
+[[sources]]
+source_id = "greenhouse-spacex"
+display_name = "SpaceX"
+organization = "SpaceX"
+adapter = "greenhouse"
+landing_url = "https://boards.greenhouse.io/spacex"
+endpoint_config = { board = "spacex" }
+categories = ["internship", "early-career"]
+tags = ["ats", "official-board"]
+cadence_hours = 24
+official_source = true
+validation_status = "validated"
+last_validated = "2026-08-22"
+provenance_note = "discovered via public aggregate feeds; live probe returned 2179 postings (2026-08-22)"
+
+[[sources]]
+source_id = "greenhouse-aloyoga"
+display_name = "Alo Yoga"
+organization = "Alo Yoga"
+adapter = "greenhouse"
+landing_url = "https://boards.greenhouse.io/aloyoga"
+endpoint_config = { board = "aloyoga" }
+categories = ["internship", "early-career"]
+tags = ["ats", "official-board"]
+cadence_hours = 24
+official_source = true
+validation_status = "validated"
+last_validated = "2026-08-22"
+provenance_note = "discovered via public aggregate feeds; live probe returned 767 postings (2026-08-22)"
+
+[[sources]]
+source_id = "greenhouse-accenturefederalservices"
+display_name = "Accenture"
+organization = "Accenture"
+adapter = "greenhouse"
+landing_url = "https://boards.greenhouse.io/accenturefederalservices"
+endpoint_config = { board = "accenturefederalservices" }
+categories = ["internship", "early-career"]
+tags = ["ats", "official-board"]
+cadence_hours = 24
+official_source = true
+validation_status = "validated"
+last_validated = "2026-08-22"
+provenance_note = "discovered via public aggregate feeds; live probe returned 646 postings (2026-08-22)"
+
+[[sources]]
+source_id = "greenhouse-anthropic"
+display_name = "Anthropic"
+organization = "Anthropic"
+adapter = "greenhouse"
+landing_url = "https://boards.greenhouse.io/anthropic"
+endpoint_config = { board = "anthropic" }
+categories = ["internship", "early-career"]
+tags = ["ats", "official-board"]
+cadence_hours = 24
+official_source = true
+validation_status = "validated"
+last_validated = "2026-08-22"
+provenance_note = "discovered via public aggregate feeds; live probe returned 518 postings (2026-08-22)"
+
+[[sources]]
+source_id = "greenhouse-datadog"
+display_name = "Datadog"
+organization = "Datadog"
+adapter = "greenhouse"
+landing_url = "https://boards.greenhouse.io/datadog"
+endpoint_config = { board = "datadog" }
+categories = ["internship", "early-career"]
+tags = ["ats", "official-board"]
+cadence_hours = 24
+official_source = true
+validation_status = "validated"
+last_validated = "2026-08-22"
+provenance_note = "discovered via public aggregate feeds; live probe returned 448 postings (2026-08-22)"
+
+[[sources]]
+source_id = "greenhouse-cloudflare"
+display_name = "Cloudflare"
+organization = "Cloudflare"
+adapter = "greenhouse"
+landing_url = "https://boards.greenhouse.io/cloudflare"
+endpoint_config = { board = "cloudflare" }
+categories = ["internship", "early-career"]
+tags = ["ats", "official-board"]
+cadence_hours = 24
+official_source = true
+validation_status = "validated"
+last_validated = "2026-08-22"
+provenance_note = "discovered via public aggregate feeds; live probe returned 308 postings (2026-08-22)"
+
+[[sources]]
+source_id = "lever-palantir"
+display_name = "Palantir"
+organization = "Palantir"
+adapter = "lever"
+landing_url = "https://jobs.lever.co/palantir"
+endpoint_config = { board = "palantir" }
+categories = ["internship", "early-career"]
+tags = ["ats", "official-board"]
+cadence_hours = 24
+official_source = true
+validation_status = "validated"
+last_validated = "2026-08-22"
+provenance_note = "discovered via public aggregate feeds; live probe returned 308 postings (2026-08-22)"
+
+[[sources]]
+source_id = "ashby-applied"
+display_name = "Applied Intuition"
+organization = "Applied Intuition"
+adapter = "ashby"
+landing_url = "https://jobs.ashbyhq.com/applied"
+endpoint_config = { board = "applied" }
+categories = ["internship", "early-career"]
+tags = ["ats", "official-board"]
+cadence_hours = 24
+official_source = true
+validation_status = "validated"
+last_validated = "2026-08-22"
+provenance_note = "discovered via public aggregate feeds; live probe returned 295 postings (2026-08-22)"
+
+[[sources]]
+source_id = "greenhouse-agoda"
+display_name = "Agoda"
+organization = "Agoda"
+adapter = "greenhouse"
+landing_url = "https://boards.greenhouse.io/agoda"
+endpoint_config = { board = "agoda" }
+categories = ["internship", "early-career"]
+tags = ["ats", "official-board"]
+cadence_hours = 24
+official_source = true
+validation_status = "validated"
+last_validated = "2026-08-22"
+provenance_note = "discovered via public aggregate feeds; live probe returned 286 postings (2026-08-22)"
+
+[[sources]]
+source_id = "greenhouse-cssmerge"
+display_name = "Atoms"
+organization = "Atoms"
+adapter = "greenhouse"
+landing_url = "https://boards.greenhouse.io/cssmerge"
+endpoint_config = { board = "cssmerge" }
+categories = ["internship", "early-career"]
+tags = ["ats", "official-board"]
+cadence_hours = 24
+official_source = true
+validation_status = "validated"
+last_validated = "2026-08-22"
+provenance_note = "discovered via public aggregate feeds; live probe returned 251 postings (2026-08-22)"
+
+[[sources]]
+source_id = "lever-zoox"
+display_name = "Zoox"
+organization = "Zoox"
+adapter = "lever"
+landing_url = "https://jobs.lever.co/zoox"
+endpoint_config = { board = "zoox" }
+categories = ["internship", "early-career"]
+tags = ["ats", "official-board"]
+cadence_hours = 24
+official_source = true
+validation_status = "validated"
+last_validated = "2026-08-22"
+provenance_note = "discovered via public aggregate feeds; live probe returned 239 postings (2026-08-22)"
+
+[[sources]]
+source_id = "greenhouse-alphasense"
+display_name = "AlphaSense"
+organization = "AlphaSense"
+adapter = "greenhouse"
+landing_url = "https://boards.greenhouse.io/alphasense"
+endpoint_config = { board = "alphasense" }
+categories = ["internship", "early-career"]
+tags = ["ats", "official-board"]
+cadence_hours = 24
+official_source = true
+validation_status = "validated"
+last_validated = "2026-08-22"
+provenance_note = "discovered via public aggregate feeds; live probe returned 232 postings (2026-08-22)"
+
+[[sources]]
+source_id = "greenhouse-point72"
+display_name = "Point72"
+organization = "Point72"
+adapter = "greenhouse"
+landing_url = "https://boards.greenhouse.io/point72"
+endpoint_config = { board = "point72" }
+categories = ["internship", "early-career"]
+tags = ["ats", "official-board"]
+cadence_hours = 24
+official_source = true
+validation_status = "validated"
+last_validated = "2026-08-22"
+provenance_note = "discovered via public aggregate feeds; live probe returned 230 postings (2026-08-22)"
+
+[[sources]]
+source_id = "greenhouse-affirm"
+display_name = "Affirm"
+organization = "Affirm"
+adapter = "greenhouse"
+landing_url = "https://boards.greenhouse.io/affirm"
+endpoint_config = { board = "affirm" }
+categories = ["internship", "early-career"]
+tags = ["ats", "official-board"]
+cadence_hours = 24
+official_source = true
+validation_status = "validated"
+last_validated = "2026-08-22"
+provenance_note = "discovered via public aggregate feeds; live probe returned 207 postings (2026-08-22)"
+
+[[sources]]
+source_id = "greenhouse-thetradedesk"
+display_name = "The Trade Desk"
+organization = "The Trade Desk"
+adapter = "greenhouse"
+landing_url = "https://boards.greenhouse.io/thetradedesk"
+endpoint_config = { board = "thetradedesk" }
+categories = ["internship", "early-career"]
+tags = ["ats", "official-board"]
+cadence_hours = 24
+official_source = true
+validation_status = "validated"
+last_validated = "2026-08-22"
+provenance_note = "discovered via public aggregate feeds; live probe returned 201 postings (2026-08-22)"
+
+[[sources]]
+source_id = "greenhouse-apexcompanies"
+display_name = "Apex Companies"
+organization = "Apex Companies"
+adapter = "greenhouse"
+landing_url = "https://boards.greenhouse.io/apexcompanies"
+endpoint_config = { board = "apexcompanies" }
+categories = ["internship", "early-career"]
+tags = ["ats", "official-board"]
+cadence_hours = 24
+official_source = true
+validation_status = "validated"
+last_validated = "2026-08-22"
+provenance_note = "discovered via public aggregate feeds; live probe returned 191 postings (2026-08-22)"
+
+[[sources]]
+source_id = "greenhouse-airbnb"
+display_name = "Airbnb"
+organization = "Airbnb"
+adapter = "greenhouse"
+landing_url = "https://boards.greenhouse.io/airbnb"
+endpoint_config = { board = "airbnb" }
+categories = ["internship", "early-career"]
+tags = ["ats", "official-board"]
+cadence_hours = 24
+official_source = true
+validation_status = "validated"
+last_validated = "2026-08-22"
+provenance_note = "discovered via public aggregate feeds; live probe returned 189 postings (2026-08-22)"
+
+[[sources]]
+source_id = "lever-xsolla"
+display_name = "Xsolla"
+organization = "Xsolla"
+adapter = "lever"
+landing_url = "https://jobs.lever.co/xsolla"
+endpoint_config = { board = "xsolla" }
+categories = ["internship", "early-career"]
+tags = ["ats", "official-board"]
+cadence_hours = 24
+official_source = true
+validation_status = "validated"
+last_validated = "2026-08-22"
+provenance_note = "discovered via public aggregate feeds; live probe returned 186 postings (2026-08-22)"
+
+[[sources]]
+source_id = "greenhouse-appian"
+display_name = "Appian"
+organization = "Appian"
+adapter = "greenhouse"
+landing_url = "https://boards.greenhouse.io/appian"
+endpoint_config = { board = "appian" }
+categories = ["internship", "early-career"]
+tags = ["ats", "official-board"]
+cadence_hours = 24
+official_source = true
+validation_status = "validated"
+last_validated = "2026-08-22"
+provenance_note = "discovered via public aggregate feeds; live probe returned 176 postings (2026-08-22)"
+
+[[sources]]
+source_id = "greenhouse-coinbase"
+display_name = "Coinbase"
+organization = "Coinbase"
+adapter = "greenhouse"
+landing_url = "https://boards.greenhouse.io/coinbase"
+endpoint_config = { board = "coinbase" }
+categories = ["internship", "early-career"]
+tags = ["ats", "official-board"]
+cadence_hours = 24
+official_source = true
+validation_status = "validated"
+last_validated = "2026-08-22"
+provenance_note = "discovered via public aggregate feeds; live probe returned 173 postings (2026-08-22)"
+
+[[sources]]
+source_id = "greenhouse-altentechnologyusa"
+display_name = "ALTEN Technology"
+organization = "ALTEN Technology"
+adapter = "greenhouse"
+landing_url = "https://boards.greenhouse.io/altentechnologyusa"
+endpoint_config = { board = "altentechnologyusa" }
+categories = ["internship", "early-career"]
+tags = ["ats", "official-board"]
+cadence_hours = 24
+official_source = true
+validation_status = "validated"
+last_validated = "2026-08-22"
+provenance_note = "discovered via public aggregate feeds; live probe returned 170 postings (2026-08-22)"
+
+[[sources]]
+source_id = "greenhouse-anaplan"
+display_name = "Anaplan"
+organization = "Anaplan"
+adapter = "greenhouse"
+landing_url = "https://boards.greenhouse.io/anaplan"
+endpoint_config = { board = "anaplan" }
+categories = ["internship", "early-career"]
+tags = ["ats", "official-board"]
+cadence_hours = 24
+official_source = true
+validation_status = "validated"
+last_validated = "2026-08-22"
+provenance_note = "discovered via public aggregate feeds; live probe returned 166 postings (2026-08-22)"
+
+[[sources]]
+source_id = "greenhouse-archer56"
+display_name = "Archer"
+organization = "Archer"
+adapter = "greenhouse"
+landing_url = "https://boards.greenhouse.io/archer56"
+endpoint_config = { board = "archer56" }
+categories = ["internship", "early-career"]
+tags = ["ats", "official-board"]
+cadence_hours = 24
+official_source = true
+validation_status = "validated"
+last_validated = "2026-08-22"
+provenance_note = "discovered via public aggregate feeds; live probe returned 166 postings (2026-08-22)"
+
+[[sources]]
+source_id = "greenhouse-drweng"
+display_name = "DRW"
+organization = "DRW"
+adapter = "greenhouse"
+landing_url = "https://boards.greenhouse.io/drweng"
+endpoint_config = { board = "drweng" }
+categories = ["internship", "early-career"]
+tags = ["ats", "official-board"]
+cadence_hours = 24
+official_source = true
+validation_status = "validated"
+last_validated = "2026-08-22"
+provenance_note = "discovered via public aggregate feeds; live probe returned 165 postings (2026-08-22)"
+
+[[sources]]
+source_id = "greenhouse-figma"
+display_name = "Figma"
+organization = "Figma"
+adapter = "greenhouse"
+landing_url = "https://boards.greenhouse.io/figma"
+endpoint_config = { board = "figma" }
+categories = ["internship", "early-career"]
+tags = ["ats", "official-board"]
+cadence_hours = 24
+official_source = true
+validation_status = "validated"
+last_validated = "2026-08-22"
+provenance_note = "discovered via public aggregate feeds; live probe returned 161 postings (2026-08-22)"
+
+[[sources]]
+source_id = "greenhouse-redwoodmaterials"
+display_name = "Redwood Materials"
+organization = "Redwood Materials"
+adapter = "greenhouse"
+landing_url = "https://boards.greenhouse.io/redwoodmaterials"
+endpoint_config = { board = "redwoodmaterials" }
+categories = ["internship", "early-career"]
+tags = ["ats", "official-board"]
+cadence_hours = 24
+official_source = true
+validation_status = "validated"
+last_validated = "2026-08-22"
+provenance_note = "discovered via public aggregate feeds; live probe returned 153 postings (2026-08-22)"
+
+[[sources]]
+source_id = "lever-thinkahead"
+display_name = "AHEAD"
+organization = "AHEAD"
+adapter = "lever"
+landing_url = "https://jobs.lever.co/thinkahead"
+endpoint_config = { board = "thinkahead" }
+categories = ["internship", "early-career"]
+tags = ["ats", "official-board"]
+cadence_hours = 24
+official_source = true
+validation_status = "validated"
+last_validated = "2026-08-22"
+provenance_note = "discovered via public aggregate feeds; live probe returned 147 postings (2026-08-22)"
+
+[[sources]]
+source_id = "lever-espace"
+display_name = "E-Space"
+organization = "E-Space"
+adapter = "lever"
+landing_url = "https://jobs.lever.co/espace"
+endpoint_config = { board = "espace" }
+categories = ["internship", "early-career"]
+tags = ["ats", "official-board"]
+cadence_hours = 24
+official_source = true
+validation_status = "validated"
+last_validated = "2026-08-22"
+provenance_note = "discovered via public aggregate feeds; live probe returned 145 postings (2026-08-22)"
+
+[[sources]]
+source_id = "greenhouse-robinhood"
+display_name = "Robinhood"
+organization = "Robinhood"
+adapter = "greenhouse"
+landing_url = "https://boards.greenhouse.io/robinhood"
+endpoint_config = { board = "robinhood" }
+categories = ["internship", "early-career"]
+tags = ["ats", "official-board"]
+cadence_hours = 24
+official_source = true
+validation_status = "validated"
+last_validated = "2026-08-22"
+provenance_note = "discovered via public aggregate feeds; live probe returned 130 postings (2026-08-22)"
+
+[[sources]]
+source_id = "ashby-notion"
+display_name = "Notion"
+organization = "Notion"
+adapter = "ashby"
+landing_url = "https://jobs.ashbyhq.com/notion"
+endpoint_config = { board = "notion" }
+categories = ["internship", "early-career"]
+tags = ["ats", "official-board"]
+cadence_hours = 24
+official_source = true
+validation_status = "validated"
+last_validated = "2026-08-22"
+provenance_note = "discovered via public aggregate feeds; live probe returned 128 postings (2026-08-22)"
+
+[[sources]]
+source_id = "greenhouse-figureai"
+display_name = "Figure"
+organization = "Figure"
+adapter = "greenhouse"
+landing_url = "https://boards.greenhouse.io/figureai"
+endpoint_config = { board = "figureai" }
+categories = ["internship", "early-career"]
+tags = ["ats", "official-board"]
+cadence_hours = 24
+official_source = true
+validation_status = "validated"
+last_validated = "2026-08-22"
+provenance_note = "discovered via public aggregate feeds; live probe returned 124 postings (2026-08-22)"
+
+[[sources]]
+source_id = "ashby-skydio"
+display_name = "Skydio"
+organization = "Skydio"
+adapter = "ashby"
+landing_url = "https://jobs.ashbyhq.com/skydio"
+endpoint_config = { board = "skydio" }
+categories = ["internship", "early-career"]
+tags = ["ats", "official-board"]
+cadence_hours = 24
+official_source = true
+validation_status = "validated"
+last_validated = "2026-08-22"
+provenance_note = "discovered via public aggregate feeds; live probe returned 123 postings (2026-08-22)"
+
+[[sources]]
+source_id = "greenhouse-addepar1"
+display_name = "Addepar"
+organization = "Addepar"
+adapter = "greenhouse"
+landing_url = "https://boards.greenhouse.io/addepar1"
+endpoint_config = { board = "addepar1" }
+categories = ["internship", "early-career"]
+tags = ["ats", "official-board"]
+cadence_hours = 24
+official_source = true
+validation_status = "validated"
+last_validated = "2026-08-22"
+provenance_note = "discovered via public aggregate feeds; live probe returned 122 postings (2026-08-22)"
+
+[[sources]]
+source_id = "greenhouse-2k"
+display_name = "2K"
+organization = "2K"
+adapter = "greenhouse"
+landing_url = "https://boards.greenhouse.io/2k"
+endpoint_config = { board = "2k" }
+categories = ["internship", "early-career"]
+tags = ["ats", "official-board"]
+cadence_hours = 24
+official_source = true
+validation_status = "validated"
+last_validated = "2026-08-22"
+provenance_note = "discovered via public aggregate feeds; live probe returned 116 postings (2026-08-22)"
+
+[[sources]]
+source_id = "greenhouse-artefactlinkedin"
+display_name = "Artefact"
+organization = "Artefact"
+adapter = "greenhouse"
+landing_url = "https://boards.greenhouse.io/artefactlinkedin"
+endpoint_config = { board = "artefactlinkedin" }
+categories = ["internship", "early-career"]
+tags = ["ats", "official-board"]
+cadence_hours = 24
+official_source = true
+validation_status = "validated"
+last_validated = "2026-08-22"
+provenance_note = "discovered via public aggregate feeds; live probe returned 114 postings (2026-08-22)"
+
+[[sources]]
+source_id = "ashby-cursor"
+display_name = "Cursor"
+organization = "Cursor"
+adapter = "ashby"
+landing_url = "https://jobs.ashbyhq.com/cursor"
+endpoint_config = { board = "cursor" }
+categories = ["internship", "early-career"]
+tags = ["ats", "official-board"]
+cadence_hours = 24
+official_source = true
+validation_status = "validated"
+last_validated = "2026-08-22"
+provenance_note = "discovered via public aggregate feeds; live probe returned 113 postings (2026-08-22)"
+
+[[sources]]
+source_id = "greenhouse-generalmatter"
+display_name = "General Matter"
+organization = "General Matter"
+adapter = "greenhouse"
+landing_url = "https://boards.greenhouse.io/generalmatter"
+endpoint_config = { board = "generalmatter" }
+categories = ["internship", "early-career"]
+tags = ["ats", "official-board"]
+cadence_hours = 24
+official_source = true
+validation_status = "validated"
+last_validated = "2026-08-22"
+provenance_note = "discovered via public aggregate feeds; live probe returned 109 postings (2026-08-22)"
+
+[[sources]]
+source_id = "greenhouse-syskahennessy"
+display_name = "Syska Hennessy Group"
+organization = "Syska Hennessy Group"
+adapter = "greenhouse"
+landing_url = "https://boards.greenhouse.io/syskahennessy"
+endpoint_config = { board = "syskahennessy" }
+categories = ["internship", "early-career"]
+tags = ["ats", "official-board"]
+cadence_hours = 24
+official_source = true
+validation_status = "validated"
+last_validated = "2026-08-22"
+provenance_note = "discovered via public aggregate feeds; live probe returned 109 postings (2026-08-22)"
+
+[[sources]]
+source_id = "lever-agile-defense"
+display_name = "Agile Defense"
+organization = "Agile Defense"
+adapter = "lever"
+landing_url = "https://jobs.lever.co/agile-defense"
+endpoint_config = { board = "agile-defense" }
+categories = ["internship", "early-career"]
+tags = ["ats", "official-board"]
+cadence_hours = 24
+official_source = true
+validation_status = "validated"
+last_validated = "2026-08-22"
+provenance_note = "discovered via public aggregate feeds; live probe returned 107 postings (2026-08-22)"
+
+[[sources]]
+source_id = "greenhouse-jumptrading"
+display_name = "Jump Trading"
+organization = "Jump Trading"
+adapter = "greenhouse"
+landing_url = "https://boards.greenhouse.io/jumptrading"
+endpoint_config = { board = "jumptrading" }
+categories = ["internship", "early-career"]
+tags = ["ats", "official-board"]
+cadence_hours = 24
+official_source = true
+validation_status = "validated"
+last_validated = "2026-08-22"
+provenance_note = "discovered via public aggregate feeds; live probe returned 106 postings (2026-08-22)"
+
+[[sources]]
+source_id = "greenhouse-advancedtechnologyservices"
+display_name = "Advanced Technology Services"
+organization = "Advanced Technology Services"
+adapter = "greenhouse"
+landing_url = "https://boards.greenhouse.io/advancedtechnologyservices"
+endpoint_config = { board = "advancedtechnologyservices" }
+categories = ["internship", "early-career"]
+tags = ["ats", "official-board"]
+cadence_hours = 24
+official_source = true
+validation_status = "validated"
+last_validated = "2026-08-22"
+provenance_note = "discovered via public aggregate feeds; live probe returned 100 postings (2026-08-22)"
+
+[[sources]]
+source_id = "greenhouse-vardaspace"
+display_name = "Varda Space"
+organization = "Varda Space"
+adapter = "greenhouse"
+landing_url = "https://boards.greenhouse.io/vardaspace"
+endpoint_config = { board = "vardaspace" }
+categories = ["internship", "early-career"]
+tags = ["ats", "official-board"]
+cadence_hours = 24
+official_source = true
+validation_status = "validated"
+last_validated = "2026-08-22"
+provenance_note = "discovered via public aggregate feeds; live probe returned 96 postings (2026-08-22)"
+
+[[sources]]
+source_id = "greenhouse-atoms"
+display_name = "Atoms"
+organization = "Atoms"
+adapter = "greenhouse"
+landing_url = "https://boards.greenhouse.io/atoms"
+endpoint_config = { board = "atoms" }
+categories = ["internship", "early-career"]
+tags = ["ats", "official-board"]
+cadence_hours = 24
+official_source = true
+validation_status = "validated"
+last_validated = "2026-08-22"
+provenance_note = "discovered via public aggregate feeds; live probe returned 89 postings (2026-08-22)"
+
+[[sources]]
+source_id = "ashby-deepgram"
+display_name = "Deepgram"
+organization = "Deepgram"
+adapter = "ashby"
+landing_url = "https://jobs.ashbyhq.com/deepgram"
+endpoint_config = { board = "deepgram" }
+categories = ["internship", "early-career"]
+tags = ["ats", "official-board"]
+cadence_hours = 24
+official_source = true
+validation_status = "validated"
+last_validated = "2026-08-22"
+provenance_note = "discovered via public aggregate feeds; live probe returned 88 postings (2026-08-22)"
+
+[[sources]]
+source_id = "ashby-apex-technology-inc"
+display_name = "Apex Technology, Inc."
+organization = "Apex Technology, Inc."
+adapter = "ashby"
+landing_url = "https://jobs.ashbyhq.com/apex-technology-inc"
+endpoint_config = { board = "apex-technology-inc" }
+categories = ["internship", "early-career"]
+tags = ["ats", "official-board"]
+cadence_hours = 24
+official_source = true
+validation_status = "validated"
+last_validated = "2026-08-22"
+provenance_note = "discovered via public aggregate feeds; live probe returned 87 postings (2026-08-22)"
+
+[[sources]]
+source_id = "greenhouse-astranis"
+display_name = "Astranis"
+organization = "Astranis"
+adapter = "greenhouse"
+landing_url = "https://boards.greenhouse.io/astranis"
+endpoint_config = { board = "astranis" }
+categories = ["internship", "early-career"]
+tags = ["ats", "official-board"]
+cadence_hours = 24
+official_source = true
+validation_status = "validated"
+last_validated = "2026-08-22"
+provenance_note = "discovered via public aggregate feeds; live probe returned 85 postings (2026-08-22)"
+
+[[sources]]
+source_id = "greenhouse-alarmcom"
+display_name = "Alarm.com"
+organization = "Alarm.com"
+adapter = "greenhouse"
+landing_url = "https://boards.greenhouse.io/alarmcom"
+endpoint_config = { board = "alarmcom" }
+categories = ["internship", "early-career"]
+tags = ["ats", "official-board"]
+cadence_hours = 24
+official_source = true
+validation_status = "validated"
+last_validated = "2026-08-22"
+provenance_note = "discovered via public aggregate feeds; live probe returned 85 postings (2026-08-22)"
+
+[[sources]]
+source_id = "ashby-1x"
+display_name = "1X"
+organization = "1X"
+adapter = "ashby"
+landing_url = "https://jobs.ashbyhq.com/1x"
+endpoint_config = { board = "1x" }
+categories = ["internship", "early-career"]
+tags = ["ats", "official-board"]
+cadence_hours = 24
+official_source = true
+validation_status = "validated"
+last_validated = "2026-08-22"
+provenance_note = "discovered via public aggregate feeds; live probe returned 82 postings (2026-08-22)"
+
+[[sources]]
+source_id = "greenhouse-abnormalsecurity"
+display_name = "Abnormal Security"
+organization = "Abnormal Security"
+adapter = "greenhouse"
+landing_url = "https://boards.greenhouse.io/abnormalsecurity"
+endpoint_config = { board = "abnormalsecurity" }
+categories = ["internship", "early-career"]
+tags = ["ats", "official-board"]
+cadence_hours = 24
+official_source = true
+validation_status = "validated"
+last_validated = "2026-08-22"
+provenance_note = "discovered via public aggregate feeds; live probe returned 80 postings (2026-08-22)"
+
+[[sources]]
+source_id = "ashby-allen-control-systems"
+display_name = "Allen Control Systems"
+organization = "Allen Control Systems"
+adapter = "ashby"
+landing_url = "https://jobs.ashbyhq.com/allen-control-systems"
+endpoint_config = { board = "allen-control-systems" }
+categories = ["internship", "early-career"]
+tags = ["ats", "official-board"]
+cadence_hours = 24
+official_source = true
+validation_status = "validated"
+last_validated = "2026-08-22"
+provenance_note = "discovered via public aggregate feeds; live probe returned 80 postings (2026-08-22)"
+
+[[sources]]
+source_id = "greenhouse-alphafmcroles"
+display_name = "Alpha FMC"
+organization = "Alpha FMC"
+adapter = "greenhouse"
+landing_url = "https://boards.greenhouse.io/alphafmcroles"
+endpoint_config = { board = "alphafmcroles" }
+categories = ["internship", "early-career"]
+tags = ["ats", "official-board"]
+cadence_hours = 24
+official_source = true
+validation_status = "validated"
+last_validated = "2026-08-22"
+provenance_note = "discovered via public aggregate feeds; live probe returned 79 postings (2026-08-22)"
+
+[[sources]]
+source_id = "lever-aircall"
+display_name = "Aircall"
+organization = "Aircall"
+adapter = "lever"
+landing_url = "https://jobs.lever.co/aircall"
+endpoint_config = { board = "aircall" }
+categories = ["internship", "early-career"]
+tags = ["ats", "official-board"]
+cadence_hours = 24
+official_source = true
+validation_status = "validated"
+last_validated = "2026-08-22"
+provenance_note = "discovered via public aggregate feeds; live probe returned 77 postings (2026-08-22)"
+
+[[sources]]
+source_id = "greenhouse-thenuclearcompany"
+display_name = "The Nuclear Company"
+organization = "The Nuclear Company"
+adapter = "greenhouse"
+landing_url = "https://boards.greenhouse.io/thenuclearcompany"
+endpoint_config = { board = "thenuclearcompany" }
+categories = ["internship", "early-career"]
+tags = ["ats", "official-board"]
+cadence_hours = 24
+official_source = true
+validation_status = "validated"
+last_validated = "2026-08-22"
+provenance_note = "discovered via public aggregate feeds; live probe returned 76 postings (2026-08-22)"
+
+[[sources]]
+source_id = "lever-hermeus"
+display_name = "Hermeus"
+organization = "Hermeus"
+adapter = "lever"
+landing_url = "https://jobs.lever.co/hermeus"
+endpoint_config = { board = "hermeus" }
+categories = ["internship", "early-career"]
+tags = ["ats", "official-board"]
+cadence_hours = 24
+official_source = true
+validation_status = "validated"
+last_validated = "2026-08-22"
+provenance_note = "discovered via public aggregate feeds; live probe returned 76 postings (2026-08-22)"
+
+[[sources]]
+source_id = "greenhouse-apptronik"
+display_name = "Apptronik"
+organization = "Apptronik"
+adapter = "greenhouse"
+landing_url = "https://boards.greenhouse.io/apptronik"
+endpoint_config = { board = "apptronik" }
+categories = ["internship", "early-career"]
+tags = ["ats", "official-board"]
+cadence_hours = 24
+official_source = true
+validation_status = "validated"
+last_validated = "2026-08-22"
+provenance_note = "discovered via public aggregate feeds; live probe returned 76 postings (2026-08-22)"
+
+[[sources]]
+source_id = "lever-arrivelogistics"
+display_name = "Arrive Logistics"
+organization = "Arrive Logistics"
+adapter = "lever"
+landing_url = "https://jobs.lever.co/arrivelogistics"
+endpoint_config = { board = "arrivelogistics" }
+categories = ["internship", "early-career"]
+tags = ["ats", "official-board"]
+cadence_hours = 24
+official_source = true
+validation_status = "validated"
+last_validated = "2026-08-22"
+provenance_note = "discovered via public aggregate feeds; live probe returned 76 postings (2026-08-22)"
+
+[[sources]]
+source_id = "greenhouse-freeformfuturecorp"
+display_name = "Freeform"
+organization = "Freeform"
+adapter = "greenhouse"
+landing_url = "https://boards.greenhouse.io/freeformfuturecorp"
+endpoint_config = { board = "freeformfuturecorp" }
+categories = ["internship", "early-career"]
+tags = ["ats", "official-board"]
+cadence_hours = 24
+official_source = true
+validation_status = "validated"
+last_validated = "2026-08-22"
+provenance_note = "discovered via public aggregate feeds; live probe returned 74 postings (2026-08-22)"
+
+[[sources]]
+source_id = "ashby-replit"
+display_name = "Replit"
+organization = "Replit"
+adapter = "ashby"
+landing_url = "https://jobs.ashbyhq.com/replit"
+endpoint_config = { board = "replit" }
+categories = ["internship", "early-career"]
+tags = ["ats", "official-board"]
+cadence_hours = 24
+official_source = true
+validation_status = "validated"
+last_validated = "2026-08-22"
+provenance_note = "discovered via public aggregate feeds; live probe returned 71 postings (2026-08-22)"
+
+[[sources]]
+source_id = "greenhouse-alpaca"
+display_name = "Alpaca"
+organization = "Alpaca"
+adapter = "greenhouse"
+landing_url = "https://boards.greenhouse.io/alpaca"
+endpoint_config = { board = "alpaca" }
+categories = ["internship", "early-career"]
+tags = ["ats", "official-board"]
+cadence_hours = 24
+official_source = true
+validation_status = "validated"
+last_validated = "2026-08-22"
+provenance_note = "discovered via public aggregate feeds; live probe returned 66 postings (2026-08-22)"
+
+[[sources]]
+source_id = "ashby-1password"
+display_name = "1Password"
+organization = "1Password"
+adapter = "ashby"
+landing_url = "https://jobs.ashbyhq.com/1password"
+endpoint_config = { board = "1password" }
+categories = ["internship", "early-career"]
+tags = ["ats", "official-board"]
+cadence_hours = 24
+official_source = true
+validation_status = "validated"
+last_validated = "2026-08-22"
+provenance_note = "discovered via public aggregate feeds; live probe returned 64 postings (2026-08-22)"
+
+[[sources]]
+source_id = "greenhouse-aevexaerospace"
+display_name = "Aevex Aerospace"
+organization = "Aevex Aerospace"
+adapter = "greenhouse"
+landing_url = "https://boards.greenhouse.io/aevexaerospace"
+endpoint_config = { board = "aevexaerospace" }
+categories = ["internship", "early-career"]
+tags = ["ats", "official-board"]
+cadence_hours = 24
+official_source = true
+validation_status = "validated"
+last_validated = "2026-08-22"
+provenance_note = "discovered via public aggregate feeds; live probe returned 63 postings (2026-08-22)"
+
+[[sources]]
+source_id = "greenhouse-dvtrading"
+display_name = "DV Trading"
+organization = "DV Trading"
+adapter = "greenhouse"
+landing_url = "https://boards.greenhouse.io/dvtrading"
+endpoint_config = { board = "dvtrading" }
+categories = ["internship", "early-career"]
+tags = ["ats", "official-board"]
+cadence_hours = 24
+official_source = true
+validation_status = "validated"
+last_validated = "2026-08-22"
+provenance_note = "discovered via public aggregate feeds; live probe returned 60 postings (2026-08-22)"
+
+[[sources]]
+source_id = "greenhouse-armada"
+display_name = "Armada"
+organization = "Armada"
+adapter = "greenhouse"
+landing_url = "https://boards.greenhouse.io/armada"
+endpoint_config = { board = "armada" }
+categories = ["internship", "early-career"]
+tags = ["ats", "official-board"]
+cadence_hours = 24
+official_source = true
+validation_status = "validated"
+last_validated = "2026-08-22"
+provenance_note = "discovered via public aggregate feeds; live probe returned 59 postings (2026-08-22)"
+
+[[sources]]
+source_id = "ashby-supabase"
+display_name = "Supabase"
+organization = "Supabase"
+adapter = "ashby"
+landing_url = "https://jobs.ashbyhq.com/supabase"
+endpoint_config = { board = "supabase" }
+categories = ["internship", "early-career"]
+tags = ["ats", "official-board"]
+cadence_hours = 24
+official_source = true
+validation_status = "validated"
+last_validated = "2026-08-22"
+provenance_note = "discovered via public aggregate feeds; live probe returned 58 postings (2026-08-22)"
+
+[[sources]]
+source_id = "lever-3pillarglobal"
+display_name = "3PillarGlobal"
+organization = "3PillarGlobal"
+adapter = "lever"
+landing_url = "https://jobs.lever.co/3pillarglobal"
+endpoint_config = { board = "3pillarglobal" }
+categories = ["internship", "early-career"]
+tags = ["ats", "official-board"]
+cadence_hours = 24
+official_source = true
+validation_status = "validated"
+last_validated = "2026-08-22"
+provenance_note = "discovered via public aggregate feeds; live probe returned 53 postings (2026-08-22)"
+
+[[sources]]
+source_id = "ashby-antares"
+display_name = "Antares Nuclear"
+organization = "Antares Nuclear"
+adapter = "ashby"
+landing_url = "https://jobs.ashbyhq.com/antares"
+endpoint_config = { board = "antares" }
+categories = ["internship", "early-career"]
+tags = ["ats", "official-board"]
+cadence_hours = 24
+official_source = true
+validation_status = "validated"
+last_validated = "2026-08-22"
+provenance_note = "discovered via public aggregate feeds; live probe returned 52 postings (2026-08-22)"
+
+[[sources]]
+source_id = "greenhouse-appdirect"
+display_name = "AppDirect"
+organization = "AppDirect"
+adapter = "greenhouse"
+landing_url = "https://boards.greenhouse.io/appdirect"
+endpoint_config = { board = "appdirect" }
+categories = ["internship", "early-career"]
+tags = ["ats", "official-board"]
+cadence_hours = 24
+official_source = true
+validation_status = "validated"
+last_validated = "2026-08-22"
+provenance_note = "discovered via public aggregate feeds; live probe returned 52 postings (2026-08-22)"
+
+[[sources]]
+source_id = "ashby-beaconsoftware"
+display_name = "Beaconsoftware"
+organization = "Beaconsoftware"
+adapter = "ashby"
+landing_url = "https://jobs.ashbyhq.com/beaconsoftware"
+endpoint_config = { board = "beaconsoftware" }
+categories = ["internship", "early-career"]
+tags = ["ats", "official-board"]
+cadence_hours = 24
+official_source = true
+validation_status = "validated"
+last_validated = "2026-08-22"
+provenance_note = "discovered via public aggregate feeds; live probe returned 51 postings (2026-08-22)"
+
+[[sources]]
+source_id = "lever-allegiantair"
+display_name = "Allegiant Air"
+organization = "Allegiant Air"
+adapter = "lever"
+landing_url = "https://jobs.lever.co/allegiantair"
+endpoint_config = { board = "allegiantair" }
+categories = ["internship", "early-career"]
+tags = ["ats", "official-board"]
+cadence_hours = 24
+official_source = true
+validation_status = "validated"
+last_validated = "2026-08-22"
+provenance_note = "discovered via public aggregate feeds; live probe returned 51 postings (2026-08-22)"
+
+[[sources]]
+source_id = "ashby-exa"
+display_name = "Exa Labs"
+organization = "Exa Labs"
+adapter = "ashby"
+landing_url = "https://jobs.ashbyhq.com/exa"
+endpoint_config = { board = "exa" }
+categories = ["internship", "early-career"]
+tags = ["ats", "official-board"]
+cadence_hours = 24
+official_source = true
+validation_status = "validated"
+last_validated = "2026-08-22"
+provenance_note = "discovered via public aggregate feeds; live probe returned 50 postings (2026-08-22)"
+
+[[sources]]
+source_id = "greenhouse-flowtraders"
+display_name = "Flow Traders"
+organization = "Flow Traders"
+adapter = "greenhouse"
+landing_url = "https://boards.greenhouse.io/flowtraders"
+endpoint_config = { board = "flowtraders" }
+categories = ["internship", "early-career"]
+tags = ["ats", "official-board"]
+cadence_hours = 24
+official_source = true
+validation_status = "validated"
+last_validated = "2026-08-22"
+provenance_note = "discovered via public aggregate feeds; live probe returned 47 postings (2026-08-22)"
+
+[[sources]]
+source_id = "ashby-abridge"
+display_name = "Abridge"
+organization = "Abridge"
+adapter = "ashby"
+landing_url = "https://jobs.ashbyhq.com/abridge"
+endpoint_config = { board = "abridge" }
+categories = ["internship", "early-career"]
+tags = ["ats", "official-board"]
+cadence_hours = 24
+official_source = true
+validation_status = "validated"
+last_validated = "2026-08-22"
+provenance_note = "discovered via public aggregate feeds; live probe returned 47 postings (2026-08-22)"
+
+[[sources]]
+source_id = "greenhouse-aqr"
+display_name = "AQR Capital Management"
+organization = "AQR Capital Management"
+adapter = "greenhouse"
+landing_url = "https://boards.greenhouse.io/aqr"
+endpoint_config = { board = "aqr" }
+categories = ["internship", "early-career"]
+tags = ["ats", "official-board"]
+cadence_hours = 24
+official_source = true
+validation_status = "validated"
+last_validated = "2026-08-22"
+provenance_note = "discovered via public aggregate feeds; live probe returned 47 postings (2026-08-22)"
+
+[[sources]]
+source_id = "greenhouse-virtu"
+display_name = "Virtu Financial"
+organization = "Virtu Financial"
+adapter = "greenhouse"
+landing_url = "https://boards.greenhouse.io/virtu"
+endpoint_config = { board = "virtu" }
+categories = ["internship", "early-career"]
+tags = ["ats", "official-board"]
+cadence_hours = 24
+official_source = true
+validation_status = "validated"
+last_validated = "2026-08-22"
+provenance_note = "discovered via public aggregate feeds; live probe returned 46 postings (2026-08-22)"
+
+[[sources]]
+source_id = "lever-acceldata"
+display_name = "Acceldata"
+organization = "Acceldata"
+adapter = "lever"
+landing_url = "https://jobs.lever.co/acceldata"
+endpoint_config = { board = "acceldata" }
+categories = ["internship", "early-career"]
+tags = ["ats", "official-board"]
+cadence_hours = 24
+official_source = true
+validation_status = "validated"
+last_validated = "2026-08-22"
+provenance_note = "discovered via public aggregate feeds; live probe returned 45 postings (2026-08-22)"
+
+[[sources]]
+source_id = "greenhouse-apolloio"
+display_name = "Apollo.io"
+organization = "Apollo.io"
+adapter = "greenhouse"
+landing_url = "https://boards.greenhouse.io/apolloio"
+endpoint_config = { board = "apolloio" }
+categories = ["internship", "early-career"]
+tags = ["ats", "official-board"]
+cadence_hours = 24
+official_source = true
+validation_status = "validated"
+last_validated = "2026-08-22"
+provenance_note = "discovered via public aggregate feeds; live probe returned 44 postings (2026-08-22)"
+
+[[sources]]
+source_id = "ashby-ridealso"
+display_name = "ALSO"
+organization = "ALSO"
+adapter = "ashby"
+landing_url = "https://jobs.ashbyhq.com/ridealso"
+endpoint_config = { board = "ridealso" }
+categories = ["internship", "early-career"]
+tags = ["ats", "official-board"]
+cadence_hours = 24
+official_source = true
+validation_status = "validated"
+last_validated = "2026-08-22"
+provenance_note = "discovered via public aggregate feeds; live probe returned 41 postings (2026-08-22)"
+
+[[sources]]
+source_id = "ashby-9fin"
+display_name = "9fin"
+organization = "9fin"
+adapter = "ashby"
+landing_url = "https://jobs.ashbyhq.com/9fin"
+endpoint_config = { board = "9fin" }
+categories = ["internship", "early-career"]
+tags = ["ats", "official-board"]
+cadence_hours = 24
+official_source = true
+validation_status = "validated"
+last_validated = "2026-08-22"
+provenance_note = "discovered via public aggregate feeds; live probe returned 40 postings (2026-08-22)"
+
+[[sources]]
+source_id = "greenhouse-mavensecuritiesholdingltd"
+display_name = "Maven Securities"
+organization = "Maven Securities"
+adapter = "greenhouse"
+landing_url = "https://boards.greenhouse.io/mavensecuritiesholdingltd"
+endpoint_config = { board = "mavensecuritiesholdingltd" }
+categories = ["internship", "early-career"]
+tags = ["ats", "official-board"]
+cadence_hours = 24
+official_source = true
+validation_status = "validated"
+last_validated = "2026-08-22"
+provenance_note = "discovered via public aggregate feeds; live probe returned 39 postings (2026-08-22)"
+
+[[sources]]
+source_id = "ashby-aerovect"
+display_name = "AeroVect"
+organization = "AeroVect"
+adapter = "ashby"
+landing_url = "https://jobs.ashbyhq.com/aerovect"
+endpoint_config = { board = "aerovect" }
+categories = ["internship", "early-career"]
+tags = ["ats", "official-board"]
+cadence_hours = 24
+official_source = true
+validation_status = "validated"
+last_validated = "2026-08-22"
+provenance_note = "discovered via public aggregate feeds; live probe returned 39 postings (2026-08-22)"
+
+[[sources]]
+source_id = "ashby-allica-bank"
+display_name = "Allica Bank"
+organization = "Allica Bank"
+adapter = "ashby"
+landing_url = "https://jobs.ashbyhq.com/allica-bank"
+endpoint_config = { board = "allica-bank" }
+categories = ["internship", "early-career"]
+tags = ["ats", "official-board"]
+cadence_hours = 24
+official_source = true
+validation_status = "validated"
+last_validated = "2026-08-22"
+provenance_note = "discovered via public aggregate feeds; live probe returned 38 postings (2026-08-22)"
+
+[[sources]]
+source_id = "greenhouse-toshibaglobalcommercesolutions"
+display_name = "Toshiba Global Commerce"
+organization = "Toshiba Global Commerce"
+adapter = "greenhouse"
+landing_url = "https://boards.greenhouse.io/toshibaglobalcommercesolutions"
+endpoint_config = { board = "toshibaglobalcommercesolutions" }
+categories = ["internship", "early-career"]
+tags = ["ats", "official-board"]
+cadence_hours = 24
+official_source = true
+validation_status = "validated"
+last_validated = "2026-08-22"
+provenance_note = "discovered via public aggregate feeds; live probe returned 37 postings (2026-08-22)"
+
+[[sources]]
+source_id = "ashby-sentry"
+display_name = "Sentry"
+organization = "Sentry"
+adapter = "ashby"
+landing_url = "https://jobs.ashbyhq.com/sentry"
+endpoint_config = { board = "sentry" }
+categories = ["internship", "early-career"]
+tags = ["ats", "official-board"]
+cadence_hours = 24
+official_source = true
+validation_status = "validated"
+last_validated = "2026-08-22"
+provenance_note = "discovered via public aggregate feeds; live probe returned 37 postings (2026-08-22)"
+
+[[sources]]
+source_id = "lever-plus-2"
+display_name = "PlusAI"
+organization = "PlusAI"
+adapter = "lever"
+landing_url = "https://jobs.lever.co/plus-2"
+endpoint_config = { board = "plus-2" }
+categories = ["internship", "early-career"]
+tags = ["ats", "official-board"]
+cadence_hours = 24
+official_source = true
+validation_status = "validated"
+last_validated = "2026-08-22"
+provenance_note = "discovered via public aggregate feeds; live probe returned 37 postings (2026-08-22)"
+
+[[sources]]
+source_id = "ashby-amplify"
+display_name = "Amplify"
+organization = "Amplify"
+adapter = "ashby"
+landing_url = "https://jobs.ashbyhq.com/amplify"
+endpoint_config = { board = "amplify" }
+categories = ["internship", "early-career"]
+tags = ["ats", "official-board"]
+cadence_hours = 24
+official_source = true
+validation_status = "validated"
+last_validated = "2026-08-22"
+provenance_note = "discovered via public aggregate feeds; live probe returned 37 postings (2026-08-22)"
+
+[[sources]]
+source_id = "greenhouse-arcesiumllc"
+display_name = "Arcesium"
+organization = "Arcesium"
+adapter = "greenhouse"
+landing_url = "https://boards.greenhouse.io/arcesiumllc"
+endpoint_config = { board = "arcesiumllc" }
+categories = ["internship", "early-career"]
+tags = ["ats", "official-board"]
+cadence_hours = 24
+official_source = true
+validation_status = "validated"
+last_validated = "2026-08-22"
+provenance_note = "discovered via public aggregate feeds; live probe returned 36 postings (2026-08-22)"
+
+[[sources]]
+source_id = "ashby-abby-care"
+display_name = "Abby Care"
+organization = "Abby Care"
+adapter = "ashby"
+landing_url = "https://jobs.ashbyhq.com/abby-care"
+endpoint_config = { board = "abby-care" }
+categories = ["internship", "early-career"]
+tags = ["ats", "official-board"]
+cadence_hours = 24
+official_source = true
+validation_status = "validated"
+last_validated = "2026-08-22"
+provenance_note = "discovered via public aggregate feeds; live probe returned 35 postings (2026-08-22)"
+
+[[sources]]
+source_id = "greenhouse-lab37"
+display_name = "Lab37"
+organization = "Lab37"
+adapter = "greenhouse"
+landing_url = "https://boards.greenhouse.io/lab37"
+endpoint_config = { board = "lab37" }
+categories = ["internship", "early-career"]
+tags = ["ats", "official-board"]
+cadence_hours = 24
+official_source = true
+validation_status = "validated"
+last_validated = "2026-08-22"
+provenance_note = "discovered via public aggregate feeds; live probe returned 34 postings (2026-08-22)"
+
+[[sources]]
+source_id = "lever-aledade"
+display_name = "Aledade"
+organization = "Aledade"
+adapter = "lever"
+landing_url = "https://jobs.lever.co/aledade"
+endpoint_config = { board = "aledade" }
+categories = ["internship", "early-career"]
+tags = ["ats", "official-board"]
+cadence_hours = 24
+official_source = true
+validation_status = "validated"
+last_validated = "2026-08-22"
+provenance_note = "discovered via public aggregate feeds; live probe returned 34 postings (2026-08-22)"
+
+[[sources]]
+source_id = "greenhouse-antora"
+display_name = "Antora Energy"
+organization = "Antora Energy"
+adapter = "greenhouse"
+landing_url = "https://boards.greenhouse.io/antora"
+endpoint_config = { board = "antora" }
+categories = ["internship", "early-career"]
+tags = ["ats", "official-board"]
+cadence_hours = 24
+official_source = true
+validation_status = "validated"
+last_validated = "2026-08-22"
+provenance_note = "discovered via public aggregate feeds; live probe returned 34 postings (2026-08-22)"
+
+[[sources]]
+source_id = "greenhouse-arcboatcompany"
+display_name = "Arc"
+organization = "Arc"
+adapter = "greenhouse"
+landing_url = "https://boards.greenhouse.io/arcboatcompany"
+endpoint_config = { board = "arcboatcompany" }
+categories = ["internship", "early-career"]
+tags = ["ats", "official-board"]
+cadence_hours = 24
+official_source = true
+validation_status = "validated"
+last_validated = "2026-08-22"
+provenance_note = "discovered via public aggregate feeds; live probe returned 34 postings (2026-08-22)"
+
+[[sources]]
+source_id = "greenhouse-akunacapital"
+display_name = "Akuna Capital"
+organization = "Akuna Capital"
+adapter = "greenhouse"
+landing_url = "https://boards.greenhouse.io/akunacapital"
+endpoint_config = { board = "akunacapital" }
+categories = ["internship", "early-career"]
+tags = ["ats", "official-board"]
+cadence_hours = 24
+official_source = true
+validation_status = "validated"
+last_validated = "2026-08-22"
+provenance_note = "discovered via public aggregate feeds; live probe returned 33 postings (2026-08-22)"
+
+[[sources]]
+source_id = "lever-anchorage"
+display_name = "Anchorage"
+organization = "Anchorage"
+adapter = "lever"
+landing_url = "https://jobs.lever.co/anchorage"
+endpoint_config = { board = "anchorage" }
+categories = ["internship", "early-career"]
+tags = ["ats", "official-board"]
+cadence_hours = 24
+official_source = true
+validation_status = "validated"
+last_validated = "2026-08-22"
+provenance_note = "discovered via public aggregate feeds; live probe returned 33 postings (2026-08-22)"
+
+[[sources]]
+source_id = "ashby-arq"
+display_name = "ARQ"
+organization = "ARQ"
+adapter = "ashby"
+landing_url = "https://jobs.ashbyhq.com/arq"
+endpoint_config = { board = "arq" }
+categories = ["internship", "early-career"]
+tags = ["ats", "official-board"]
+cadence_hours = 24
+official_source = true
+validation_status = "validated"
+last_validated = "2026-08-22"
+provenance_note = "discovered via public aggregate feeds; live probe returned 33 postings (2026-08-22)"
+
+[[sources]]
+source_id = "ashby-linear"
+display_name = "Linear"
+organization = "Linear"
+adapter = "ashby"
+landing_url = "https://jobs.ashbyhq.com/linear"
+endpoint_config = { board = "linear" }
+categories = ["internship", "early-career"]
+tags = ["ats", "official-board"]
+cadence_hours = 24
+official_source = true
+validation_status = "validated"
+last_validated = "2026-08-22"
+provenance_note = "discovered via public aggregate feeds; live probe returned 32 postings (2026-08-22)"
+
+[[sources]]
+source_id = "ashby-composio"
+display_name = "Composio"
+organization = "Composio"
+adapter = "ashby"
+landing_url = "https://jobs.ashbyhq.com/composio"
+endpoint_config = { board = "composio" }
+categories = ["internship", "early-career"]
+tags = ["ats", "official-board"]
+cadence_hours = 24
+official_source = true
+validation_status = "validated"
+last_validated = "2026-08-22"
+provenance_note = "discovered via public aggregate feeds; live probe returned 32 postings (2026-08-22)"
+
+[[sources]]
+source_id = "greenhouse-algolia"
+display_name = "Algolia"
+organization = "Algolia"
+adapter = "greenhouse"
+landing_url = "https://boards.greenhouse.io/algolia"
+endpoint_config = { board = "algolia" }
+categories = ["internship", "early-career"]
+tags = ["ats", "official-board"]
+cadence_hours = 24
+official_source = true
+validation_status = "validated"
+last_validated = "2026-08-22"
+provenance_note = "discovered via public aggregate feeds; live probe returned 32 postings (2026-08-22)"
+
+[[sources]]
+source_id = "greenhouse-amplitude"
+display_name = "Amplitude"
+organization = "Amplitude"
+adapter = "greenhouse"
+landing_url = "https://boards.greenhouse.io/amplitude"
+endpoint_config = { board = "amplitude" }
+categories = ["internship", "early-career"]
+tags = ["ats", "official-board"]
+cadence_hours = 24
+official_source = true
+validation_status = "validated"
+last_validated = "2026-08-22"
+provenance_note = "discovered via public aggregate feeds; live probe returned 32 postings (2026-08-22)"
+
+[[sources]]
+source_id = "ashby-modal"
+display_name = "Modal"
+organization = "Modal"
+adapter = "ashby"
+landing_url = "https://jobs.ashbyhq.com/modal"
+endpoint_config = { board = "modal" }
+categories = ["internship", "early-career"]
+tags = ["ats", "official-board"]
+cadence_hours = 24
+official_source = true
+validation_status = "validated"
+last_validated = "2026-08-22"
+provenance_note = "discovered via public aggregate feeds; live probe returned 31 postings (2026-08-22)"
+
+[[sources]]
+source_id = "ashby-weave"
+display_name = "Weave"
+organization = "Weave"
+adapter = "ashby"
+landing_url = "https://jobs.ashbyhq.com/weave"
+endpoint_config = { board = "weave" }
+categories = ["internship", "early-career"]
+tags = ["ats", "official-board"]
+cadence_hours = 24
+official_source = true
+validation_status = "validated"
+last_validated = "2026-08-22"
+provenance_note = "discovered via public aggregate feeds; live probe returned 31 postings (2026-08-22)"
+
+[[sources]]
+source_id = "greenhouse-atek"
+display_name = "A-TEK"
+organization = "A-TEK"
+adapter = "greenhouse"
+landing_url = "https://boards.greenhouse.io/atek"
+endpoint_config = { board = "atek" }
+categories = ["internship", "early-career"]
+tags = ["ats", "official-board"]
+cadence_hours = 24
+official_source = true
+validation_status = "validated"
+last_validated = "2026-08-22"
+provenance_note = "discovered via public aggregate feeds; live probe returned 30 postings (2026-08-22)"
+
+[[sources]]
+source_id = "greenhouse-accuweather"
+display_name = "AccuWeather"
+organization = "AccuWeather"
+adapter = "greenhouse"
+landing_url = "https://boards.greenhouse.io/accuweather"
+endpoint_config = { board = "accuweather" }
+categories = ["internship", "early-career"]
+tags = ["ats", "official-board"]
+cadence_hours = 24
+official_source = true
+validation_status = "validated"
+last_validated = "2026-08-22"
+provenance_note = "discovered via public aggregate feeds; live probe returned 29 postings (2026-08-22)"
+
+[[sources]]
+source_id = "ashby-agentis-capital-advisors"
+display_name = "Agentis Capital"
+organization = "Agentis Capital"
+adapter = "ashby"
+landing_url = "https://jobs.ashbyhq.com/agentis-capital-advisors"
+endpoint_config = { board = "agentis-capital-advisors" }
+categories = ["internship", "early-career"]
+tags = ["ats", "official-board"]
+cadence_hours = 24
+official_source = true
+validation_status = "validated"
+last_validated = "2026-08-22"
+provenance_note = "discovered via public aggregate feeds; live probe returned 29 postings (2026-08-22)"
+
+[[sources]]
+source_id = "greenhouse-amaehealth"
+display_name = "Amae Health"
+organization = "Amae Health"
+adapter = "greenhouse"
+landing_url = "https://boards.greenhouse.io/amaehealth"
+endpoint_config = { board = "amaehealth" }
+categories = ["internship", "early-career"]
+tags = ["ats", "official-board"]
+cadence_hours = 24
+official_source = true
+validation_status = "validated"
+last_validated = "2026-08-22"
+provenance_note = "discovered via public aggregate feeds; live probe returned 29 postings (2026-08-22)"
+
+[[sources]]
+source_id = "ashby-netic"
+display_name = "Netic"
+organization = "Netic"
+adapter = "ashby"
+landing_url = "https://jobs.ashbyhq.com/netic"
+endpoint_config = { board = "netic" }
+categories = ["internship", "early-career"]
+tags = ["ats", "official-board"]
+cadence_hours = 24
+official_source = true
+validation_status = "validated"
+last_validated = "2026-08-22"
+provenance_note = "discovered via public aggregate feeds; live probe returned 28 postings (2026-08-22)"
+
+[[sources]]
+source_id = "ashby-persona-ai"
+display_name = "Persona.Ai"
+organization = "Persona.Ai"
+adapter = "ashby"
+landing_url = "https://jobs.ashbyhq.com/persona.ai"
+endpoint_config = { board = "persona.ai" }
+categories = ["internship", "early-career"]
+tags = ["ats", "official-board"]
+cadence_hours = 24
+official_source = true
+validation_status = "validated"
+last_validated = "2026-08-22"
+provenance_note = "discovered via public aggregate feeds; live probe returned 28 postings (2026-08-22)"
+
+[[sources]]
+source_id = "ashby-afterquery"
+display_name = "AfterQuery"
+organization = "AfterQuery"
+adapter = "ashby"
+landing_url = "https://jobs.ashbyhq.com/afterquery"
+endpoint_config = { board = "afterquery" }
+categories = ["internship", "early-career"]
+tags = ["ats", "official-board"]
+cadence_hours = 24
+official_source = true
+validation_status = "validated"
+last_validated = "2026-08-22"
+provenance_note = "discovered via public aggregate feeds; live probe returned 28 postings (2026-08-22)"
+
+[[sources]]
+source_id = "greenhouse-relaypro"
+display_name = "Relay"
+organization = "Relay"
+adapter = "greenhouse"
+landing_url = "https://boards.greenhouse.io/relaypro"
+endpoint_config = { board = "relaypro" }
+categories = ["internship", "early-career"]
+tags = ["ats", "official-board"]
+cadence_hours = 24
+official_source = true
+validation_status = "validated"
+last_validated = "2026-08-22"
+provenance_note = "discovered via public aggregate feeds; live probe returned 27 postings (2026-08-22)"
+
+[[sources]]
+source_id = "ashby-alta-ares"
+display_name = "Alta Ares"
+organization = "Alta Ares"
+adapter = "ashby"
+landing_url = "https://jobs.ashbyhq.com/alta-ares"
+endpoint_config = { board = "alta-ares" }
+categories = ["internship", "early-career"]
+tags = ["ats", "official-board"]
+cadence_hours = 24
+official_source = true
+validation_status = "validated"
+last_validated = "2026-08-22"
+provenance_note = "discovered via public aggregate feeds; live probe returned 27 postings (2026-08-22)"
+
+[[sources]]
+source_id = "greenhouse-applovin"
+display_name = "AppLovin"
+organization = "AppLovin"
+adapter = "greenhouse"
+landing_url = "https://boards.greenhouse.io/applovin"
+endpoint_config = { board = "applovin" }
+categories = ["internship", "early-career"]
+tags = ["ats", "official-board"]
+cadence_hours = 24
+official_source = true
+validation_status = "validated"
+last_validated = "2026-08-22"
+provenance_note = "discovered via public aggregate feeds; live probe returned 27 postings (2026-08-22)"
+
+[[sources]]
+source_id = "greenhouse-arizeai"
+display_name = "Arize AI"
+organization = "Arize AI"
+adapter = "greenhouse"
+landing_url = "https://boards.greenhouse.io/arizeai"
+endpoint_config = { board = "arizeai" }
+categories = ["internship", "early-career"]
+tags = ["ats", "official-board"]
+cadence_hours = 24
+official_source = true
+validation_status = "validated"
+last_validated = "2026-08-22"
+provenance_note = "discovered via public aggregate feeds; live probe returned 27 postings (2026-08-22)"
+
+[[sources]]
+source_id = "greenhouse-arcanaanalytics"
+display_name = "Arcana"
+organization = "Arcana"
+adapter = "greenhouse"
+landing_url = "https://boards.greenhouse.io/arcanaanalytics"
+endpoint_config = { board = "arcanaanalytics" }
+categories = ["internship", "early-career"]
+tags = ["ats", "official-board"]
+cadence_hours = 24
+official_source = true
+validation_status = "validated"
+last_validated = "2026-08-22"
+provenance_note = "discovered via public aggregate feeds; live probe returned 26 postings (2026-08-22)"
+
+[[sources]]
+source_id = "greenhouse-tenstorrentuniversity"
+display_name = "Tenstorrent"
+organization = "Tenstorrent"
+adapter = "greenhouse"
+landing_url = "https://boards.greenhouse.io/tenstorrentuniversity"
+endpoint_config = { board = "tenstorrentuniversity" }
+categories = ["internship", "early-career"]
+tags = ["ats", "official-board"]
+cadence_hours = 24
+official_source = true
+validation_status = "validated"
+last_validated = "2026-08-22"
+provenance_note = "discovered via public aggregate feeds; live probe returned 25 postings (2026-08-22)"
+
+[[sources]]
+source_id = "greenhouse-alamarbiosciences"
+display_name = "Alamar Biosciences"
+organization = "Alamar Biosciences"
+adapter = "greenhouse"
+landing_url = "https://boards.greenhouse.io/alamarbiosciences"
+endpoint_config = { board = "alamarbiosciences" }
+categories = ["internship", "early-career"]
+tags = ["ats", "official-board"]
+cadence_hours = 24
+official_source = true
+validation_status = "validated"
+last_validated = "2026-08-22"
+provenance_note = "discovered via public aggregate feeds; live probe returned 25 postings (2026-08-22)"
+
+[[sources]]
+source_id = "greenhouse-alloy"
+display_name = "Alloy"
+organization = "Alloy"
+adapter = "greenhouse"
+landing_url = "https://boards.greenhouse.io/alloy"
+endpoint_config = { board = "alloy" }
+categories = ["internship", "early-career"]
+tags = ["ats", "official-board"]
+cadence_hours = 24
+official_source = true
+validation_status = "validated"
+last_validated = "2026-08-22"
+provenance_note = "discovered via public aggregate feeds; live probe returned 25 postings (2026-08-22)"
+
+[[sources]]
+source_id = "greenhouse-rendezvousrobotics"
+display_name = "Rendezvous Robotics"
+organization = "Rendezvous Robotics"
+adapter = "greenhouse"
+landing_url = "https://boards.greenhouse.io/rendezvousrobotics"
+endpoint_config = { board = "rendezvousrobotics" }
+categories = ["internship", "early-career"]
+tags = ["ats", "official-board"]
+cadence_hours = 24
+official_source = true
+validation_status = "validated"
+last_validated = "2026-08-22"
+provenance_note = "discovered via public aggregate feeds; live probe returned 24 postings (2026-08-22)"
+
+[[sources]]
+source_id = "lever-pivotal"
+display_name = "Pivotal Software"
+organization = "Pivotal Software"
+adapter = "lever"
+landing_url = "https://jobs.lever.co/pivotal"
+endpoint_config = { board = "pivotal" }
+categories = ["internship", "early-career"]
+tags = ["ats", "official-board"]
+cadence_hours = 24
+official_source = true
+validation_status = "validated"
+last_validated = "2026-08-22"
+provenance_note = "discovered via public aggregate feeds; live probe returned 24 postings (2026-08-22)"
+
+[[sources]]
+source_id = "greenhouse-altoslabs"
+display_name = "Altos Labs"
+organization = "Altos Labs"
+adapter = "greenhouse"
+landing_url = "https://boards.greenhouse.io/altoslabs"
+endpoint_config = { board = "altoslabs" }
+categories = ["internship", "early-career"]
+tags = ["ats", "official-board"]
+cadence_hours = 24
+official_source = true
+validation_status = "validated"
+last_validated = "2026-08-22"
+provenance_note = "discovered via public aggregate feeds; live probe returned 23 postings (2026-08-22)"
+
+[[sources]]
+source_id = "ashby-abound"
+display_name = "Abound"
+organization = "Abound"
+adapter = "ashby"
+landing_url = "https://jobs.ashbyhq.com/abound"
+endpoint_config = { board = "abound" }
+categories = ["internship", "early-career"]
+tags = ["ats", "official-board"]
+cadence_hours = 24
+official_source = true
+validation_status = "validated"
+last_validated = "2026-08-22"
+provenance_note = "discovered via public aggregate feeds; live probe returned 21 postings (2026-08-22)"
+
+[[sources]]
+source_id = "lever-alertus"
+display_name = "Alertus Technologies"
+organization = "Alertus Technologies"
+adapter = "lever"
+landing_url = "https://jobs.lever.co/alertus"
+endpoint_config = { board = "alertus" }
+categories = ["internship", "early-career"]
+tags = ["ats", "official-board"]
+cadence_hours = 24
+official_source = true
+validation_status = "validated"
+last_validated = "2026-08-22"
+provenance_note = "discovered via public aggregate feeds; live probe returned 21 postings (2026-08-22)"
+
+[[sources]]
+source_id = "ashby-pylon-labs"
+display_name = "Pylon Labs"
+organization = "Pylon Labs"
+adapter = "ashby"
+landing_url = "https://jobs.ashbyhq.com/pylon-labs"
+endpoint_config = { board = "pylon-labs" }
+categories = ["internship", "early-career"]
+tags = ["ats", "official-board"]
+cadence_hours = 24
+official_source = true
+validation_status = "validated"
+last_validated = "2026-08-22"
+provenance_note = "discovered via public aggregate feeds; live probe returned 20 postings (2026-08-22)"
+
+[[sources]]
+source_id = "greenhouse-skhynixmemorysolutionsamericainc"
+display_name = "SK Hynix Memory Solution"
+organization = "SK Hynix Memory Solution"
+adapter = "greenhouse"
+landing_url = "https://boards.greenhouse.io/skhynixmemorysolutionsamericainc"
+endpoint_config = { board = "skhynixmemorysolutionsamericainc" }
+categories = ["internship", "early-career"]
+tags = ["ats", "official-board"]
+cadence_hours = 24
+official_source = true
+validation_status = "validated"
+last_validated = "2026-08-22"
+provenance_note = "discovered via public aggregate feeds; live probe returned 20 postings (2026-08-22)"
+
+[[sources]]
+source_id = "greenhouse-8451"
+display_name = "84.51 Degrees"
+organization = "84.51 Degrees"
+adapter = "greenhouse"
+landing_url = "https://boards.greenhouse.io/8451"
+endpoint_config = { board = "8451" }
+categories = ["internship", "early-career"]
+tags = ["ats", "official-board"]
+cadence_hours = 24
+official_source = true
+validation_status = "validated"
+last_validated = "2026-08-22"
+provenance_note = "discovered via public aggregate feeds; live probe returned 20 postings (2026-08-22)"
+
+[[sources]]
+source_id = "ashby-junior"
+display_name = "Junior"
+organization = "Junior"
+adapter = "ashby"
+landing_url = "https://jobs.ashbyhq.com/junior"
+endpoint_config = { board = "junior" }
+categories = ["internship", "early-career"]
+tags = ["ats", "official-board"]
+cadence_hours = 24
+official_source = true
+validation_status = "validated"
+last_validated = "2026-08-22"
+provenance_note = "discovered via public aggregate feeds; live probe returned 19 postings (2026-08-22)"
+
+[[sources]]
+source_id = "lever-analyticpartners"
+display_name = "Analytic Partners"
+organization = "Analytic Partners"
+adapter = "lever"
+landing_url = "https://jobs.lever.co/analyticpartners"
+endpoint_config = { board = "analyticpartners" }
+categories = ["internship", "early-career"]
+tags = ["ats", "official-board"]
+cadence_hours = 24
+official_source = true
+validation_status = "validated"
+last_validated = "2026-08-22"
+provenance_note = "discovered via public aggregate feeds; live probe returned 18 postings (2026-08-22)"
+
+[[sources]]
+source_id = "greenhouse-transmarketgroup"
+display_name = "TransMarket Group"
+organization = "TransMarket Group"
+adapter = "greenhouse"
+landing_url = "https://boards.greenhouse.io/transmarketgroup"
+endpoint_config = { board = "transmarketgroup" }
+categories = ["internship", "early-career"]
+tags = ["ats", "official-board"]
+cadence_hours = 24
+official_source = true
+validation_status = "validated"
+last_validated = "2026-08-22"
+provenance_note = "discovered via public aggregate feeds; live probe returned 18 postings (2026-08-22)"
+
+[[sources]]
+source_id = "lever-actian"
+display_name = "Actian"
+organization = "Actian"
+adapter = "lever"
+landing_url = "https://jobs.lever.co/actian"
+endpoint_config = { board = "actian" }
+categories = ["internship", "early-career"]
+tags = ["ats", "official-board"]
+cadence_hours = 24
+official_source = true
+validation_status = "validated"
+last_validated = "2026-08-22"
+provenance_note = "discovered via public aggregate feeds; live probe returned 18 postings (2026-08-22)"
+
+[[sources]]
+source_id = "lever-achievers"
+display_name = "Achievers"
+organization = "Achievers"
+adapter = "lever"
+landing_url = "https://jobs.lever.co/achievers"
+endpoint_config = { board = "achievers" }
+categories = ["internship", "early-career"]
+tags = ["ats", "official-board"]
+cadence_hours = 24
+official_source = true
+validation_status = "validated"
+last_validated = "2026-08-22"
+provenance_note = "discovered via public aggregate feeds; live probe returned 18 postings (2026-08-22)"
+
+[[sources]]
+source_id = "greenhouse-aechelontechnology"
+display_name = "Aechelon Technology"
+organization = "Aechelon Technology"
+adapter = "greenhouse"
+landing_url = "https://boards.greenhouse.io/aechelontechnology"
+endpoint_config = { board = "aechelontechnology" }
+categories = ["internship", "early-career"]
+tags = ["ats", "official-board"]
+cadence_hours = 24
+official_source = true
+validation_status = "validated"
+last_validated = "2026-08-22"
+provenance_note = "discovered via public aggregate feeds; live probe returned 18 postings (2026-08-22)"
+
+[[sources]]
+source_id = "greenhouse-fiveringsllc"
+display_name = "Five Rings"
+organization = "Five Rings"
+adapter = "greenhouse"
+landing_url = "https://boards.greenhouse.io/fiveringsllc"
+endpoint_config = { board = "fiveringsllc" }
+categories = ["internship", "early-career"]
+tags = ["ats", "official-board"]
+cadence_hours = 24
+official_source = true
+validation_status = "validated"
+last_validated = "2026-08-22"
+provenance_note = "discovered via public aggregate feeds; live probe returned 17 postings (2026-08-22)"
+
+[[sources]]
+source_id = "greenhouse-10alabs"
+display_name = "10a Labs"
+organization = "10a Labs"
+adapter = "greenhouse"
+landing_url = "https://boards.greenhouse.io/10alabs"
+endpoint_config = { board = "10alabs" }
+categories = ["internship", "early-career"]
+tags = ["ats", "official-board"]
+cadence_hours = 24
+official_source = true
+validation_status = "validated"
+last_validated = "2026-08-22"
+provenance_note = "discovered via public aggregate feeds; live probe returned 17 postings (2026-08-22)"
+
+[[sources]]
+source_id = "greenhouse-creatorsworkhere"
+display_name = "Adorama"
+organization = "Adorama"
+adapter = "greenhouse"
+landing_url = "https://boards.greenhouse.io/creatorsworkhere"
+endpoint_config = { board = "creatorsworkhere" }
+categories = ["internship", "early-career"]
+tags = ["ats", "official-board"]
+cadence_hours = 24
+official_source = true
+validation_status = "validated"
+last_validated = "2026-08-22"
+provenance_note = "discovered via public aggregate feeds; live probe returned 17 postings (2026-08-22)"
+
+[[sources]]
+source_id = "ashby-alchemy"
+display_name = "Alchemy"
+organization = "Alchemy"
+adapter = "ashby"
+landing_url = "https://jobs.ashbyhq.com/alchemy"
+endpoint_config = { board = "alchemy" }
+categories = ["internship", "early-career"]
+tags = ["ats", "official-board"]
+cadence_hours = 24
+official_source = true
+validation_status = "validated"
+last_validated = "2026-08-22"
+provenance_note = "discovered via public aggregate feeds; live probe returned 17 postings (2026-08-22)"
+
+[[sources]]
+source_id = "ashby-adaptivesecurity"
+display_name = "Adaptive Security"
+organization = "Adaptive Security"
+adapter = "ashby"
+landing_url = "https://jobs.ashbyhq.com/adaptivesecurity"
+endpoint_config = { board = "adaptivesecurity" }
+categories = ["internship", "early-career"]
+tags = ["ats", "official-board"]
+cadence_hours = 24
+official_source = true
+validation_status = "validated"
+last_validated = "2026-08-22"
+provenance_note = "discovered via public aggregate feeds; live probe returned 16 postings (2026-08-22)"
+
+[[sources]]
+source_id = "greenhouse-airtable"
+display_name = "Airtable"
+organization = "Airtable"
+adapter = "greenhouse"
+landing_url = "https://boards.greenhouse.io/airtable"
+endpoint_config = { board = "airtable" }
+categories = ["internship", "early-career"]
+tags = ["ats", "official-board"]
+cadence_hours = 24
+official_source = true
+validation_status = "validated"
+last_validated = "2026-08-22"
+provenance_note = "discovered via public aggregate feeds; live probe returned 16 postings (2026-08-22)"
+
+[[sources]]
+source_id = "greenhouse-alku"
+display_name = "ALKU"
+organization = "ALKU"
+adapter = "greenhouse"
+landing_url = "https://boards.greenhouse.io/alku"
+endpoint_config = { board = "alku" }
+categories = ["internship", "early-career"]
+tags = ["ats", "official-board"]
+cadence_hours = 24
+official_source = true
+validation_status = "validated"
+last_validated = "2026-08-22"
+provenance_note = "discovered via public aggregate feeds; live probe returned 16 postings (2026-08-22)"
+
+[[sources]]
+source_id = "greenhouse-amarok"
+display_name = "AMAROK Security"
+organization = "AMAROK Security"
+adapter = "greenhouse"
+landing_url = "https://boards.greenhouse.io/amarok"
+endpoint_config = { board = "amarok" }
+categories = ["internship", "early-career"]
+tags = ["ats", "official-board"]
+cadence_hours = 24
+official_source = true
+validation_status = "validated"
+last_validated = "2026-08-22"
+provenance_note = "discovered via public aggregate feeds; live probe returned 16 postings (2026-08-22)"
+
+[[sources]]
+source_id = "greenhouse-americaninstitutesforresearch"
+display_name = "American Institutes for Research"
+organization = "American Institutes for Research"
+adapter = "greenhouse"
+landing_url = "https://boards.greenhouse.io/americaninstitutesforresearch"
+endpoint_config = { board = "americaninstitutesforresearch" }
+categories = ["internship", "early-career"]
+tags = ["ats", "official-board"]
+cadence_hours = 24
+official_source = true
+validation_status = "validated"
+last_validated = "2026-08-22"
+provenance_note = "discovered via public aggregate feeds; live probe returned 16 postings (2026-08-22)"
+
+[[sources]]
+source_id = "lever-acds"
+display_name = "Acds"
+organization = "Acds"
+adapter = "lever"
+landing_url = "https://jobs.lever.co/acds"
+endpoint_config = { board = "acds" }
+categories = ["internship", "early-career"]
+tags = ["ats", "official-board"]
+cadence_hours = 24
+official_source = true
+validation_status = "validated"
+last_validated = "2026-08-22"
+provenance_note = "discovered via public aggregate feeds; live probe returned 15 postings (2026-08-22)"
+
+[[sources]]
+source_id = "ashby-centerfield"
+display_name = "Centerfield"
+organization = "Centerfield"
+adapter = "ashby"
+landing_url = "https://jobs.ashbyhq.com/centerfield"
+endpoint_config = { board = "centerfield" }
+categories = ["internship", "early-career"]
+tags = ["ats", "official-board"]
+cadence_hours = 24
+official_source = true
+validation_status = "validated"
+last_validated = "2026-08-22"
+provenance_note = "discovered via public aggregate feeds; live probe returned 15 postings (2026-08-22)"
+
+[[sources]]
+source_id = "ashby-ambrook"
+display_name = "Ambrook"
+organization = "Ambrook"
+adapter = "ashby"
+landing_url = "https://jobs.ashbyhq.com/ambrook"
+endpoint_config = { board = "ambrook" }
+categories = ["internship", "early-career"]
+tags = ["ats", "official-board"]
+cadence_hours = 24
+official_source = true
+validation_status = "validated"
+last_validated = "2026-08-22"
+provenance_note = "discovered via public aggregate feeds; live probe returned 15 postings (2026-08-22)"
+
+[[sources]]
+source_id = "ashby-terranova"
+display_name = "Terranova"
+organization = "Terranova"
+adapter = "ashby"
+landing_url = "https://jobs.ashbyhq.com/terranova"
+endpoint_config = { board = "terranova" }
+categories = ["internship", "early-career"]
+tags = ["ats", "official-board"]
+cadence_hours = 24
+official_source = true
+validation_status = "validated"
+last_validated = "2026-08-22"
+provenance_note = "discovered via public aggregate feeds; live probe returned 15 postings (2026-08-22)"
+
+[[sources]]
+source_id = "lever-belvederetrading"
+display_name = "Belvedere Trading"
+organization = "Belvedere Trading"
+adapter = "lever"
+landing_url = "https://jobs.lever.co/belvederetrading"
+endpoint_config = { board = "belvederetrading" }
+categories = ["internship", "early-career"]
+tags = ["ats", "official-board"]
+cadence_hours = 24
+official_source = true
+validation_status = "validated"
+last_validated = "2026-08-22"
+provenance_note = "discovered via public aggregate feeds; live probe returned 14 postings (2026-08-22)"
+
+[[sources]]
+source_id = "greenhouse-abacusinsights"
+display_name = "Abacus Insights"
+organization = "Abacus Insights"
+adapter = "greenhouse"
+landing_url = "https://boards.greenhouse.io/abacusinsights"
+endpoint_config = { board = "abacusinsights" }
+categories = ["internship", "early-career"]
+tags = ["ats", "official-board"]
+cadence_hours = 24
+official_source = true
+validation_status = "validated"
+last_validated = "2026-08-22"
+provenance_note = "discovered via public aggregate feeds; live probe returned 14 postings (2026-08-22)"
+
+[[sources]]
+source_id = "ashby-amigo"
+display_name = "Amigo AI"
+organization = "Amigo AI"
+adapter = "ashby"
+landing_url = "https://jobs.ashbyhq.com/amigo"
+endpoint_config = { board = "amigo" }
+categories = ["internship", "early-career"]
+tags = ["ats", "official-board"]
+cadence_hours = 24
+official_source = true
+validation_status = "validated"
+last_validated = "2026-08-22"
+provenance_note = "discovered via public aggregate feeds; live probe returned 14 postings (2026-08-22)"
+
+[[sources]]
+source_id = "ashby-archy"
+display_name = "Archy"
+organization = "Archy"
+adapter = "ashby"
+landing_url = "https://jobs.ashbyhq.com/archy"
+endpoint_config = { board = "archy" }
+categories = ["internship", "early-career"]
+tags = ["ats", "official-board"]
+cadence_hours = 24
+official_source = true
+validation_status = "validated"
+last_validated = "2026-08-22"
+provenance_note = "discovered via public aggregate feeds; live probe returned 14 postings (2026-08-22)"
+
+[[sources]]
+source_id = "ashby-h3x-technologies"
+display_name = "H3X Technologies"
+organization = "H3X Technologies"
+adapter = "ashby"
+landing_url = "https://jobs.ashbyhq.com/h3x-technologies"
+endpoint_config = { board = "h3x-technologies" }
+categories = ["internship", "early-career"]
+tags = ["ats", "official-board"]
+cadence_hours = 24
+official_source = true
+validation_status = "validated"
+last_validated = "2026-08-22"
+provenance_note = "discovered via public aggregate feeds; live probe returned 13 postings (2026-08-22)"
+
+[[sources]]
+source_id = "greenhouse-9thwayinsignia"
+display_name = "9th Way Insignia"
+organization = "9th Way Insignia"
+adapter = "greenhouse"
+landing_url = "https://boards.greenhouse.io/9thwayinsignia"
+endpoint_config = { board = "9thwayinsignia" }
+categories = ["internship", "early-career"]
+tags = ["ats", "official-board"]
+cadence_hours = 24
+official_source = true
+validation_status = "validated"
+last_validated = "2026-08-22"
+provenance_note = "discovered via public aggregate feeds; live probe returned 13 postings (2026-08-22)"
+
+[[sources]]
+source_id = "greenhouse-agwestfarmcredit"
+display_name = "AgWest Farm Credit"
+organization = "AgWest Farm Credit"
+adapter = "greenhouse"
+landing_url = "https://boards.greenhouse.io/agwestfarmcredit"
+endpoint_config = { board = "agwestfarmcredit" }
+categories = ["internship", "early-career"]
+tags = ["ats", "official-board"]
+cadence_hours = 24
+official_source = true
+validation_status = "validated"
+last_validated = "2026-08-22"
+provenance_note = "discovered via public aggregate feeds; live probe returned 13 postings (2026-08-22)"
+
+[[sources]]
+source_id = "greenhouse-arevonenergyimpltest"
+display_name = "Arevon"
+organization = "Arevon"
+adapter = "greenhouse"
+landing_url = "https://boards.greenhouse.io/arevonenergyimpltest"
+endpoint_config = { board = "arevonenergyimpltest" }
+categories = ["internship", "early-career"]
+tags = ["ats", "official-board"]
+cadence_hours = 24
+official_source = true
+validation_status = "validated"
+last_validated = "2026-08-22"
+provenance_note = "discovered via public aggregate feeds; live probe returned 13 postings (2026-08-22)"
+
+[[sources]]
+source_id = "ashby-architect"
+display_name = "Architect Labs"
+organization = "Architect Labs"
+adapter = "ashby"
+landing_url = "https://jobs.ashbyhq.com/architect"
+endpoint_config = { board = "architect" }
+categories = ["internship", "early-career"]
+tags = ["ats", "official-board"]
+cadence_hours = 24
+official_source = true
+validation_status = "validated"
+last_validated = "2026-08-22"
+provenance_note = "discovered via public aggregate feeds; live probe returned 13 postings (2026-08-22)"
+
+[[sources]]
+source_id = "greenhouse-gardacp"
+display_name = "Garda Capital Partners"
+organization = "Garda Capital Partners"
+adapter = "greenhouse"
+landing_url = "https://boards.greenhouse.io/gardacp"
+endpoint_config = { board = "gardacp" }
+categories = ["internship", "early-career"]
+tags = ["ats", "official-board"]
+cadence_hours = 24
+official_source = true
+validation_status = "validated"
+last_validated = "2026-08-22"
+provenance_note = "discovered via public aggregate feeds; live probe returned 12 postings (2026-08-22)"
+
+[[sources]]
+source_id = "ashby-ellipsislabs"
+display_name = "Ellipsis Labs"
+organization = "Ellipsis Labs"
+adapter = "ashby"
+landing_url = "https://jobs.ashbyhq.com/ellipsislabs"
+endpoint_config = { board = "ellipsislabs" }
+categories = ["internship", "early-career"]
+tags = ["ats", "official-board"]
+cadence_hours = 24
+official_source = true
+validation_status = "validated"
+last_validated = "2026-08-22"
+provenance_note = "discovered via public aggregate feeds; live probe returned 12 postings (2026-08-22)"
+
+[[sources]]
+source_id = "ashby-kastle"
+display_name = "Kastle AI"
+organization = "Kastle AI"
+adapter = "ashby"
+landing_url = "https://jobs.ashbyhq.com/kastle"
+endpoint_config = { board = "kastle" }
+categories = ["internship", "early-career"]
+tags = ["ats", "official-board"]
+cadence_hours = 24
+official_source = true
+validation_status = "validated"
+last_validated = "2026-08-22"
+provenance_note = "discovered via public aggregate feeds; live probe returned 12 postings (2026-08-22)"
+
+[[sources]]
+source_id = "greenhouse-1800contacts"
+display_name = "1-800 Contacts"
+organization = "1-800 Contacts"
+adapter = "greenhouse"
+landing_url = "https://boards.greenhouse.io/1800contacts"
+endpoint_config = { board = "1800contacts" }
+categories = ["internship", "early-career"]
+tags = ["ats", "official-board"]
+cadence_hours = 24
+official_source = true
+validation_status = "validated"
+last_validated = "2026-08-22"
+provenance_note = "discovered via public aggregate feeds; live probe returned 12 postings (2026-08-22)"
+
+[[sources]]
+source_id = "greenhouse-10beauty"
+display_name = "10Beauty"
+organization = "10Beauty"
+adapter = "greenhouse"
+landing_url = "https://boards.greenhouse.io/10beauty"
+endpoint_config = { board = "10beauty" }
+categories = ["internship", "early-career"]
+tags = ["ats", "official-board"]
+cadence_hours = 24
+official_source = true
+validation_status = "validated"
+last_validated = "2026-08-22"
+provenance_note = "discovered via public aggregate feeds; live probe returned 12 postings (2026-08-22)"
+
+[[sources]]
+source_id = "greenhouse-ampsortation"
+display_name = "Amp Robotics"
+organization = "Amp Robotics"
+adapter = "greenhouse"
+landing_url = "https://boards.greenhouse.io/ampsortation"
+endpoint_config = { board = "ampsortation" }
+categories = ["internship", "early-career"]
+tags = ["ats", "official-board"]
+cadence_hours = 24
+official_source = true
+validation_status = "validated"
+last_validated = "2026-08-22"
+provenance_note = "discovered via public aggregate feeds; live probe returned 12 postings (2026-08-22)"
+
+[[sources]]
+source_id = "ashby-circleback"
+display_name = "Circleback"
+organization = "Circleback"
+adapter = "ashby"
+landing_url = "https://jobs.ashbyhq.com/circleback"
+endpoint_config = { board = "circleback" }
+categories = ["internship", "early-career"]
+tags = ["ats", "official-board"]
+cadence_hours = 24
+official_source = true
+validation_status = "validated"
+last_validated = "2026-08-22"
+provenance_note = "discovered via public aggregate feeds; live probe returned 11 postings (2026-08-22)"
+
+[[sources]]
+source_id = "lever-diversified-automation"
+display_name = "Diversified Automation"
+organization = "Diversified Automation"
+adapter = "lever"
+landing_url = "https://jobs.lever.co/diversified-automation"
+endpoint_config = { board = "diversified-automation" }
+categories = ["internship", "early-career"]
+tags = ["ats", "official-board"]
+cadence_hours = 24
+official_source = true
+validation_status = "validated"
+last_validated = "2026-08-22"
+provenance_note = "discovered via public aggregate feeds; live probe returned 11 postings (2026-08-22)"
+
+[[sources]]
+source_id = "ashby-opusclip"
+display_name = "OpusClip"
+organization = "OpusClip"
+adapter = "ashby"
+landing_url = "https://jobs.ashbyhq.com/opusclip"
+endpoint_config = { board = "opusclip" }
+categories = ["internship", "early-career"]
+tags = ["ats", "official-board"]
+cadence_hours = 24
+official_source = true
+validation_status = "validated"
+last_validated = "2026-08-22"
+provenance_note = "discovered via public aggregate feeds; live probe returned 11 postings (2026-08-22)"
+
+[[sources]]
+source_id = "ashby-acorns"
+display_name = "Acorns"
+organization = "Acorns"
+adapter = "ashby"
+landing_url = "https://jobs.ashbyhq.com/acorns"
+endpoint_config = { board = "acorns" }
+categories = ["internship", "early-career"]
+tags = ["ats", "official-board"]
+cadence_hours = 24
+official_source = true
+validation_status = "validated"
+last_validated = "2026-08-22"
+provenance_note = "discovered via public aggregate feeds; live probe returned 11 postings (2026-08-22)"
+
+[[sources]]
+source_id = "ashby-airbyte"
+display_name = "Airbyte"
+organization = "Airbyte"
+adapter = "ashby"
+landing_url = "https://jobs.ashbyhq.com/airbyte"
+endpoint_config = { board = "airbyte" }
+categories = ["internship", "early-career"]
+tags = ["ats", "official-board"]
+cadence_hours = 24
+official_source = true
+validation_status = "validated"
+last_validated = "2026-08-22"
+provenance_note = "discovered via public aggregate feeds; live probe returned 11 postings (2026-08-22)"
+
+[[sources]]
+source_id = "greenhouse-hyannisportresearch"
+display_name = "HPR (Hyannis Port Research)"
+organization = "HPR (Hyannis Port Research)"
+adapter = "greenhouse"
+landing_url = "https://boards.greenhouse.io/hyannisportresearch"
+endpoint_config = { board = "hyannisportresearch" }
+categories = ["internship", "early-career"]
+tags = ["ats", "official-board"]
+cadence_hours = 24
+official_source = true
+validation_status = "validated"
+last_validated = "2026-08-22"
+provenance_note = "discovered via public aggregate feeds; live probe returned 10 postings (2026-08-22)"
+
+[[sources]]
+source_id = "ashby-pika"
+display_name = "Pika"
+organization = "Pika"
+adapter = "ashby"
+landing_url = "https://jobs.ashbyhq.com/pika"
+endpoint_config = { board = "pika" }
+categories = ["internship", "early-career"]
+tags = ["ats", "official-board"]
+cadence_hours = 24
+official_source = true
+validation_status = "validated"
+last_validated = "2026-08-22"
+provenance_note = "discovered via public aggregate feeds; live probe returned 10 postings (2026-08-22)"
+
+[[sources]]
+source_id = "greenhouse-pdtpartners"
+display_name = "PDT Partners"
+organization = "PDT Partners"
+adapter = "greenhouse"
+landing_url = "https://boards.greenhouse.io/pdtpartners"
+endpoint_config = { board = "pdtpartners" }
+categories = ["internship", "early-career"]
+tags = ["ats", "official-board"]
+cadence_hours = 24
+official_source = true
+validation_status = "validated"
+last_validated = "2026-08-22"
+provenance_note = "discovered via public aggregate feeds; live probe returned 10 postings (2026-08-22)"
+
+[[sources]]
+source_id = "greenhouse-optiverprivate"
+display_name = "Optiver"
+organization = "Optiver"
+adapter = "greenhouse"
+landing_url = "https://boards.greenhouse.io/optiverprivate"
+endpoint_config = { board = "optiverprivate" }
+categories = ["internship", "early-career"]
+tags = ["ats", "official-board"]
+cadence_hours = 24
+official_source = true
+validation_status = "validated"
+last_validated = "2026-08-22"
+provenance_note = "discovered via public aggregate feeds; live probe returned 10 postings (2026-08-22)"
+
+[[sources]]
+source_id = "ashby-phoebe-work"
+display_name = "Phoebe"
+organization = "Phoebe"
+adapter = "ashby"
+landing_url = "https://jobs.ashbyhq.com/phoebe-work"
+endpoint_config = { board = "phoebe-work" }
+categories = ["internship", "early-career"]
+tags = ["ats", "official-board"]
+cadence_hours = 24
+official_source = true
+validation_status = "validated"
+last_validated = "2026-08-22"
+provenance_note = "discovered via public aggregate feeds; live probe returned 10 postings (2026-08-22)"
+
+[[sources]]
+source_id = "lever-solopulseco"
+display_name = "SoloPulse"
+organization = "SoloPulse"
+adapter = "lever"
+landing_url = "https://jobs.lever.co/solopulseco"
+endpoint_config = { board = "solopulseco" }
+categories = ["internship", "early-career"]
+tags = ["ats", "official-board"]
+cadence_hours = 24
+official_source = true
+validation_status = "validated"
+last_validated = "2026-08-22"
+provenance_note = "discovered via public aggregate feeds; live probe returned 10 postings (2026-08-22)"
+
+[[sources]]
+source_id = "greenhouse-acuitymd"
+display_name = "AcuityMD"
+organization = "AcuityMD"
+adapter = "greenhouse"
+landing_url = "https://boards.greenhouse.io/acuitymd"
+endpoint_config = { board = "acuitymd" }
+categories = ["internship", "early-career"]
+tags = ["ats", "official-board"]
+cadence_hours = 24
+official_source = true
+validation_status = "validated"
+last_validated = "2026-08-22"
+provenance_note = "discovered via public aggregate feeds; live probe returned 10 postings (2026-08-22)"
+
+[[sources]]
+source_id = "lever-aeratechnology"
+display_name = "Aera Technology"
+organization = "Aera Technology"
+adapter = "lever"
+landing_url = "https://jobs.lever.co/aeratechnology"
+endpoint_config = { board = "aeratechnology" }
+categories = ["internship", "early-career"]
+tags = ["ats", "official-board"]
+cadence_hours = 24
+official_source = true
+validation_status = "validated"
+last_validated = "2026-08-22"
+provenance_note = "discovered via public aggregate feeds; live probe returned 10 postings (2026-08-22)"
+
+[[sources]]
+source_id = "ashby-alphalifesci"
+display_name = "AlphaLife Sciences"
+organization = "AlphaLife Sciences"
+adapter = "ashby"
+landing_url = "https://jobs.ashbyhq.com/alphalifesci"
+endpoint_config = { board = "alphalifesci" }
+categories = ["internship", "early-career"]
+tags = ["ats", "official-board"]
+cadence_hours = 24
+official_source = true
+validation_status = "validated"
+last_validated = "2026-08-22"
+provenance_note = "discovered via public aggregate feeds; live probe returned 10 postings (2026-08-22)"
+
+[[sources]]
+source_id = "lever-anomali"
+display_name = "Anomali"
+organization = "Anomali"
+adapter = "lever"
+landing_url = "https://jobs.lever.co/anomali"
+endpoint_config = { board = "anomali" }
+categories = ["internship", "early-career"]
+tags = ["ats", "official-board"]
+cadence_hours = 24
+official_source = true
+validation_status = "validated"
+last_validated = "2026-08-22"
+provenance_note = "discovered via public aggregate feeds; live probe returned 10 postings (2026-08-22)"
+
+[[sources]]
+source_id = "ashby-aptura"
+display_name = "Aptura"
+organization = "Aptura"
+adapter = "ashby"
+landing_url = "https://jobs.ashbyhq.com/aptura"
+endpoint_config = { board = "aptura" }
+categories = ["internship", "early-career"]
+tags = ["ats", "official-board"]
+cadence_hours = 24
+official_source = true
+validation_status = "validated"
+last_validated = "2026-08-22"
+provenance_note = "discovered via public aggregate feeds; live probe returned 10 postings (2026-08-22)"
+
+[[sources]]
+source_id = "ashby-n1"
+display_name = "N1"
+organization = "N1"
+adapter = "ashby"
+landing_url = "https://jobs.ashbyhq.com/n1"
+endpoint_config = { board = "n1" }
+categories = ["internship", "early-career"]
+tags = ["ats", "official-board"]
+cadence_hours = 24
+official_source = true
+validation_status = "validated"
+last_validated = "2026-08-22"
+provenance_note = "discovered via public aggregate feeds; live probe returned 9 postings (2026-08-22)"
+
+[[sources]]
+source_id = "ashby-adaption"
+display_name = "Adaption Labs"
+organization = "Adaption Labs"
+adapter = "ashby"
+landing_url = "https://jobs.ashbyhq.com/adaption"
+endpoint_config = { board = "adaption" }
+categories = ["internship", "early-career"]
+tags = ["ats", "official-board"]
+cadence_hours = 24
+official_source = true
+validation_status = "validated"
+last_validated = "2026-08-22"
+provenance_note = "discovered via public aggregate feeds; live probe returned 9 postings (2026-08-22)"
+
+[[sources]]
+source_id = "greenhouse-adswerveinc"
+display_name = "Adswerve"
+organization = "Adswerve"
+adapter = "greenhouse"
+landing_url = "https://boards.greenhouse.io/adswerveinc"
+endpoint_config = { board = "adswerveinc" }
+categories = ["internship", "early-career"]
+tags = ["ats", "official-board"]
+cadence_hours = 24
+official_source = true
+validation_status = "validated"
+last_validated = "2026-08-22"
+provenance_note = "discovered via public aggregate feeds; live probe returned 9 postings (2026-08-22)"
+
+[[sources]]
+source_id = "greenhouse-advancedspace"
+display_name = "Advanced Space"
+organization = "Advanced Space"
+adapter = "greenhouse"
+landing_url = "https://boards.greenhouse.io/advancedspace"
+endpoint_config = { board = "advancedspace" }
+categories = ["internship", "early-career"]
+tags = ["ats", "official-board"]
+cadence_hours = 24
+official_source = true
+validation_status = "validated"
+last_validated = "2026-08-22"
+provenance_note = "discovered via public aggregate feeds; live probe returned 9 postings (2026-08-22)"
+
+[[sources]]
+source_id = "greenhouse-altaresourcetechnologiesinc"
+display_name = "Alta Resource Technologies"
+organization = "Alta Resource Technologies"
+adapter = "greenhouse"
+landing_url = "https://boards.greenhouse.io/altaresourcetechnologiesinc"
+endpoint_config = { board = "altaresourcetechnologiesinc" }
+categories = ["internship", "early-career"]
+tags = ["ats", "official-board"]
+cadence_hours = 24
+official_source = true
+validation_status = "validated"
+last_validated = "2026-08-22"
+provenance_note = "discovered via public aggregate feeds; live probe returned 9 postings (2026-08-22)"
+
+[[sources]]
+source_id = "greenhouse-aquaticcapitalmanagement"
+display_name = "Aquatic Capital Management"
+organization = "Aquatic Capital Management"
+adapter = "greenhouse"
+landing_url = "https://boards.greenhouse.io/aquaticcapitalmanagement"
+endpoint_config = { board = "aquaticcapitalmanagement" }
+categories = ["internship", "early-career"]
+tags = ["ats", "official-board"]
+cadence_hours = 24
+official_source = true
+validation_status = "validated"
+last_validated = "2026-08-22"
+provenance_note = "discovered via public aggregate feeds; live probe returned 9 postings (2026-08-22)"
+
+[[sources]]
+source_id = "greenhouse-arenaclub"
+display_name = "Arena Club"
+organization = "Arena Club"
+adapter = "greenhouse"
+landing_url = "https://boards.greenhouse.io/arenaclub"
+endpoint_config = { board = "arenaclub" }
+categories = ["internship", "early-career"]
+tags = ["ats", "official-board"]
+cadence_hours = 24
+official_source = true
+validation_status = "validated"
+last_validated = "2026-08-22"
+provenance_note = "discovered via public aggregate feeds; live probe returned 9 postings (2026-08-22)"
+
+[[sources]]
+source_id = "ashby-heliux"
+display_name = "Heliux"
+organization = "Heliux"
+adapter = "ashby"
+landing_url = "https://jobs.ashbyhq.com/heliux"
+endpoint_config = { board = "heliux" }
+categories = ["internship", "early-career"]
+tags = ["ats", "official-board"]
+cadence_hours = 24
+official_source = true
+validation_status = "validated"
+last_validated = "2026-08-22"
+provenance_note = "discovered via public aggregate feeds; live probe returned 8 postings (2026-08-22)"
+
+[[sources]]
+source_id = "greenhouse-chicagotradingcampus"
+display_name = "Chicago Trading Company"
+organization = "Chicago Trading Company"
+adapter = "greenhouse"
+landing_url = "https://boards.greenhouse.io/chicagotradingcampus"
+endpoint_config = { board = "chicagotradingcampus" }
+categories = ["internship", "early-career"]
+tags = ["ats", "official-board"]
+cadence_hours = 24
+official_source = true
+validation_status = "validated"
+last_validated = "2026-08-22"
+provenance_note = "discovered via public aggregate feeds; live probe returned 8 postings (2026-08-22)"
+
+[[sources]]
+source_id = "greenhouse-axontalentcommunity"
+display_name = "Axon"
+organization = "Axon"
+adapter = "greenhouse"
+landing_url = "https://boards.greenhouse.io/axontalentcommunity"
+endpoint_config = { board = "axontalentcommunity" }
+categories = ["internship", "early-career"]
+tags = ["ats", "official-board"]
+cadence_hours = 24
+official_source = true
+validation_status = "validated"
+last_validated = "2026-08-22"
+provenance_note = "discovered via public aggregate feeds; live probe returned 8 postings (2026-08-22)"
+
+[[sources]]
+source_id = "ashby-melius"
+display_name = "Melius"
+organization = "Melius"
+adapter = "ashby"
+landing_url = "https://jobs.ashbyhq.com/melius"
+endpoint_config = { board = "melius" }
+categories = ["internship", "early-career"]
+tags = ["ats", "official-board"]
+cadence_hours = 24
+official_source = true
+validation_status = "validated"
+last_validated = "2026-08-22"
+provenance_note = "discovered via public aggregate feeds; live probe returned 8 postings (2026-08-22)"
+
+[[sources]]
+source_id = "ashby-quadrillion-labs"
+display_name = "Quadrillion"
+organization = "Quadrillion"
+adapter = "ashby"
+landing_url = "https://jobs.ashbyhq.com/quadrillion-labs"
+endpoint_config = { board = "quadrillion-labs" }
+categories = ["internship", "early-career"]
+tags = ["ats", "official-board"]
+cadence_hours = 24
+official_source = true
+validation_status = "validated"
+last_validated = "2026-08-22"
+provenance_note = "discovered via public aggregate feeds; live probe returned 8 postings (2026-08-22)"
+
+[[sources]]
+source_id = "greenhouse-3redpartners"
+display_name = "3RedPartners"
+organization = "3RedPartners"
+adapter = "greenhouse"
+landing_url = "https://boards.greenhouse.io/3redpartners"
+endpoint_config = { board = "3redpartners" }
+categories = ["internship", "early-career"]
+tags = ["ats", "official-board"]
+cadence_hours = 24
+official_source = true
+validation_status = "validated"
+last_validated = "2026-08-22"
+provenance_note = "discovered via public aggregate feeds; live probe returned 8 postings (2026-08-22)"
+
+[[sources]]
+source_id = "greenhouse-ada18"
+display_name = "Ada"
+organization = "Ada"
+adapter = "greenhouse"
+landing_url = "https://boards.greenhouse.io/ada18"
+endpoint_config = { board = "ada18" }
+categories = ["internship", "early-career"]
+tags = ["ats", "official-board"]
+cadence_hours = 24
+official_source = true
+validation_status = "validated"
+last_validated = "2026-08-22"
+provenance_note = "discovered via public aggregate feeds; live probe returned 8 postings (2026-08-22)"
+
+[[sources]]
+source_id = "greenhouse-aperaaiinc"
+display_name = "Apera AI"
+organization = "Apera AI"
+adapter = "greenhouse"
+landing_url = "https://boards.greenhouse.io/aperaaiinc"
+endpoint_config = { board = "aperaaiinc" }
+categories = ["internship", "early-career"]
+tags = ["ats", "official-board"]
+cadence_hours = 24
+official_source = true
+validation_status = "validated"
+last_validated = "2026-08-22"
+provenance_note = "discovered via public aggregate feeds; live probe returned 8 postings (2026-08-22)"
+
+[[sources]]
+source_id = "greenhouse-xantium"
+display_name = "Xantium"
+organization = "Xantium"
+adapter = "greenhouse"
+landing_url = "https://boards.greenhouse.io/xantium"
+endpoint_config = { board = "xantium" }
+categories = ["internship", "early-career"]
+tags = ["ats", "official-board"]
+cadence_hours = 24
+official_source = true
+validation_status = "validated"
+last_validated = "2026-08-22"
+provenance_note = "discovered via public aggregate feeds; live probe returned 7 postings (2026-08-22)"
+
+[[sources]]
+source_id = "greenhouse-blackedgecapital"
+display_name = "BlackEdge Capital"
+organization = "BlackEdge Capital"
+adapter = "greenhouse"
+landing_url = "https://boards.greenhouse.io/blackedgecapital"
+endpoint_config = { board = "blackedgecapital" }
+categories = ["internship", "early-career"]
+tags = ["ats", "official-board"]
+cadence_hours = 24
+official_source = true
+validation_status = "validated"
+last_validated = "2026-08-22"
+provenance_note = "discovered via public aggregate feeds; live probe returned 7 postings (2026-08-22)"
+
+[[sources]]
+source_id = "greenhouse-detroitlions"
+display_name = "Detroit Lions"
+organization = "Detroit Lions"
+adapter = "greenhouse"
+landing_url = "https://boards.greenhouse.io/detroitlions"
+endpoint_config = { board = "detroitlions" }
+categories = ["internship", "early-career"]
+tags = ["ats", "official-board"]
+cadence_hours = 24
+official_source = true
+validation_status = "validated"
+last_validated = "2026-08-22"
+provenance_note = "discovered via public aggregate feeds; live probe returned 7 postings (2026-08-22)"
+
+[[sources]]
+source_id = "greenhouse-2u"
+display_name = "2U"
+organization = "2U"
+adapter = "greenhouse"
+landing_url = "https://boards.greenhouse.io/2u"
+endpoint_config = { board = "2u" }
+categories = ["internship", "early-career"]
+tags = ["ats", "official-board"]
+cadence_hours = 24
+official_source = true
+validation_status = "validated"
+last_validated = "2026-08-22"
+provenance_note = "discovered via public aggregate feeds; live probe returned 7 postings (2026-08-22)"
+
+[[sources]]
+source_id = "ashby-aditude"
+display_name = "Aditude"
+organization = "Aditude"
+adapter = "ashby"
+landing_url = "https://jobs.ashbyhq.com/aditude"
+endpoint_config = { board = "aditude" }
+categories = ["internship", "early-career"]
+tags = ["ats", "official-board"]
+cadence_hours = 24
+official_source = true
+validation_status = "validated"
+last_validated = "2026-08-22"
+provenance_note = "discovered via public aggregate feeds; live probe returned 7 postings (2026-08-22)"
+
+[[sources]]
+source_id = "ashby-alljoined"
+display_name = "Alljoined"
+organization = "Alljoined"
+adapter = "ashby"
+landing_url = "https://jobs.ashbyhq.com/alljoined"
+endpoint_config = { board = "alljoined" }
+categories = ["internship", "early-career"]
+tags = ["ats", "official-board"]
+cadence_hours = 24
+official_source = true
+validation_status = "validated"
+last_validated = "2026-08-22"
+provenance_note = "discovered via public aggregate feeds; live probe returned 7 postings (2026-08-22)"
+
+[[sources]]
+source_id = "ashby-anima"
+display_name = "Anima"
+organization = "Anima"
+adapter = "ashby"
+landing_url = "https://jobs.ashbyhq.com/anima"
+endpoint_config = { board = "anima" }
+categories = ["internship", "early-career"]
+tags = ["ats", "official-board"]
+cadence_hours = 24
+official_source = true
+validation_status = "validated"
+last_validated = "2026-08-22"
+provenance_note = "discovered via public aggregate feeds; live probe returned 7 postings (2026-08-22)"
+
+[[sources]]
+source_id = "ashby-apiphany"
+display_name = "Apiphany"
+organization = "Apiphany"
+adapter = "ashby"
+landing_url = "https://jobs.ashbyhq.com/apiphany"
+endpoint_config = { board = "apiphany" }
+categories = ["internship", "early-career"]
+tags = ["ats", "official-board"]
+cadence_hours = 24
+official_source = true
+validation_status = "validated"
+last_validated = "2026-08-22"
+provenance_note = "discovered via public aggregate feeds; live probe returned 7 postings (2026-08-22)"
+
+[[sources]]
+source_id = "greenhouse-ctccampusboard"
+display_name = "Chicago Trading Company"
+organization = "Chicago Trading Company"
+adapter = "greenhouse"
+landing_url = "https://boards.greenhouse.io/ctccampusboard"
+endpoint_config = { board = "ctccampusboard" }
+categories = ["internship", "early-career"]
+tags = ["ats", "official-board"]
+cadence_hours = 24
+official_source = true
+validation_status = "validated"
+last_validated = "2026-08-22"
+provenance_note = "discovered via public aggregate feeds; live probe returned 6 postings (2026-08-22)"
+
+[[sources]]
+source_id = "greenhouse-voloridgeinvestmentmanagement"
+display_name = "Voloridge"
+organization = "Voloridge"
+adapter = "greenhouse"
+landing_url = "https://boards.greenhouse.io/voloridgeinvestmentmanagement"
+endpoint_config = { board = "voloridgeinvestmentmanagement" }
+categories = ["internship", "early-career"]
+tags = ["ats", "official-board"]
+cadence_hours = 24
+official_source = true
+validation_status = "validated"
+last_validated = "2026-08-22"
+provenance_note = "discovered via public aggregate feeds; live probe returned 6 postings (2026-08-22)"
+
+[[sources]]
+source_id = "greenhouse-abelsontaylor"
+display_name = "AbelsonTaylor"
+organization = "AbelsonTaylor"
+adapter = "greenhouse"
+landing_url = "https://boards.greenhouse.io/abelsontaylor"
+endpoint_config = { board = "abelsontaylor" }
+categories = ["internship", "early-career"]
+tags = ["ats", "official-board"]
+cadence_hours = 24
+official_source = true
+validation_status = "validated"
+last_validated = "2026-08-22"
+provenance_note = "discovered via public aggregate feeds; live probe returned 6 postings (2026-08-22)"
+
+[[sources]]
+source_id = "greenhouse-affirmedrxpbc"
+display_name = "AffirmedRx"
+organization = "AffirmedRx"
+adapter = "greenhouse"
+landing_url = "https://boards.greenhouse.io/affirmedrxpbc"
+endpoint_config = { board = "affirmedrxpbc" }
+categories = ["internship", "early-career"]
+tags = ["ats", "official-board"]
+cadence_hours = 24
+official_source = true
+validation_status = "validated"
+last_validated = "2026-08-22"
+provenance_note = "discovered via public aggregate feeds; live probe returned 6 postings (2026-08-22)"
+
+[[sources]]
+source_id = "ashby-cyvl"
+display_name = "AI Intern to the CEO"
+organization = "AI Intern to the CEO"
+adapter = "ashby"
+landing_url = "https://jobs.ashbyhq.com/cyvl"
+endpoint_config = { board = "cyvl" }
+categories = ["internship", "early-career"]
+tags = ["ats", "official-board"]
+cadence_hours = 24
+official_source = true
+validation_status = "validated"
+last_validated = "2026-08-22"
+provenance_note = "discovered via public aggregate feeds; live probe returned 6 postings (2026-08-22)"
+
+[[sources]]
+source_id = "ashby-algo1"
+display_name = "algo1"
+organization = "algo1"
+adapter = "ashby"
+landing_url = "https://jobs.ashbyhq.com/algo1"
+endpoint_config = { board = "algo1" }
+categories = ["internship", "early-career"]
+tags = ["ats", "official-board"]
+cadence_hours = 24
+official_source = true
+validation_status = "validated"
+last_validated = "2026-08-22"
+provenance_note = "discovered via public aggregate feeds; live probe returned 6 postings (2026-08-22)"
+
+[[sources]]
+source_id = "ashby-ando"
+display_name = "Ando"
+organization = "Ando"
+adapter = "ashby"
+landing_url = "https://jobs.ashbyhq.com/ando"
+endpoint_config = { board = "ando" }
+categories = ["internship", "early-career"]
+tags = ["ats", "official-board"]
+cadence_hours = 24
+official_source = true
+validation_status = "validated"
+last_validated = "2026-08-22"
+provenance_note = "discovered via public aggregate feeds; live probe returned 6 postings (2026-08-22)"
+
+[[sources]]
+source_id = "greenhouse-mwinternshipprogram"
+display_name = "Marshall Wace"
+organization = "Marshall Wace"
+adapter = "greenhouse"
+landing_url = "https://boards.greenhouse.io/mwinternshipprogram"
+endpoint_config = { board = "mwinternshipprogram" }
+categories = ["internship", "early-career"]
+tags = ["ats", "official-board"]
+cadence_hours = 24
+official_source = true
+validation_status = "validated"
+last_validated = "2026-08-22"
+provenance_note = "discovered via public aggregate feeds; live probe returned 5 postings (2026-08-22)"
+
+[[sources]]
+source_id = "ashby-abundant"
+display_name = "Abundant"
+organization = "Abundant"
+adapter = "ashby"
+landing_url = "https://jobs.ashbyhq.com/abundant"
+endpoint_config = { board = "abundant" }
+categories = ["internship", "early-career"]
+tags = ["ats", "official-board"]
+cadence_hours = 24
+official_source = true
+validation_status = "validated"
+last_validated = "2026-08-22"
+provenance_note = "discovered via public aggregate feeds; live probe returned 5 postings (2026-08-22)"
+
+[[sources]]
+source_id = "ashby-alloyenterprises"
+display_name = "Alloy Enterprises"
+organization = "Alloy Enterprises"
+adapter = "ashby"
+landing_url = "https://jobs.ashbyhq.com/alloyenterprises"
+endpoint_config = { board = "alloyenterprises" }
+categories = ["internship", "early-career"]
+tags = ["ats", "official-board"]
+cadence_hours = 24
+official_source = true
+validation_status = "validated"
+last_validated = "2026-08-22"
+provenance_note = "discovered via public aggregate feeds; live probe returned 5 postings (2026-08-22)"
+
+[[sources]]
+source_id = "lever-altaml"
+display_name = "AltaML"
+organization = "AltaML"
+adapter = "lever"
+landing_url = "https://jobs.lever.co/altaml"
+endpoint_config = { board = "altaml" }
+categories = ["internship", "early-career"]
+tags = ["ats", "official-board"]
+cadence_hours = 24
+official_source = true
+validation_status = "validated"
+last_validated = "2026-08-22"
+provenance_note = "discovered via public aggregate feeds; live probe returned 5 postings (2026-08-22)"
+
+[[sources]]
+source_id = "lever-aquabyte"
+display_name = "Aquabyte"
+organization = "Aquabyte"
+adapter = "lever"
+landing_url = "https://jobs.lever.co/aquabyte"
+endpoint_config = { board = "aquabyte" }
+categories = ["internship", "early-career"]
+tags = ["ats", "official-board"]
+cadence_hours = 24
+official_source = true
+validation_status = "validated"
+last_validated = "2026-08-22"
+provenance_note = "discovered via public aggregate feeds; live probe returned 5 postings (2026-08-22)"
+
+[[sources]]
+source_id = "lever-arable"
+display_name = "Arable"
+organization = "Arable"
+adapter = "lever"
+landing_url = "https://jobs.lever.co/arable"
+endpoint_config = { board = "arable" }
+categories = ["internship", "early-career"]
+tags = ["ats", "official-board"]
+cadence_hours = 24
+official_source = true
+validation_status = "validated"
+last_validated = "2026-08-22"
+provenance_note = "discovered via public aggregate feeds; live probe returned 5 postings (2026-08-22)"
+
+[[sources]]
+source_id = "ashby-yotta"
+display_name = "Yotta Labs"
+organization = "Yotta Labs"
+adapter = "ashby"
+landing_url = "https://jobs.ashbyhq.com/yotta"
+endpoint_config = { board = "yotta" }
+categories = ["internship", "early-career"]
+tags = ["ats", "official-board"]
+cadence_hours = 24
+official_source = true
+validation_status = "validated"
+last_validated = "2026-08-22"
+provenance_note = "discovered via public aggregate feeds; live probe returned 4 postings (2026-08-22)"
+
+[[sources]]
+source_id = "greenhouse-assuredguaranty"
+display_name = "Assured Guaranty"
+organization = "Assured Guaranty"
+adapter = "greenhouse"
+landing_url = "https://boards.greenhouse.io/assuredguaranty"
+endpoint_config = { board = "assuredguaranty" }
+categories = ["internship", "early-career"]
+tags = ["ats", "official-board"]
+cadence_hours = 24
+official_source = true
+validation_status = "validated"
+last_validated = "2026-08-22"
+provenance_note = "discovered via public aggregate feeds; live probe returned 4 postings (2026-08-22)"
+
+[[sources]]
+source_id = "greenhouse-walleyecapital-external-students"
+display_name = "Walleye Capital"
+organization = "Walleye Capital"
+adapter = "greenhouse"
+landing_url = "https://boards.greenhouse.io/walleyecapital-external-students"
+endpoint_config = { board = "walleyecapital-external-students" }
+categories = ["internship", "early-career"]
+tags = ["ats", "official-board"]
+cadence_hours = 24
+official_source = true
+validation_status = "validated"
+last_validated = "2026-08-22"
+provenance_note = "discovered via public aggregate feeds; live probe returned 4 postings (2026-08-22)"
+
+[[sources]]
+source_id = "ashby-8vc"
+display_name = "8VC"
+organization = "8VC"
+adapter = "ashby"
+landing_url = "https://jobs.ashbyhq.com/8vc"
+endpoint_config = { board = "8vc" }
+categories = ["internship", "early-career"]
+tags = ["ats", "official-board"]
+cadence_hours = 24
+official_source = true
+validation_status = "validated"
+last_validated = "2026-08-22"
+provenance_note = "discovered via public aggregate feeds; live probe returned 4 postings (2026-08-22)"
+
+[[sources]]
+source_id = "greenhouse-adcouncil"
+display_name = "Ad Council"
+organization = "Ad Council"
+adapter = "greenhouse"
+landing_url = "https://boards.greenhouse.io/adcouncil"
+endpoint_config = { board = "adcouncil" }
+categories = ["internship", "early-career"]
+tags = ["ats", "official-board"]
+cadence_hours = 24
+official_source = true
+validation_status = "validated"
+last_validated = "2026-08-22"
+provenance_note = "discovered via public aggregate feeds; live probe returned 4 postings (2026-08-22)"
+
+[[sources]]
+source_id = "lever-agtonomy"
+display_name = "Agtonomy"
+organization = "Agtonomy"
+adapter = "lever"
+landing_url = "https://jobs.lever.co/agtonomy"
+endpoint_config = { board = "agtonomy" }
+categories = ["internship", "early-career"]
+tags = ["ats", "official-board"]
+cadence_hours = 24
+official_source = true
+validation_status = "validated"
+last_validated = "2026-08-22"
+provenance_note = "discovered via public aggregate feeds; live probe returned 4 postings (2026-08-22)"
+
+[[sources]]
+source_id = "ashby-anything"
+display_name = "Anything"
+organization = "Anything"
+adapter = "ashby"
+landing_url = "https://jobs.ashbyhq.com/anything"
+endpoint_config = { board = "anything" }
+categories = ["internship", "early-career"]
+tags = ["ats", "official-board"]
+cadence_hours = 24
+official_source = true
+validation_status = "validated"
+last_validated = "2026-08-22"
+provenance_note = "discovered via public aggregate feeds; live probe returned 4 postings (2026-08-22)"
+
+[[sources]]
+source_id = "ashby-anterior"
+display_name = "Anterior"
+organization = "Anterior"
+adapter = "ashby"
+landing_url = "https://jobs.ashbyhq.com/anterior"
+endpoint_config = { board = "anterior" }
+categories = ["internship", "early-career"]
+tags = ["ats", "official-board"]
+cadence_hours = 24
+official_source = true
+validation_status = "validated"
+last_validated = "2026-08-22"
+provenance_note = "discovered via public aggregate feeds; live probe returned 4 postings (2026-08-22)"
+
+[[sources]]
+source_id = "ashby-apron"
+display_name = "Apron"
+organization = "Apron"
+adapter = "ashby"
+landing_url = "https://jobs.ashbyhq.com/apron"
+endpoint_config = { board = "apron" }
+categories = ["internship", "early-career"]
+tags = ["ats", "official-board"]
+cadence_hours = 24
+official_source = true
+validation_status = "validated"
+last_validated = "2026-08-22"
+provenance_note = "discovered via public aggregate feeds; live probe returned 4 postings (2026-08-22)"
+
+[[sources]]
+source_id = "ashby-ctgt"
+display_name = "Ctgt"
+organization = "Ctgt"
+adapter = "ashby"
+landing_url = "https://jobs.ashbyhq.com/ctgt"
+endpoint_config = { board = "ctgt" }
+categories = ["internship", "early-career"]
+tags = ["ats", "official-board"]
+cadence_hours = 24
+official_source = true
+validation_status = "validated"
+last_validated = "2026-08-22"
+provenance_note = "discovered via public aggregate feeds; live probe returned 3 postings (2026-08-22)"
+
+[[sources]]
+source_id = "greenhouse-uvimco"
+display_name = "University of Virginia Investment Management Company (UVIMCO)"
+organization = "University of Virginia Investment Management Company (UVIMCO)"
+adapter = "greenhouse"
+landing_url = "https://boards.greenhouse.io/uvimco"
+endpoint_config = { board = "uvimco" }
+categories = ["internship", "early-career"]
+tags = ["ats", "official-board"]
+cadence_hours = 24
+official_source = true
+validation_status = "validated"
+last_validated = "2026-08-22"
+provenance_note = "discovered via public aggregate feeds; live probe returned 3 postings (2026-08-22)"
+
+[[sources]]
+source_id = "ashby-anthelioncap"
+display_name = "Anthelion Capital"
+organization = "Anthelion Capital"
+adapter = "ashby"
+landing_url = "https://jobs.ashbyhq.com/anthelioncap"
+endpoint_config = { board = "anthelioncap" }
+categories = ["internship", "early-career"]
+tags = ["ats", "official-board"]
+cadence_hours = 24
+official_source = true
+validation_status = "validated"
+last_validated = "2026-08-22"
+provenance_note = "discovered via public aggregate feeds; live probe returned 3 postings (2026-08-22)"
+
+[[sources]]
+source_id = "greenhouse-aircapture"
+display_name = "AirCapture"
+organization = "AirCapture"
+adapter = "greenhouse"
+landing_url = "https://boards.greenhouse.io/aircapture"
+endpoint_config = { board = "aircapture" }
+categories = ["internship", "early-career"]
+tags = ["ats", "official-board"]
+cadence_hours = 24
+official_source = true
+validation_status = "validated"
+last_validated = "2026-08-22"
+provenance_note = "discovered via public aggregate feeds; live probe returned 3 postings (2026-08-22)"
+
+[[sources]]
+source_id = "ashby-ambral"
+display_name = "Ambral"
+organization = "Ambral"
+adapter = "ashby"
+landing_url = "https://jobs.ashbyhq.com/ambral"
+endpoint_config = { board = "ambral" }
+categories = ["internship", "early-career"]
+tags = ["ats", "official-board"]
+cadence_hours = 24
+official_source = true
+validation_status = "validated"
+last_validated = "2026-08-22"
+provenance_note = "discovered via public aggregate feeds; live probe returned 3 postings (2026-08-22)"
+
+[[sources]]
+source_id = "greenhouse-argmax"
+display_name = "Argmax"
+organization = "Argmax"
+adapter = "greenhouse"
+landing_url = "https://boards.greenhouse.io/argmax"
+endpoint_config = { board = "argmax" }
+categories = ["internship", "early-career"]
+tags = ["ats", "official-board"]
+cadence_hours = 24
+official_source = true
+validation_status = "validated"
+last_validated = "2026-08-22"
+provenance_note = "discovered via public aggregate feeds; live probe returned 3 postings (2026-08-22)"
+
+[[sources]]
+source_id = "greenhouse-emergingtalent"
+display_name = "Maven Securities"
+organization = "Maven Securities"
+adapter = "greenhouse"
+landing_url = "https://boards.greenhouse.io/emergingtalent"
+endpoint_config = { board = "emergingtalent" }
+categories = ["internship", "early-career"]
+tags = ["ats", "official-board"]
+cadence_hours = 24
+official_source = true
+validation_status = "validated"
+last_validated = "2026-08-22"
+provenance_note = "discovered via public aggregate feeds; live probe returned 2 postings (2026-08-22)"
+
+[[sources]]
+source_id = "ashby-hypercubic"
+display_name = "Hypercubic"
+organization = "Hypercubic"
+adapter = "ashby"
+landing_url = "https://jobs.ashbyhq.com/hypercubic"
+endpoint_config = { board = "hypercubic" }
+categories = ["internship", "early-career"]
+tags = ["ats", "official-board"]
+cadence_hours = 24
+official_source = true
+validation_status = "validated"
+last_validated = "2026-08-22"
+provenance_note = "discovered via public aggregate feeds; live probe returned 2 postings (2026-08-22)"
+
+[[sources]]
+source_id = "lever-agatesoftware"
+display_name = "Agate Software"
+organization = "Agate Software"
+adapter = "lever"
+landing_url = "https://jobs.lever.co/agatesoftware"
+endpoint_config = { board = "agatesoftware" }
+categories = ["internship", "early-career"]
+tags = ["ats", "official-board"]
+cadence_hours = 24
+official_source = true
+validation_status = "validated"
+last_validated = "2026-08-22"
+provenance_note = "discovered via public aggregate feeds; live probe returned 2 postings (2026-08-22)"
+
+[[sources]]
+source_id = "lever-alltrails"
+display_name = "AllTrails"
+organization = "AllTrails"
+adapter = "lever"
+landing_url = "https://jobs.lever.co/alltrails"
+endpoint_config = { board = "alltrails" }
+categories = ["internship", "early-career"]
+tags = ["ats", "official-board"]
+cadence_hours = 24
+official_source = true
+validation_status = "validated"
+last_validated = "2026-08-22"
+provenance_note = "discovered via public aggregate feeds; live probe returned 2 postings (2026-08-22)"
+
+[[sources]]
+source_id = "greenhouse-aperiatechnologies"
+display_name = "Aperia Technologies"
+organization = "Aperia Technologies"
+adapter = "greenhouse"
+landing_url = "https://boards.greenhouse.io/aperiatechnologies"
+endpoint_config = { board = "aperiatechnologies" }
+categories = ["internship", "early-career"]
+tags = ["ats", "official-board"]
+cadence_hours = 24
+official_source = true
+validation_status = "validated"
+last_validated = "2026-08-22"
+provenance_note = "discovered via public aggregate feeds; live probe returned 2 postings (2026-08-22)"
+
+[[sources]]
+source_id = "lever-appen-2"
+display_name = "Appen"
+organization = "Appen"
+adapter = "lever"
+landing_url = "https://jobs.lever.co/appen-2"
+endpoint_config = { board = "appen-2" }
+categories = ["internship", "early-career"]
+tags = ["ats", "official-board"]
+cadence_hours = 24
+official_source = true
+validation_status = "validated"
+last_validated = "2026-08-22"
+provenance_note = "discovered via public aggregate feeds; live probe returned 2 postings (2026-08-22)"
+
+[[sources]]
+source_id = "greenhouse-arvinas"
+display_name = "Arvinas"
+organization = "Arvinas"
+adapter = "greenhouse"
+landing_url = "https://boards.greenhouse.io/arvinas"
+endpoint_config = { board = "arvinas" }
+categories = ["internship", "early-career"]
+tags = ["ats", "official-board"]
+cadence_hours = 24
+official_source = true
+validation_status = "validated"
+last_validated = "2026-08-22"
+provenance_note = "discovered via public aggregate feeds; live probe returned 2 postings (2026-08-22)"
+
+[[sources]]
+source_id = "lever-15five"
+display_name = "15Five"
+organization = "15Five"
+adapter = "lever"
+landing_url = "https://jobs.lever.co/15five"
+endpoint_config = { board = "15five" }
+categories = ["internship", "early-career"]
+tags = ["ats", "official-board"]
+cadence_hours = 24
+official_source = true
+validation_status = "validated"
+last_validated = "2026-08-22"
+provenance_note = "discovered via public aggregate feeds; live probe returned 1 postings (2026-08-22)"
+
+[[sources]]
+source_id = "lever-2os"
+display_name = "2nd Order Solutions"
+organization = "2nd Order Solutions"
+adapter = "lever"
+landing_url = "https://jobs.lever.co/2os"
+endpoint_config = { board = "2os" }
+categories = ["internship", "early-career"]
+tags = ["ats", "official-board"]
+cadence_hours = 24
+official_source = true
+validation_status = "validated"
+last_validated = "2026-08-22"
+provenance_note = "discovered via public aggregate feeds; live probe returned 1 postings (2026-08-22)"
+
+[[sources]]
+source_id = "greenhouse-athinkingape"
+display_name = "A Thinking Ape"
+organization = "A Thinking Ape"
+adapter = "greenhouse"
+landing_url = "https://boards.greenhouse.io/athinkingape"
+endpoint_config = { board = "athinkingape" }
+categories = ["internship", "early-career"]
+tags = ["ats", "official-board"]
+cadence_hours = 24
+official_source = true
+validation_status = "validated"
+last_validated = "2026-08-22"
+provenance_note = "discovered via public aggregate feeds; live probe returned 1 postings (2026-08-22)"
+
+[[sources]]
+source_id = "greenhouse-acluinternships"
+display_name = "ACLU Kentucky"
+organization = "ACLU Kentucky"
+adapter = "greenhouse"
+landing_url = "https://boards.greenhouse.io/acluinternships"
+endpoint_config = { board = "acluinternships" }
+categories = ["internship", "early-career"]
+tags = ["ats", "official-board"]
+cadence_hours = 24
+official_source = true
+validation_status = "validated"
+last_validated = "2026-08-22"
+provenance_note = "discovered via public aggregate feeds; live probe returned 1 postings (2026-08-22)"
+
+[[sources]]
+source_id = "greenhouse-alphataraxia"
+display_name = "Alphataraxia"
+organization = "Alphataraxia"
+adapter = "greenhouse"
+landing_url = "https://boards.greenhouse.io/alphataraxia"
+endpoint_config = { board = "alphataraxia" }
+categories = ["internship", "early-career"]
+tags = ["ats", "official-board"]
+cadence_hours = 24
+official_source = true
+validation_status = "validated"
+last_validated = "2026-08-22"
+provenance_note = "discovered via public aggregate feeds; live probe returned 1 postings (2026-08-22)"
+
+[[sources]]
+source_id = "ashby-anglehealth"
+display_name = "Angle Health"
+organization = "Angle Health"
+adapter = "ashby"
+landing_url = "https://jobs.ashbyhq.com/anglehealth"
+endpoint_config = { board = "anglehealth" }
+categories = ["internship", "early-career"]
+tags = ["ats", "official-board"]
+cadence_hours = 24
+official_source = true
+validation_status = "validated"
+last_validated = "2026-08-22"
+provenance_note = "discovered via public aggregate feeds; live probe returned 1 postings (2026-08-22)"
+
+[[sources]]
+source_id = "lever-anyscale"
+display_name = "Anyscale"
+organization = "Anyscale"
+adapter = "lever"
+landing_url = "https://jobs.lever.co/anyscale"
+endpoint_config = { board = "anyscale" }
+categories = ["internship", "early-career"]
+tags = ["ats", "official-board"]
+cadence_hours = 24
+official_source = true
+validation_status = "validated"
+last_validated = "2026-08-22"
+provenance_note = "discovered via public aggregate feeds; live probe returned 1 postings (2026-08-22)"
+
+[[sources]]
+source_id = "workday-nvidia-unresolved"
+display_name = "NVIDIA"
+organization = "NVIDIA"
+adapter = "workday"
+landing_url = "https://nvidia.wd5.myworkdayjobs.com/NVIDIAExternal"
+endpoint_config = { url = "https://nvidia.wd5.myworkdayjobs.com/NVIDIAExternal", site = "NVIDIAExternal" }
+tags = ["quarantine-record"]
+cadence_hours = 24
+enabled = false
+validation_status = "quarantined"
+last_validated = "2026-08-22"
+provenance_note = "CXS probe 404 'Job_Posting_Site_ID not found' on attempted site names; identifier unvalidated - quarantined pending correct public site name"
+quarantine_reason = "CXS probe 404 'Job_Posting_Site_ID not found' on attempted site names; identifier unvalidated - quarantined pending correct public site name"
+
+[[sources]]
+source_id = "workday-amd-unresolved"
+display_name = "AMD"
+organization = "AMD"
+adapter = "workday"
+landing_url = "https://amd.wd1.myworkdayjobs.com/External"
+endpoint_config = { url = "https://amd.wd1.myworkdayjobs.com/External", site = "External" }
+tags = ["quarantine-record"]
+cadence_hours = 24
+enabled = false
+validation_status = "quarantined"
+last_validated = "2026-08-22"
+provenance_note = "CXS probe HTTP 422; tenant/site pair could not be validated - quarantined"
+quarantine_reason = "CXS probe HTTP 422; tenant/site pair could not be validated - quarantined"
+
+[[sources]]
+source_id = "workday-capital-one-unresolved"
+display_name = "Capital One"
+organization = "Capital One"
+adapter = "workday"
+landing_url = "https://capitalone.wd1.myworkdayjobs.com/Capital_One"
+endpoint_config = { url = "https://capitalone.wd1.myworkdayjobs.com/Capital_One", site = "Capital_One" }
+tags = ["quarantine-record"]
+cadence_hours = 24
+enabled = false
+validation_status = "quarantined"
+last_validated = "2026-08-22"
+provenance_note = "CXS probe HTTP 422; identifier unvalidated - quarantined"
+quarantine_reason = "CXS probe HTTP 422; identifier unvalidated - quarantined"
+
+[[sources]]
+source_id = "workday-goldman-sachs-unresolved"
+display_name = "Goldman Sachs"
+organization = "Goldman Sachs"
+adapter = "workday"
+landing_url = "https://goldmansachs.wd5.myworkdayjobs.com/GoldmanSachsCareers"
+endpoint_config = { url = "https://goldmansachs.wd5.myworkdayjobs.com/GoldmanSachsCareers", site = "GoldmanSachsCareers" }
+tags = ["quarantine-record"]
+cadence_hours = 24
+enabled = false
+validation_status = "quarantined"
+last_validated = "2026-08-22"
+provenance_note = "CXS probe HTTP 422; identifier unvalidated - quarantined"
+quarantine_reason = "CXS probe HTTP 422; identifier unvalidated - quarantined"
+
+[[sources]]
+source_id = "workday-citadel-unresolved"
+display_name = "Citadel"
+organization = "Citadel"
+adapter = "workday"
+landing_url = "https://citadel.wd5.myworkdayjobs.com/campus"
+endpoint_config = { url = "https://citadel.wd5.myworkdayjobs.com/campus", site = "campus" }
+tags = ["quarantine-record"]
+cadence_hours = 24
+enabled = false
+validation_status = "quarantined"
+last_validated = "2026-08-22"
+provenance_note = "CXS probe HTTP 422; identifier unvalidated - quarantined"
+quarantine_reason = "CXS probe HTTP 422; identifier unvalidated - quarantined"
+
+[[sources]]
+source_id = "workday-imc-unresolved"
+display_name = "IMC Trading"
+organization = "IMC Trading"
+adapter = "workday"
+landing_url = "https://imc.wd3.myworkdayjobs.com/IMC_Careers"
+endpoint_config = { url = "https://imc.wd3.myworkdayjobs.com/IMC_Careers", site = "IMC_Careers" }
+tags = ["quarantine-record"]
+cadence_hours = 24
+enabled = false
+validation_status = "quarantined"
+last_validated = "2026-08-22"
+provenance_note = "CXS probe HTTP 422; identifier unvalidated - quarantined"
+quarantine_reason = "CXS probe HTTP 422; identifier unvalidated - quarantined"
+
+[[sources]]
+source_id = "custom-google-careers"
+display_name = "Google"
+organization = "Google"
+adapter = "htmllist"
+landing_url = "https://www.google.com/about/careers/applications/jobs/results/"
+endpoint_config = { url = "https://www.google.com/about/careers/applications/jobs/results/?q=intern", item_selector = "__unresolved__" }
+tags = ["quarantine-record"]
+cadence_hours = 24
+enabled = false
+validation_status = "quarantined"
+last_validated = "2026-08-22"
+provenance_note = "careers API endpoint returns 404; results are client-side rendered - no stable public feed found; quarantined"
+quarantine_reason = "careers API endpoint returns 404; results are client-side rendered - no stable public feed found; quarantined"
+
+[[sources]]
+source_id = "custom-microsoft-careers"
+display_name = "Microsoft"
+organization = "Microsoft"
+adapter = "rss"
+landing_url = "https://jobs.careers.microsoft.com/global/en/search.rss?q=intern"
+endpoint_config = { url = "https://jobs.careers.microsoft.com/global/en/search.rss?q=intern" }
+tags = ["quarantine-record"]
+cadence_hours = 24
+enabled = false
+validation_status = "quarantined"
+last_validated = "2026-08-22"
+provenance_note = "documented .rss URL now returns HTML, not a feed; no stable public feed found; quarantined"
+quarantine_reason = "documented .rss URL now returns HTML, not a feed; no stable public feed found; quarantined"
+
+[[sources]]
+source_id = "custom-apple-jobs"
+display_name = "Apple"
+organization = "Apple"
+adapter = "jsonfeed"
+landing_url = "https://jobs.apple.com/en-us/search"
+endpoint_config = { url = "https://jobs.apple.com/api/v1/search" }
+tags = ["quarantine-record"]
+cadence_hours = 24
+enabled = false
+validation_status = "quarantined"
+last_validated = "2026-08-22"
+provenance_note = "search API response shape undocumented/unstable (returned empty res for valid query); quarantined"
+quarantine_reason = "search API response shape undocumented/unstable (returned empty res for valid query); quarantined"
+
+[[sources]]
+source_id = "custom-meta-careers"
+display_name = "Meta"
+organization = "Meta"
+adapter = "greenhouse"
+landing_url = "https://www.metacareers.com/"
+endpoint_config = { board = "meta" }
+tags = ["quarantine-record"]
+cadence_hours = 24
+enabled = false
+validation_status = "quarantined"
+last_validated = "2026-08-22"
+provenance_note = "greenhouse board 'meta' returns 404; Meta uses a custom portal without documented public feed; quarantined"
+quarantine_reason = "greenhouse board 'meta' returns 404; Meta uses a custom portal without documented public feed; quarantined"
+
+[[sources]]
+source_id = "custom-uber-careers"
+display_name = "Uber"
+organization = "Uber"
+adapter = "greenhouse"
+landing_url = "https://www.uber.com/us/en/careers/list/"
+endpoint_config = { board = "uber" }
+tags = ["quarantine-record"]
+cadence_hours = 24
+enabled = false
+validation_status = "quarantined"
+last_validated = "2026-08-22"
+provenance_note = "greenhouse boards 'uber'/'uberinc' return 404; custom portal; quarantined"
+quarantine_reason = "greenhouse boards 'uber'/'uberinc' return 404; custom portal; quarantined"
+
+[[sources]]
+source_id = "custom-two-sigma"
+display_name = "Two Sigma"
+organization = "Two Sigma"
+adapter = "lever"
+landing_url = "https://careers.twosigma.com/"
+endpoint_config = { board = "twosigma" }
+tags = ["quarantine-record"]
+cadence_hours = 24
+enabled = false
+validation_status = "quarantined"
+last_validated = "2026-08-22"
+provenance_note = "lever board 'twosigma' returns 404; custom portal; quarantined"
+quarantine_reason = "lever board 'twosigma' returns 404; custom portal; quarantined"
+
+[[sources]]
+source_id = "custom-jane-street"
+display_name = "Jane Street"
+organization = "Jane Street"
+adapter = "htmllist"
+landing_url = "https://www.janestreet.com/join-jobs/"
+endpoint_config = { url = "https://www.janestreet.com/join-jobs/", item_selector = "__unresolved__" }
+tags = ["quarantine-record"]
+cadence_hours = 24
+enabled = false
+validation_status = "quarantined"
+last_validated = "2026-08-22"
+provenance_note = "custom application portal; no stable public machine-readable listing found; quarantined"
+quarantine_reason = "custom application portal; no stable public machine-readable listing found; quarantined"
+
+[[sources]]
+source_id = "custom-de-shaw"
+display_name = "D. E. Shaw Research"
+organization = "D. E. Shaw Research"
+adapter = "htmllist"
+landing_url = "https://www.deshawindia.com/careers/"
+endpoint_config = { url = "https://www.deshawindia.com/careers/", item_selector = "__unresolved__" }
+tags = ["quarantine-record"]
+cadence_hours = 24
+enabled = false
+validation_status = "quarantined"
+last_validated = "2026-08-22"
+provenance_note = "custom portal; no stable public machine-readable listing found; quarantined"
+quarantine_reason = "custom portal; no stable public machine-readable listing found; quarantined"
+
+[[sources]]
+source_id = "custom-salesforce"
+display_name = "Salesforce"
+organization = "Salesforce"
+adapter = "htmllist"
+landing_url = "https://careers.salesforce.com/en/jobs/"
+endpoint_config = { url = "https://careers.salesforce.com/en/jobs/", item_selector = "__unresolved__" }
+tags = ["quarantine-record"]
+cadence_hours = 24
+enabled = false
+validation_status = "quarantined"
+last_validated = "2026-08-22"
+provenance_note = "JS-rendered custom portal; no stable public feed found; quarantined"
+quarantine_reason = "JS-rendered custom portal; no stable public feed found; quarantined"
+
+[[sources]]
+source_id = "custom-tiktok"
+display_name = "TikTok"
+organization = "TikTok"
+adapter = "htmllist"
+landing_url = "https://lifeattiktok.com/search?keyword=intern"
+endpoint_config = { url = "https://lifeattiktok.com/search?keyword=intern", item_selector = "__unresolved__" }
+tags = ["quarantine-record"]
+cadence_hours = 24
+enabled = false
+validation_status = "quarantined"
+last_validated = "2026-08-22"
+provenance_note = "client-side rendered; search API endpoint not publicly stable; quarantined"
+quarantine_reason = "client-side rendered; search API endpoint not publicly stable; quarantined"
+
+[[sources]]
+source_id = "event-usajobs-students"
+display_name = "USAJOBS student routes"
+organization = "USAJOBS student routes"
+adapter = "USAJOBS"
+landing_url = "https://www.usajobs.gov/?hp=student"
+endpoint_config = { url = "https://www.usajobs.gov/Search/Results?hp=student", item_selector = "__unresolved__" }
+tags = ["quarantine-record"]
+cadence_hours = 24
+enabled = false
+validation_status = "quarantined"
+last_validated = "2026-08-22"
+provenance_note = "results page is client-rendered; public API requires an Authorization-Key credential - out of scope; quarantined"
+quarantine_reason = "results page is client-rendered; public API requires an Authorization-Key credential - out of scope; quarantined"
+
+[[sources]]
+source_id = "conf-ghc"
+display_name = "Grace Hopper Celebration (AnitaB.org)"
+organization = "Grace Hopper Celebration (AnitaB.org)"
+adapter = "AnitaB.org"
+landing_url = "https://ghc.anitab.org/"
+endpoint_config = { url = "https://ghc.anitab.org/scholarships/", item_selector = "__unresolved__" }
+tags = ["quarantine-record"]
+cadence_hours = 24
+enabled = false
+validation_status = "quarantined"
+last_validated = "2026-08-22"
+provenance_note = "scholarships page exceeded redirect limit during validation; quarantined"
+quarantine_reason = "scholarships page exceeded redirect limit during validation; quarantined"
+
+[[sources]]
+source_id = "conf-tapia"
+display_name = "ACM Richard Tapia Conference"
+organization = "ACM Richard Tapia Conference"
+adapter = "ACM"
+landing_url = "https://tapiaconference.org/"
+endpoint_config = { url = "https://tapiaconference.org/scholarships/", item_selector = "__unresolved__" }
+tags = ["quarantine-record"]
+cadence_hours = 24
+enabled = false
+validation_status = "quarantined"
+last_validated = "2026-08-22"
+provenance_note = "TLS certificate hostname mismatch observed from this environment; quarantined"
+quarantine_reason = "TLS certificate hostname mismatch observed from this environment; quarantined"
+
+[[sources]]
+source_id = "conf-swe-scholarships"
+display_name = "SWE Scholarships"
+organization = "SWE Scholarships"
+adapter = "Society of Women Engineers"
+landing_url = "https://swe.org/scholarships/"
+endpoint_config = { url = "https://swe.org/scholarships/", item_selector = "__unresolved__" }
+tags = ["quarantine-record"]
+cadence_hours = 24
+enabled = false
+validation_status = "quarantined"
+last_validated = "2026-08-22"
+provenance_note = "page structure JS-driven; no bounded selector yielded stable items; quarantined"
+quarantine_reason = "page structure JS-driven; no bounded selector yielded stable items; quarantined"
+
+[[sources]]
+source_id = "conf-nsbe-scholarships"
+display_name = "NSBE Scholarships"
+organization = "NSBE Scholarships"
+adapter = "NSBE"
+landing_url = "https://www.nsbe.org/"
+endpoint_config = { url = "https://www.nsbe.org/home1/students/scholarships", item_selector = "__unresolved__" }
+tags = ["quarantine-record"]
+cadence_hours = 24
+enabled = false
+validation_status = "quarantined"
+last_validated = "2026-08-22"
+provenance_note = "HTTP 404 on scholarship listing path at validation time; quarantined"
+quarantine_reason = "HTTP 404 on scholarship listing path at validation time; quarantined"
+
+[[sources]]
+source_id = "fellow-nsf-grfp"
+display_name = "NSF Graduate Research Fellowship Program"
+organization = "NSF Graduate Research Fellowship Program"
+adapter = "NSF"
+landing_url = "https://www.nsfgrfp.org/"
+endpoint_config = { url = "https://www.nsfgrfp.org/", item_selector = "__unresolved__" }
+tags = ["quarantine-record"]
+cadence_hours = 24
+enabled = false
+validation_status = "quarantined"
+last_validated = "2026-08-22"
+provenance_note = "HTTP 403 (bot protection) at validation time; access control respected; quarantined"
+quarantine_reason = "HTTP 403 (bot protection) at validation time; access control respected; quarantined"
+
+[[sources]]
+source_id = "ucla-urc-unreachable"
+display_name = "UCLA Undergraduate Research Center"
+organization = "UCLA Undergraduate Research Center"
+adapter = "UCLA"
+landing_url = "https://urc.ucla.edu/"
+endpoint_config = { url = "https://urc.ucla.edu/", item_selector = "__unresolved__" }
+tags = ["quarantine-record"]
+cadence_hours = 24
+enabled = false
+validation_status = "quarantined"
+last_validated = "2026-08-22"
+provenance_note = "DNS resolution failed from validation environment; quarantined"
+quarantine_reason = "DNS resolution failed from validation environment; quarantined"
+
+[[sources]]
+source_id = "reu-search-legacy"
+display_name = "NSF REU sites search (legacy JSP)"
+organization = "NSF REU sites search (legacy JSP)"
+adapter = "NSF"
+landing_url = "https://www.nsf.gov/crssprgm/reu/reu_search.jsp"
+endpoint_config = { url = "https://www.nsf.gov/crssprgm/reu/reu_search.jsp", item_selector = "__unresolved__" }
+tags = ["quarantine-record"]
+cadence_hours = 24
+enabled = false
+validation_status = "quarantined"
+last_validated = "2026-08-22"
+provenance_note = "returns HTTP 202 challenge at validation time; quarantined"
+quarantine_reason = "returns HTTP 202 challenge at validation time; quarantined"

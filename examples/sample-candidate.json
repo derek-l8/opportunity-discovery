@@ -1,0 +1,75 @@
+{
+  "opportunity_id": "opp_synthetic00000000000000000000000000",
+  "lead_state": "unverified-lead",
+  "organization": "Example Robotics",
+  "title": "Embedded Firmware Intern (Summer 2027)",
+  "aliases": [],
+  "category": "internship",
+  "canonical_url": "https://jobs.example-ats.com/examplerobotics/12345",
+  "official_url": null,
+  "provider": "greenhouse",
+  "provider_req_id": "12345",
+  "location_text": "Boston, MA",
+  "location_components": {
+    "city": "Boston",
+    "state": "MA",
+    "country": null
+  },
+  "remote_signal": "unknown",
+  "season": "summer-2027",
+  "employment_type": "internship",
+  "posted_date": "2026-08-01",
+  "stated_deadline": "2026-10-15",
+  "deadline_timezone": "unknown",
+  "compensation_text": "$32/hr",
+  "relocation_text": null,
+  "description_excerpt": "Bounded synthetic excerpt for documentation only...",
+  "description_hash": "0123456789abcdef",
+  "class_year_language": null,
+  "graduation_window_language": null,
+  "major_language": "electrical engineering",
+  "work_auth_language": null,
+  "requested_application_components": [
+    "resume"
+  ],
+  "application_effort_estimate": "quick",
+  "role_family_tags": [
+    "embedded-firmware"
+  ],
+  "signals": {
+    "paid": true,
+    "requested_components": [
+      "resume"
+    ],
+    "effort_estimate": "quick"
+  },
+  "score_components": {
+    "family_weights": {
+      "embedded-firmware": 1.0
+    },
+    "bonuses": {
+      "paid": 2.0,
+      "deadline-known": 0.25
+    },
+    "penalties": {}
+  },
+  "generic_score": 3.25,
+  "reason_codes": [
+    "include:broad-relevance"
+  ],
+  "change_type": "new",
+  "active": true,
+  "first_seen": "2026-08-23T00:00:00+00:00",
+  "last_seen": "2026-08-23T00:00:00+00:00",
+  "last_changed": "2026-08-23T00:00:00+00:00",
+  "last_successful_check": "2026-08-23T00:00:00+00:00",
+  "provenance": [
+    {
+      "source_id": "greenhouse-examplerobotics",
+      "url": "https://jobs.example-ats.com/examplerobotics/12345",
+      "evidence": "source-stated",
+      "first_seen": "2026-08-23T00:00:00+00:00",
+      "last_seen": "2026-08-23T00:00:00+00:00"
+    }
+  ]
+}

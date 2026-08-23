@@ -1,0 +1,37 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://opportunity-discovery/schemas/delta-packet.schema.json",
+  "title": "Compact delta packet for downstream private AI review",
+  "type": "object",
+  "required": ["schema_version", "generated_at", "counts", "pagination", "candidates"],
+  "properties": {
+    "schema_version": {"const": "1.0"},
+    "generated_at": {"type": "string"},
+    "run_id": {"type": ["string", "null"]},
+    "since_checkpoint": {"type": ["string", "null"]},
+    "counts": {
+      "type": "object",
+      "required": ["total_candidates_in_store", "delta_before_filtering",
+                   "delta_after_filtering"],
+      "properties": {
+        "total_candidates_in_store": {"type": "integer"},
+        "delta_before_filtering": {"type": "integer"},
+        "delta_after_filtering": {"type": "integer"}
+      }
+    },
+    "estimated_chars": {"type": "integer"},
+    "pagination": {
+      "type": "object",
+      "required": ["page", "total_pages", "next_file"],
+      "properties": {
+        "page": {"type": "integer"},
+        "total_pages": {"type": "integer"},
+        "next_file": {"type": ["string", "null"]}
+      }
+    },
+    "candidates": {
+      "type": "array",
+      "items": {"$ref": "candidate.schema.json"}
+    }
+  }
+}

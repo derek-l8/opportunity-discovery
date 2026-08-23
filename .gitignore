@@ -1,0 +1,44 @@
+# --- generated runtime data ---
+data/
+output/
+logs/
+cache/
+
+# SQLite sidecars anywhere
+*.sqlite
+*.sqlite3
+*.db
+*.db-journal
+*.sqlite-wal
+*.sqlite-shm
+
+# --- python ---
+__pycache__/
+*.py[cod]
+*.egg-info/
+build/
+dist/
+.venv/
+venv/
+.mypy_cache/
+.ruff_cache/
+.pytest_cache/
+.coverage
+coverage.xml
+htmlcov/
+
+# --- environment / secrets ---
+.env
+.env.*
+*.pem
+*.key
+secrets*
+
+# --- editors / os ---
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# task scheduler / windows runtime droppings
+scripts/*.log

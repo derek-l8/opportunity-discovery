@@ -1,0 +1,19 @@
+{
+  "total": 2,
+  "jobPostings": [
+    {
+      "title": "Power Electronics Systems Intern",
+      "locationsText": "Hillsboro, OR",
+      "externalPath": "/job/Power-Electronics-Systems-Intern_Hillsboro/OR/1234567/",
+      "bulletFields": ["R-012345"],
+      "postedOn": "Posted Today"
+    },
+    {
+      "title": "Software Development Engineer Intern",
+      "locationsText": "Remote",
+      "externalPath": "/job/SDE-Intern_Remote/9876543/",
+      "bulletFields": ["R-098765"],
+      "postedOn": "Posted Yesterday"
+    }
+  ]
+}

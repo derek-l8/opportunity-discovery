@@ -1,0 +1,23 @@
+{
+  "offset": 0,
+  "limit": 100,
+  "totalFound": 2,
+  "content": [
+    {
+      "id": "A94C7F2B",
+      "name": "Semiconductor Process Integration Intern",
+      "releasedDate": "2026-08-01T00:00:00Z",
+      "location": {"city": "Boise", "region": "ID", "country": "US"},
+      "compensation": {"description": "$25.00 - $32.00 hourly"},
+      "mission": "Yield learning and process integration for advanced nodes.",
+      "remote": false
+    },
+    {
+      "id": "B55D8E1A",
+      "name": "Test Validation Intern",
+      "releasedDate": "2026-08-02T00:00:00Z",
+      "location": {"city": "Austin", "region": "TX", "country": "US"},
+      "mission": "Validation of mixed-signal test benches."
+    }
+  ]
+}
