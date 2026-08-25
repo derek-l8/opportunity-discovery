@@ -11,6 +11,7 @@ from dataclasses import dataclass
 from datetime import UTC
 from pathlib import Path
 from urllib.parse import urlsplit
+from urllib.request import url2pathname
 from urllib.robotparser import RobotFileParser
 
 import httpx
@@ -180,12 +181,28 @@ class Fetcher:
 
     # ----------------------------------------------------------------- helpers
     def _fetch_file(self, url: str, start_ms: int) -> FetchOutcome:
-        path = Path(url.removeprefix("file://"))
+        def failed(message: str) -> FetchOutcome:
+            return FetchOutcome(url=url, error=message, state="failed",
+                                duration_ms=time.monotonic_ns() // 1_000_000 - start_ms)
+
         try:
+            parts = urlsplit(url)
+        except ValueError as exc:
+            return failed(f"invalid file URI {url!r}: {exc}")
+        if parts.scheme != "file":
+            # fetch() routes on the file:// prefix; anything else is a programming error.
+            return failed(f"unsupported scheme in {url!r}; expected 'file'")
+        authority = parts.hostname
+        if authority not in (None, "localhost"):
+            # Remote/network authorities (UNC hosts, other machines) are unsupported;
+            # never silently map them onto a malformed local path.
+            return failed(f"unsupported file URI authority {parts.netloc!r}: "
+                          "only local files (empty or 'localhost' host) are supported")
+        try:
+            path = Path(url2pathname(parts.path))
             data = path.read_bytes()
         except OSError as exc:
-            return FetchOutcome(url=url, error=str(exc), state="failed",
-                                duration_ms=time.monotonic_ns() // 1_000_000 - start_ms)
+            return failed(str(exc))
         suffix = path.suffix.lower().lstrip(".")
         ctype = {
             "json": "application/json", "csv": "text/csv", "xml": "application/xml",
