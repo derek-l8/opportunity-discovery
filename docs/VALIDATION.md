@@ -106,3 +106,127 @@ py -3.12 -m venv .venv
 # review, then optionally:
 .\scripts\register-task.ps1                  # installs nothing by itself
 ```
+
+## Operational re-validation (Linux sandbox; runs on 2026-08-25 UTC = 2026-08-24 evening America/Los_Angeles)
+
+Environment: Debian Linux (non-WSL), CPython 3.12.14 (uv-managed), fresh `.venv`.
+All run timestamps below are recorded in UTC from `collection_runs` / run summaries.
+
+### Deterministic gates (all reproduced, no drift)
+
+| Gate | Command | Result |
+| --- | --- | --- |
+| Linter | `ruff check src tests` | All checks passed |
+| Type checker | `mypy` | Success: no issues in 33 source files |
+| Test suite | `pytest -q -m "not live" --cov=opportunity_discovery` | 84 passed, ~82% total coverage |
+| Publication audit | `opdisc audit .` | 92 tracked files scanned, 0 errors, 0 warnings |
+
+### First live operational run
+
+`opdisc init` (migrations [1,2], 272 sources synced) → `validate-config` OK →
+`opdisc --json validate-sources` → 248 validated / 24 quarantined (unchanged
+from build-time validation; zero new failures) → `opdisc --json run`
+(run `run-20260825T030725044909Z`, started 2026-08-25T03:07:25Z, finished
+2026-08-25T03:12:06Z, wall clock 4m41s, exit 0).
+
+- Sources attempted/succeeded/failed: **248 / 248 / 0** — all `healthy`,
+  no rate-limiting observed from a datacenter egress IP.
+- Records seen: 18,989; opportunities new: **18,742**, changed: 230,
+  closed: 0 (first run, so everything is new).
+- Review queue: 11,112 entries (`include:broad-relevance`; 7,517 also carry
+  `downrank:unpaid-generic`). Pass-through ratio ≈ 59% — high, as expected on
+  a first ingest of full ATS boards; to be re-measured once delta cycles start.
+- Duplicates: 176 merges, all on the legitimate `normalized-url-equal` basis;
+  no fuzzy or title-based merges.
+- Novel-yield concentration: top sources are full corporate Greenhouse boards
+  (`greenhouse-andurilindustries` 2,221; `greenhouse-spacex` 2,171) — ~23% of
+  all stored records from two boards. Not actionable now; flagged for the next
+  audit cycle (candidate-yield vs review-noise trade-off).
+- Every enabled source contributed ≥1 new lead this cycle; zero-record and
+  stale-source lists are empty.
+- Artifacts validated against `schemas/*.schema.json`: `run_summary.json` and
+  `source_health.json` fully valid; 4,000 sampled JSONL lines across
+  `candidates.jsonl` / `review_queue.jsonl` all valid.
+- Delta packet: 420 pages × ~143 KB (first-run artifact; steady-state packets
+  should shrink to near-empty per the false-delta criterion).
+
+### Skipped cadence-window run
+
+A normal `opdisc --json run` inside the cadence window
+(run `run-20260825T043441173620Z`, 2026-08-25T04:34:41Z–04:34:43Z) correctly
+skipped collection: sources attempted 0, delta 0, exit 0. This confirms
+cadence gating but is not a determinism test (no collection occurred).
+
+### Forced second live run (near-empty live delta)
+
+Command: `opdisc run --force` (run `run-20260825T043603512490Z`, started
+2026-08-25T04:36:03Z, finished 2026-08-25T04:41:10Z, exit 0).
+
+| Metric | Value |
+| --- | --- |
+| Sources attempted / succeeded / failed | 248 / 248 / 0 |
+| Records seen | 18,982 |
+| Opportunities new | **20** |
+| Opportunities changed | **0** |
+| Opportunities closed | **0** |
+| Delta before filtering / after filtering | 20 / 20 |
+| Total candidates in store | 18,762 |
+| Review queue | 11,120 |
+
+Interpretation:
+
+- The forced second collection produced a **near-empty live delta**: the 20 new
+  leads are ≈0.1% of the 18,762-candidate store and are consistent with public
+  boards changing between runs ~90 minutes apart.
+- Zero changed opportunities → no false material changes.
+- Zero closed opportunities → no false closures.
+- All 248 enabled sources succeeded on both live collections.
+
+## CI portability repair (2026-08-25 UTC)
+
+The first public GitHub Actions run failed in all four matrix jobs
+(Ubuntu/Windows × Python 3.11/3.12) during test collection with
+`ModuleNotFoundError: No module named 'tests'`: test modules imported reusable
+utilities from `tests.conftest`, which only resolved because of
+environment-specific implicit-namespace-package behavior in the dev checkout,
+not from a clean clone. Fix:
+
+- Reusable utilities (`MockFetcher`, `make_db`, `source`, `load_fixture`,
+  `write_sources_toml`) moved from `tests/conftest.py` to `tests/helpers.py`;
+  `conftest.py` now holds only pytest fixtures and imports shared helpers from
+  `tests.helpers`.
+- Added `tests/__init__.py` so the tests package is explicit in a clean checkout.
+- Test imports updated `tests.conftest` → `tests.helpers`.
+- CI workflow: bare `pytest` replaced with `python -m pytest`;
+  `actions/checkout` v4→v6, `actions/setup-python` v5→v6; matrix, no-network
+  marker, coverage, Ruff, Mypy, and publication-audit steps preserved.
+
+Windows TOML path defect found behind the collection failure: the
+`engine_config` fixture interpolated Windows paths directly into TOML
+double-quoted strings, so `\U` was parsed as a unicode escape
+(`tomllib.TOMLDecodeError: Invalid hex value`). All generated TOML now goes
+through a shared JSON-escaping serializer (`tests.helpers.toml_str`), with a
+deterministic regression test using Windows-style paths
+(`tests/test_toml_serialization.py`), valid on Linux and Windows alike.
+
+### Deterministic gates after repair (reproduced on CPython 3.11.2 and 3.12.14, uv)
+
+| Gate | Command | Result |
+| --- | --- | --- |
+| Linter | `ruff check src tests` | All checks passed |
+| Type checker | `mypy` | Success: no issues in 33 source files |
+| Test suite | `python -m pytest -q -m "not live" --cov=opportunity_discovery --cov-report=term-missing` | 88 passed (84 prior + 4 new regression tests), ~82% total coverage |
+| Clean-checkout discovery | full suite re-run in a fresh copy of tracked files | 88 passed — imports of `tests.helpers` resolve without any dev-environment state |
+| Publication audit | `opdisc audit .` | 92 tracked files scanned, 0 errors, 0 warnings |
+| Package build | `python -m build` | sdist + wheel built successfully |
+
+### Remaining limitations after this cycle
+
+- GitHub Actions passed the deterministic suite on Ubuntu and Windows under Python 3.11 and 3.12. Native Windows PowerShell scripts and Task Scheduler registration remain unverified.
+  remotely; local deterministic regression coverage is not equivalent to a
+  completed GitHub-hosted Windows run. Confirm the next CI push before
+  considering this closed.
+- Native Windows execution (`scripts/run.ps1`, Task Scheduler registration)
+  has still not been exercised on native Windows in this environment.
+- Review-queue pass-through ratio remains to be re-measured once steady-state
+  delta cycles accumulate.

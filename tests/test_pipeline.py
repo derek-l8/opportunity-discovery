@@ -5,11 +5,11 @@ import json
 from datetime import UTC, datetime
 
 import pytest
-from tests.conftest import MockFetcher, make_db, source
 
 from opportunity_discovery.models import RunSummary
 from opportunity_discovery.pipeline import Pipeline, expected_opportunities_from_sources
 from opportunity_discovery.registry import sync_sources_to_db
+from tests.helpers import MockFetcher, make_db, source
 
 
 def make_pipeline(engine_config, conn):
@@ -104,7 +104,7 @@ def test_deadline_change_classified_separately(engine_config, tmp_path):
                       "url": "https://quant.example.com/apply/9",
                       "deadline": "2026-09-01"}]}
     fetcher.add("https://quant.example.com/feed.json", 200, json.dumps(feed))
-    from tests.conftest import source as src
+    from tests.helpers import source as src
     spec = src(source_id="json-quant", organization="Quant Co", adapter="jsonfeed",
                endpoint_config={"url": "https://quant.example.com/feed.json",
                                 "records_path": "jobs"})

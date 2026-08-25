@@ -1,9 +1,9 @@
 import json
 
 import httpx
-from tests.conftest import make_db
 
 from opportunity_discovery.http_client import Fetcher
+from tests.helpers import make_db
 
 
 def make_fetcher(engine_config, handler):
@@ -127,6 +127,60 @@ def test_file_scheme_fetch(engine_config, tmp_path):
         out = fetcher.fetch(p.as_uri())
         assert out.status == 200
         assert json.loads(out.text)["a"] == 1
+    finally:
+        fetcher.close()
+        conn.close()
+
+
+def test_file_scheme_fetch_percent_encoded_name(engine_config, tmp_path):
+    p = tmp_path / "with space.json"
+    p.write_text('{"b": 2}', encoding="utf-8")
+    assert "%20" in p.as_uri()
+    fetcher, conn = make_fetcher(engine_config, lambda req: httpx.Response(500))
+    try:
+        out = fetcher.fetch(p.as_uri())
+        assert out.status == 200
+        assert json.loads(out.text)["b"] == 2
+    finally:
+        fetcher.close()
+        conn.close()
+
+
+def test_file_scheme_fetch_localhost_authority(engine_config, tmp_path):
+    p = tmp_path / "localhost.json"
+    p.write_text('{"c": 3}', encoding="utf-8")
+    uri = "file://localhost" + p.as_uri()[len("file://"):]
+    fetcher, conn = make_fetcher(engine_config, lambda req: httpx.Response(500))
+    try:
+        out = fetcher.fetch(uri)
+        assert out.status == 200
+        assert json.loads(out.text)["c"] == 3
+    finally:
+        fetcher.close()
+        conn.close()
+
+
+def test_file_scheme_fetch_rejects_remote_authority(engine_config):
+    fetcher, conn = make_fetcher(engine_config, lambda req: httpx.Response(500))
+    try:
+        out = fetcher.fetch("file://remote.example.com/data/feed.json")
+        assert not out.ok
+        assert out.status is None
+        assert out.state == "failed"
+        assert "authority" in (out.error or "")
+    finally:
+        fetcher.close()
+        conn.close()
+
+
+def test_file_scheme_fetch_missing_file_is_failed_outcome(engine_config, tmp_path):
+    uri = (tmp_path / "missing.json").as_uri()
+    fetcher, conn = make_fetcher(engine_config, lambda req: httpx.Response(500))
+    try:
+        out = fetcher.fetch(uri)
+        assert not out.ok
+        assert out.status is None
+        assert out.error
     finally:
         fetcher.close()
         conn.close()

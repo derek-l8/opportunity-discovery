@@ -1,9 +1,8 @@
 """End-to-end synthetic workflow: two identical runs, no false new delta."""
 import json
 
-from tests.conftest import write_sources_toml
-
 from opportunity_discovery.runner import ensure_ready, run_full_workflow
+from tests.helpers import write_sources_toml
 
 
 def test_synthetic_end_to_end_twice(engine_config, tmp_path, capsys):
