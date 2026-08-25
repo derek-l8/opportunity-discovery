@@ -6,7 +6,7 @@ from opportunity_discovery.cli import main
 
 def test_init_and_validate_config(engine_config, tmp_path, capsys):
     engine_config.sources_file.parent.mkdir(parents=True, exist_ok=True)
-    from tests.conftest import write_sources_toml
+    from tests.helpers import write_sources_toml
 
     write_sources_toml(engine_config, [{
         "source_id": "a", "display_name": "A", "organization": "O",
@@ -23,7 +23,7 @@ def test_init_and_validate_config(engine_config, tmp_path, capsys):
 
 def test_status_and_source_health_json(engine_config, tmp_path, capsys):
     engine_config.sources_file.parent.mkdir(parents=True, exist_ok=True)
-    from tests.conftest import write_sources_toml
+    from tests.helpers import write_sources_toml
 
     write_sources_toml(engine_config, [{
         "source_id": "a", "display_name": "A", "organization": "O",
@@ -64,7 +64,7 @@ def test_add_source_appends(engine_config, tmp_path):
 
 def test_prune_dry_run_default(engine_config, tmp_path, capsys):
     engine_config.sources_file.parent.mkdir(parents=True, exist_ok=True)
-    from tests.conftest import write_sources_toml
+    from tests.helpers import write_sources_toml
 
     write_sources_toml(engine_config, [{
         "source_id": "a", "display_name": "A", "organization": "O",

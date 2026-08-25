@@ -4,12 +4,12 @@ from pathlib import Path
 
 import jsonschema
 import pytest
-from tests.conftest import make_db, source
 
 from opportunity_discovery.http_client import Fetcher
 from opportunity_discovery.models import RunSummary
 from opportunity_discovery.pipeline import Pipeline
 from opportunity_discovery.registry import sync_sources_to_db
+from tests.helpers import make_db, source
 
 SCHEMA_DIR = Path(__file__).parent.parent / "schemas"
 

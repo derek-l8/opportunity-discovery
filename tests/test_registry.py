@@ -1,8 +1,7 @@
 from datetime import UTC, datetime, timedelta
 
-from tests.conftest import make_db, write_sources_toml
-
 from opportunity_discovery.registry import due_sources, load_sources, sync_sources_to_db
+from tests.helpers import make_db, write_sources_toml
 
 
 def write(engine_config, sources):

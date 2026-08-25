@@ -42,7 +42,7 @@ dev = [
 opdisc = "opportunity_discovery.cli:main"
 
 [project.urls]
-Homepage = "https://github.com/EXAMPLE/opportunity-discovey-placeholder"
+Homepage = "https://github.com/derek-l8/opportunity-discovery"
 
 [tool.setuptools.packages.find]
 where = ["src"]

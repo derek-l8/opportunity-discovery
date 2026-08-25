@@ -27,6 +27,10 @@ venv/
 coverage.xml
 htmlcov/
 
+# --- local tooling / scratch dirs ---
+.tools/
+.uvcache/
+
 # --- environment / secrets ---
 .env
 .env.*

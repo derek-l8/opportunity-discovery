@@ -1,11 +1,10 @@
 import json
 
-from tests.conftest import MockFetcher, make_db, source
-
 from opportunity_discovery.export import export_all, is_review_queue_member
 from opportunity_discovery.models import RunSummary
 from opportunity_discovery.pipeline import Pipeline
 from opportunity_discovery.registry import sync_sources_to_db
+from tests.helpers import MockFetcher, make_db, source
 
 
 def seed(engine_config, tmp_path, payload: str):

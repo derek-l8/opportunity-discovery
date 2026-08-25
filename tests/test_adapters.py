@@ -1,7 +1,6 @@
-from tests.conftest import load_fixture, source
-
 from opportunity_discovery.adapters.base import run_source
 from opportunity_discovery.constants import HEALTH_FORMAT_CHANGED
+from tests.helpers import load_fixture, source
 
 
 def test_greenhouse_success(mock_fetcher):
@@ -23,7 +22,7 @@ def test_greenhouse_empty_is_valid_empty(mock_fetcher):
 
 
 def test_lever_success_and_remote_signal(mock_fetcher):
-    from tests.conftest import source as src
+    from tests.helpers import source as src
     spec = src(source_id="lever-acmehw", adapter="lever",
                endpoint_config={"board": "acmehw"})
     mock_fetcher.add("https://api.lever.co/v0/postings/acmehw", 200,
@@ -36,7 +35,7 @@ def test_lever_success_and_remote_signal(mock_fetcher):
 
 
 def test_ashby_success(mock_fetcher):
-    from tests.conftest import source as src
+    from tests.helpers import source as src
     spec = src(source_id="ashby-acmerobotics", adapter="ashby",
                endpoint_config={"board": "acmerobotics"})
     mock_fetcher.add("https://api.ashbyhq.com/posting-api/job-board/acmerobotics", 200,
@@ -48,7 +47,7 @@ def test_ashby_success(mock_fetcher):
 
 
 def test_smartrecruiters_success(mock_fetcher):
-    from tests.conftest import source as src
+    from tests.helpers import source as src
     spec = src(source_id="sr-acmesemi", adapter="smartrecruiters",
                endpoint_config={"company": "acmesemi"})
     mock_fetcher.add("https://api.smartrecruiters.com/v1/companies/acmesemi/postings", 200,
@@ -62,7 +61,7 @@ def test_smartrecruiters_success(mock_fetcher):
 
 
 def test_workday_success_uses_post(mock_fetcher):
-    from tests.conftest import source as src
+    from tests.helpers import source as src
     spec = src(source_id="workday-acme", adapter="workday",
                endpoint_config={"url": "https://acme.wd1.myworkdayjobs.com/External",
                                 "tenant": "acme", "site": "External"})
@@ -76,7 +75,7 @@ def test_workday_success_uses_post(mock_fetcher):
 
 
 def test_jsonfeed_field_mapping(mock_fetcher):
-    from tests.conftest import source as src
+    from tests.helpers import source as src
     spec = src(source_id="json-acmechips", adapter="jsonfeed", organization="Acme Chips",
                endpoint_config={
                    "url": "https://acmechips.example.com/feed.json",
@@ -98,7 +97,7 @@ def test_jsonfeed_field_mapping(mock_fetcher):
 
 
 def test_csvfeed_column_mapping(mock_fetcher):
-    from tests.conftest import source as src
+    from tests.helpers import source as src
     spec = src(source_id="csv-community", adapter="csvfeed",
                endpoint_config={"url": "https://community.example.org/list.csv"})
     mock_fetcher.add("https://community.example.org/list.csv", 200,
@@ -111,7 +110,7 @@ def test_csvfeed_column_mapping(mock_fetcher):
 
 
 def test_rss_feed(mock_fetcher):
-    from tests.conftest import source as src
+    from tests.helpers import source as src
     spec = src(source_id="rss-acme", adapter="rss", organization="Acme Labs",
                endpoint_config={"url": "https://acmelabs.example.org/feed.xml"})
     mock_fetcher.add("https://acmelabs.example.org/feed.xml", 200,
@@ -124,7 +123,7 @@ def test_rss_feed(mock_fetcher):
 
 
 def test_github_markdown_table(mock_fetcher):
-    from tests.conftest import source as src
+    from tests.helpers import source as src
     spec = src(source_id="gh-board", adapter="githublist",
                endpoint_config={"url": "https://raw.example.org/board.md",
                                 "format": "table"})
@@ -137,7 +136,7 @@ def test_github_markdown_table(mock_fetcher):
 
 
 def test_htmllist_selectors(mock_fetcher):
-    from tests.conftest import source as src
+    from tests.helpers import source as src
     spec = src(source_id="html-acme", adapter="htmllist",
                endpoint_config={"url": "https://acme.example.com/opps",
                                 "item_selector": "ul.programs li",
@@ -152,7 +151,7 @@ def test_htmllist_selectors(mock_fetcher):
 
 
 def test_sitemap_include_exclude(mock_fetcher):
-    from tests.conftest import source as src
+    from tests.helpers import source as src
     spec = src(source_id="sitemap-acmelab", adapter="sitemap",
                endpoint_config={"url": "https://acmelab.example.com/sitemap.xml",
                                 "include_regex": "/opportunities/",

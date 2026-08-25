@@ -1,9 +1,9 @@
 import json
 
 import httpx
-from tests.conftest import make_db
 
 from opportunity_discovery.http_client import Fetcher
+from tests.helpers import make_db
 
 
 def make_fetcher(engine_config, handler):
