@@ -7,7 +7,6 @@ import sqlite3
 from datetime import UTC, datetime
 
 from . import db as dbm
-from .adapters.base import run_source  # noqa: F401  (re-exported for tooling)
 from .config import EngineConfig
 from .export import export_all
 from .http_client import Fetcher

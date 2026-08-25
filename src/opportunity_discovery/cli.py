@@ -4,7 +4,6 @@ from __future__ import annotations
 import argparse
 import json
 import logging
-import sqlite3
 import sys
 from datetime import UTC, datetime
 from pathlib import Path
@@ -281,7 +280,7 @@ def cmd_add_source(args: argparse.Namespace) -> int:
     ]
     if spec.landing_url:
         block.append(f'landing_url = "{spec.landing_url}"')
-    block.append("endpoint_config = " + json.dumps(spec.endpoint_config, sort_keys=False).replace('"', '"'))
+    block.append("endpoint_config = " + json.dumps(spec.endpoint_config))
     if spec.categories:
         cats = ", ".join(f'"{c.strip()}"' for c in spec.categories)
         block.append(f"categories = [{cats}]")
@@ -385,10 +384,7 @@ def main(argv: list[str] | None = None) -> int:
     parser = build_parser()
     args = parser.parse_args(argv)
     _setup_logging(getattr(args, "quiet", False))
-    result: int = args.func(args)
-    # ensure a clean close of any lazily opened sqlite handles
-    sqlite3.connect(":memory:").close()  # no-op keeps import meaningful
-    return result
+    return args.func(args)
 
 
 if __name__ == "__main__":

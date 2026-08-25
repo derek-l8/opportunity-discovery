@@ -112,9 +112,6 @@ def _tracked_files(root: Path) -> list[Path]:
     # data/output/logs directories are intentionally *included* so they can be
     # reported as findings.
     results: list[Path] = []
-    # Vendored/env dirs are never publishable and are skipped for speed.
-    # Generated data/output/logs dirs are intentionally NOT skipped so that
-    # files inside them are reported as findings.
     skip_dirs = {
         "node_modules", "__pycache__", ".venv", "venv", "dist", "build",
         ".mypy_cache", ".ruff_cache", ".pytest_cache", ".git",
