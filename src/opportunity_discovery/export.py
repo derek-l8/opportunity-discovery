@@ -89,7 +89,6 @@ def _row_to_candidate(row: sqlite3.Row, excerpt_chars: int) -> dict[str, Any]:
         "last_seen": row["last_seen"],
         "last_changed": row["last_changed"],
         "last_successful_check": row["last_successful_check"],
-        "_provenance_placeholder": True,
     }
 
 
@@ -109,7 +108,6 @@ def attach_provenance(conn: sqlite3.Connection, candidate: dict[str, Any]) -> di
         }
         for r in rows
     ]
-    candidate.pop("_provenance_placeholder", None)
     return candidate
 
 
@@ -297,7 +295,7 @@ def build_source_health(conn: sqlite3.Connection, generated_at: str) -> dict[str
             " WHERE source_id=? ORDER BY checked_at DESC LIMIT 1",
             (src["source_id"],),
         ).fetchone()
-        state = src["validation_status"] and None  # placeholder to satisfy linters
+        state: str | None
         if not int(src["enabled"] or 0):
             state = "disabled"
         elif src["quarantine_reason"]:

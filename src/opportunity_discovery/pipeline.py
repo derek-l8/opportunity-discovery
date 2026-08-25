@@ -312,11 +312,7 @@ class Pipeline:
                 " detected_at) VALUES (?, ?, ?, ?, ?)",
                 (opp_id, self.run_id, change_type, json.dumps(detail), now),
             )
-            if change_type == c.CHANGE_REOPENED:
-                self.summary.opportunities_new += 0
-                self.summary.opportunities_changed += 1
-            else:
-                self.summary.opportunities_changed += 1
+            self.summary.opportunities_changed += 1
         # alias bookkeeping: alternate titles preserved
         if fields["title"] and fields["title"] != existing["title"]:
             self.conn.execute(

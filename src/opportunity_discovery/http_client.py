@@ -19,7 +19,6 @@ import httpx
 from . import USER_AGENT
 from .config import EngineConfig
 from .constants import HEALTH_RATE_LIMITED
-from .db import connect  # noqa: F401  (re-export convenience)
 
 log = logging.getLogger(__name__)
 

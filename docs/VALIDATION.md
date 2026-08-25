@@ -219,14 +219,38 @@ deterministic regression test using Windows-style paths
 | Clean-checkout discovery | full suite re-run in a fresh copy of tracked files | 88 passed — imports of `tests.helpers` resolve without any dev-environment state |
 | Publication audit | `opdisc audit .` | 92 tracked files scanned, 0 errors, 0 warnings |
 | Package build | `python -m build` | sdist + wheel built successfully |
-
 ### Remaining limitations after this cycle
 
-- GitHub Actions passed the deterministic suite on Ubuntu and Windows under Python 3.11 and 3.12. Native Windows PowerShell scripts and Task Scheduler registration remain unverified.
-  remotely; local deterministic regression coverage is not equivalent to a
-  completed GitHub-hosted Windows run. Confirm the next CI push before
-  considering this closed.
-- Native Windows execution (`scripts/run.ps1`, Task Scheduler registration)
-  has still not been exercised on native Windows in this environment.
+- GitHub Actions passed the deterministic suite on Ubuntu and Windows under
+  Python 3.11 and 3.12 (see the current-publication validation section below
+  for the commit context). Native Windows PowerShell scripts (`scripts/run.ps1`,
+  `install.ps1`, Task Scheduler registration) remain unverified on a real
+  Windows host; CI coverage of the deterministic suite is not equivalent.
 - Review-queue pass-through ratio remains to be re-measured once steady-state
   delta cycles accumulate.
+
+## Current-publication validation snapshot
+
+Date: 2026-08-25 UTC, after commit `b7ad544` ("Fix tests on clean Linux and
+Windows environments (#1)"). Environment: Debian Linux, CPython 3.11.2,
+repository `.venv`. This section records the state verified for public
+release; it does not alter any historical result above.
+
+| Gate | Command | Result |
+| --- | --- | --- |
+| Linter | `ruff check src tests` | All checks passed |
+| Type checker | `mypy` | Success: no issues in 33 source files |
+| Test suite | `python -m pytest -q -m "not live" --cov=opportunity_discovery --cov-report=term-missing` | 107 passed, ~82% total coverage |
+| Publication audit | `opdisc audit .` | 95 tracked files scanned, 0 errors, 0 warnings |
+| Package build | `python -m build` | sdist + wheel built successfully |
+| Registry validation | `opdisc validate-config` | 272 sources loaded, no errors |
+
+Still unverified at publication time:
+
+- Native Windows PowerShell scripts (`install.ps1`, `run.ps1`,
+  `register-task.ps1`) and Task Scheduler operation have never been exercised
+  on a native Windows host.
+- The GitHub Actions matrix status could not be re-inspected from this audit
+  environment; see the repository's Actions tab for current results.
+- No live collection was performed during this final audit; the recorded live
+  results from 2026-08-25 above remain the latest live evidence.
