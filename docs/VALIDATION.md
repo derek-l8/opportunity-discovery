@@ -222,7 +222,7 @@ deterministic regression test using Windows-style paths
 
 ### Remaining limitations after this cycle
 
-- The GitHub Actions Windows matrix has **not** yet been observed passing
+- GitHub Actions passed the deterministic suite on Ubuntu and Windows under Python 3.11 and 3.12. Native Windows PowerShell scripts and Task Scheduler registration remain unverified.
   remotely; local deterministic regression coverage is not equivalent to a
   completed GitHub-hosted Windows run. Confirm the next CI push before
   considering this closed.
