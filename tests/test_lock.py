@@ -82,7 +82,7 @@ def test_posix_permission_error_means_not_stale(monkeypatch):
         raise PermissionError(errno.EPERM, "probe denied")
 
     monkeypatch.setattr(lock_module.os, "kill", fake_kill)
-    assert RunLock._is_stale("12345") is False
+    assert RunLock._posix_pid_is_alive(12345) is True
 
 
 def test_posix_unknown_oserror_means_not_stale(monkeypatch):
@@ -90,7 +90,7 @@ def test_posix_unknown_oserror_means_not_stale(monkeypatch):
         raise OSError(errno.EIO, "probe failed")
 
     monkeypatch.setattr(lock_module.os, "kill", fake_kill)
-    assert RunLock._is_stale("12345") is False
+    assert RunLock._posix_pid_is_alive(12345) is True
 
 
 def test_windows_no_such_process_confirmed_dead():
@@ -139,6 +139,7 @@ def test_dispatch_uses_posix_helper_on_posix(monkeypatch):
         probed.append(pid)
         return True
 
+    monkeypatch.setattr(os, "name", "posix")
     monkeypatch.setattr(RunLock, "_posix_pid_is_alive", staticmethod(fake_posix))
     assert RunLock._is_stale("77") is False
     assert probed == [77]
