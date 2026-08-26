@@ -119,7 +119,7 @@ def cmd_collect(args: argparse.Namespace) -> int:
             print(f"ERROR {e}", file=sys.stderr)
         return 2
     from .models import RunSummary
-    from .runner import new_run_id, run_collect
+    from .runner import new_run_id, run_collect, workflow_exit_code
 
     conn = ensure_ready(cfg)
     run_id = new_run_id()
@@ -136,7 +136,7 @@ def cmd_collect(args: argparse.Namespace) -> int:
         print(json.dumps(summary.to_dict(), indent=2))
     elif not args.quiet:
         print(_summary_line(summary))
-    return 0 if summary.sources_failed == 0 else (1 if summary.sources_succeeded else 2)
+    return workflow_exit_code(summary)
 
 
 def cmd_run(args: argparse.Namespace) -> int:

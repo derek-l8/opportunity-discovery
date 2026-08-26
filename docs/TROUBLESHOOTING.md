@@ -4,10 +4,19 @@
 
 | Code | Meaning |
 | --- | --- |
-| 0 | Success (partial source failures are tolerated and visible in `source-health`) |
+| 0 | No source failed, no sources were due, or at least one attempted source succeeded (partial source failures are tolerated and visible in `source-health`) |
 | 1 | All attempted sources failed this run (prior state preserved) |
 | 2 | Fatal: config/registry error or unexpected crash |
 | 3 | Another run holds `data/run.lock` |
+
+## Installation
+
+**`install.ps1` reports "No Python 3.11+ interpreter found"**
+The installer tried the Windows py launcher (`py -3.11` through `py -3.14`)
+and `python.exe` on PATH; none provided a working Python ≥ 3.11. Install
+Python 3.11+ from python.org (enable "Add python.exe to PATH") and re-run.
+The installer and the manual commands in `docs/OPERATIONS_WINDOWS.md` are
+alternatives — either produces the same `.venv`.
 
 ## Common issues
 

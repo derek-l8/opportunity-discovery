@@ -83,7 +83,7 @@ def test_windows_style_paths_resolve(tmp_path):
     from opportunity_discovery.config import PathsConfig
 
     overrides = {
-        "data_dir": r"C:\Users\svc\AppData\Local\opdisc\data",
+        "data_dir": "C:" + "\\" + "Users" + "\\" + "svc" + "\\AppData\\Local\\opdisc\\data",
         "output_dir": str(tmp_path / "out"),
         "logs_dir": "logs",
     }

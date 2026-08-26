@@ -125,21 +125,6 @@ def _tracked_files(root: Path) -> list[Path]:
     return sorted(results)
 
 
-def _is_allowed(path: Path, root: Path) -> bool:
-    """Files that legitimately match generic rules.
-
-    tests/ contains deliberate synthetic examples of every detection rule;
-    fixtures/examples hold synthetic data. This is a documented trade-off:
-    never place real credentials or personal data under tests/.
-    """
-    rel = path.relative_to(root).as_posix()
-    if rel.startswith(("tests/", "examples")):
-        return True
-    return rel in ("docs/TROUBLESHOOTING.md", "scripts/run.ps1",
-                   "scripts/register-task.ps1", "scripts/unregister-task.ps1",
-                   "src/opportunity_discovery/audit.py")
-
-
 def audit_repository(root: Path) -> AuditReport:
     root = Path(root).resolve()
     report = AuditReport()
@@ -147,16 +132,21 @@ def audit_repository(root: Path) -> AuditReport:
         rel = path.relative_to(root).as_posix()
         report.files_scanned += 1
 
+        # No blanket path exemptions: rules apply to every tracked file,
+        # including fixtures under tests/ and examples/. A real credential or
+        # machine-specific path inside a test fixture is as dangerous as one
+        # anywhere else. Tests needing detection-shaped values must build them
+        # from runtime fragments so no scan-matching literal is tracked.
         name = path.name.lower()
-        if name in BANNED_FILENAMES and not _is_allowed(path, root):
+        if name in BANNED_FILENAMES:
             report.findings.append(Finding("error", "banned-file", rel))
             continue
         suffix = path.suffix.lower()
-        if suffix in BANNED_SUFFIXES and not _is_allowed(path, root):
+        if suffix in BANNED_SUFFIXES:
             report.findings.append(Finding("error", "banned-suffix", rel))
             continue
         rel_parts = set(path.relative_to(root).parts[:-1])
-        if rel_parts & BANNED_DIR_PARTS and not _is_allowed(path, root):
+        if rel_parts & BANNED_DIR_PARTS:
             report.findings.append(Finding("error", "generated-directory", rel))
             continue
 
@@ -169,13 +159,13 @@ def audit_repository(root: Path) -> AuditReport:
         for lineno, line in enumerate(lines, start=1):
             for rule_name, pattern in CREDENTIAL_PATTERNS:
                 m = pattern.search(line)
-                if m and not _is_allowed(path, root):
+                if m:
                     report.findings.append(Finding(
                         "error", rule_name, rel, lineno,
                         "possible credential literal (value not recorded)", ))
             for rule_name, pattern in PATH_PATTERNS:
                 m = pattern.search(line)
-                if m and not _is_allowed(path, root):
+                if m:
                     report.findings.append(Finding(
                         "error", rule_name, rel, lineno, m.group(0)[:60]))
             if rel.endswith(".md") or rel.startswith(("docs/",)):
