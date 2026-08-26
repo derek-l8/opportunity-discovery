@@ -37,14 +37,19 @@ python3 -m venv .venv
 .venv/bin/opdisc run                  # collect -> reconcile -> score -> export
 ```
 
-Native Windows (PowerShell):
+Native Windows (PowerShell) — the installer and the manual commands are
+alternatives; either produces the same repository-local `.venv`:
 
 ```powershell
+.\scripts\install.ps1                 # normal install with checks, or manually:
 py -3.12 -m venv .venv
-.\.venv\Scripts\pip install -e '.[dev]'
-.\scripts\install.ps1      # same steps with checks
-.\scripts\run.ps1          # normal scheduled run (logs + exit codes)
+.\.venv\Scripts\pip install -e .      # normal installation (runtime only)
+.\scripts\run.ps1                     # normal scheduled run (logs + exit codes)
 ```
+
+A **normal installation** (`pip install -e .`) is all scheduled runs need.
+A **development installation** adds test/lint/type tooling:
+`.\.venv\Scripts\pip install -e '.[dev]'`.
 
 Task Scheduler setup/removal (does not run automatically; you invoke these):
 
@@ -70,7 +75,10 @@ opdisc prune              retention pruning (dry-run by default)
 ```
 
 All commands accept `--quiet` and `--json` for Task Scheduler-friendly output.
-Exit codes: `0` success, `1` partial source failure, `2` fatal/config error,
+`opdisc run` / `opdisc collect` share one tolerant exit contract:
+`0` no source failed, nothing was due, or at least one attempted source
+succeeded (partial failures are tolerated and visible in `source-health`);
+`1` sources were attempted but all failed; `2` fatal/config error;
 `3` another run already active (lock).
 
 ## Source registry

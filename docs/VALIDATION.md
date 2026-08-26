@@ -254,3 +254,73 @@ Still unverified at publication time:
   environment; see the repository's Actions tab for current results.
 - No live collection was performed during this final audit; the recorded live
   results from 2026-08-25 above remain the latest live evidence.
+
+## Public-readiness hardening cycle (2026-08-26 UTC)
+
+Scope: tolerant exit-code contract for `opdisc run`/`opdisc collect` via a
+shared helper (`runner.workflow_exit_code`), hardened publication audit
+(blanket `tests//examples/` exemption removed), least-privilege CI workflow
+permissions, and repaired Windows installer Python detection. No changes to
+adapters, registry entries, identity, scoring, or export semantics.
+
+### Environment
+
+Debian Linux (sandbox), CPython 3.12.14 (uv-managed), repository-local
+`.venv`, no network-dependent tests; dependency installation used the normal
+public package index.
+
+### Deterministic gates (actual results)
+
+| Gate | Command | Result |
+| --- | --- | --- |
+| Linter | `.venv/bin/ruff check src tests` | All checks passed |
+| Type checker | `.venv/bin/mypy` | Success: no issues in 33 source files |
+| Test suite | `.venv/bin/python -m pytest -q -m "not live" --cov=opportunity_discovery --cov-report=term-missing` | **121 passed** (107 prior + 10 new exit-contract + 4 reworked/new audit tests), ~84% total coverage |
+| Package build | `.venv/bin/python -m build` | sdist + wheel built successfully |
+| Publication audit | `.venv/bin/opdisc audit .` | 95 tracked files scanned, 0 errors, 0 warnings |
+| Registry validation | `.venv/bin/opdisc --json validate-config` | ok; 272 total sources, 248 enabled, 24 disabled — unchanged |
+| Clean checkout | full suite + audit in a fresh copy of all current files | 121 passed; audit 0 errors |
+
+### Exit-contract verification (tests/test_exit_contract.py)
+
+New focused tests lock in the shared tolerant contract for both
+`opdisc run` and `opdisc collect`: no-due-sources → 0; all attempted sources
+failed → 1; partial failure → 0; configuration error → 2; registry fatal → 2;
+held `run.lock` → 3. Helper unit tests cover `workflow_exit_code` directly.
+
+### Audit hardening verification
+
+- The old `_is_allowed` blanket exemption for `tests/` and `examples/` is
+  gone; every rule now applies to every tracked file.
+- Detection-shaped values in test source are constructed from runtime
+  fragments, so no scan-matching credential or personal-path literal is
+  tracked (`tests/test_audit.py`, `tests/test_cli.py`).
+- New regression tests prove a prohibited credential under
+  `tests/fixtures/`, a banned `.env` under `tests/fixtures/`, and a machine
+  path under `examples/` are all still detected.
+- A repository guard test runs the real audit against this checkout inside
+  the suite, so any future scan-matching literal fails CI.
+
+### CI workflow permissions
+
+`.github/workflows/ci.yml` now declares top-level
+`permissions: contents: read`. GitHub-owned Actions (`actions/checkout@v6`,
+`actions/setup-python@v6`) and the OS/Python matrix are unchanged. The CodeQL
+alert about missing explicit workflow permissions can only be confirmed
+resolved on GitHub after the next push; it could not be verified from this
+environment.
+
+### Remaining limitations after this cycle
+
+- **Native Windows execution was NOT verified in this environment** — there
+  is no PowerShell host or Windows system available here. Specifically:
+  `scripts/install.ps1` was rewritten (py-launcher candidates 3.11–3.14, then
+  `python.exe` on PATH; each candidate must self-report ≥ 3.11; precise error
+  when none qualify) but has never been executed; `scripts/run.ps1` behavior
+  and Task Scheduler registration remain unexercised. These need one manual
+  pass on a real Windows checkout before that claim can be made. CI's
+  Windows matrix covers the Python package only, not the PowerShell scripts.
+- No live collection or live `validate-sources` run occurred in this cycle;
+  the 2026-08-25 live results above remain the latest live evidence.
+- The publication-audit file count reflects currently tracked files (95);
+  committing the new test file raises it to 96 with no expected findings.

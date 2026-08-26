@@ -44,9 +44,9 @@ It exits non-zero on errors. Run it before every push/publish.
   is deliberately conservative to avoid false positives.
 - Only scans textual files; binary payloads are caught by filename/suffix
   rules only.
-- The entire `tests/` tree and `examples/` are allow-listed because they
-  deliberately contain synthetic examples of every detection rule; if you put
-  real credentials or personal data under `tests/` the audit will not flag
-  them — never do that.
+- No path is exempt: the rules apply to `tests/` and `examples/` like every
+  other tracked file. Tests that need detection-shaped values construct them
+  from runtime fragments, so a real credential or machine path committed under
+  those trees is still flagged (regression-tested).
 - It inspects the working tree/tracked files at scan time; it cannot vouch for
   history already pushed elsewhere.

@@ -5,12 +5,28 @@ only; nothing at runtime depends on it.
 
 ## Install (PowerShell, one-time)
 
+The installer and the manual commands are **alternatives** — either produces
+the same repository-local `.venv` for a **normal installation** (runtime
+package only, which is all scheduled runs need). For a **development
+installation** (tests, Ruff, Mypy) use the dev extra shown at the end.
+
 ```powershell
 cd path\to\opportunity-discovery
-py -3.12 -m venv .venv
+
+# Option A: installer (locates and verifies Python 3.11+ via the py launcher
+#           or python.exe, then performs the same steps as Option B)
+.\scripts\install.ps1
+
+# Option B: manual
+py -3.12 -m venv .venv                       # any Python 3.11+ works
 .\.venv\Scripts\python -m pip install --upgrade pip
-.\.venv\Scripts\pip install -e .
-.\scripts\install.ps1        # or run the above manually; validates the install
+.\.venv\Scripts\pip install -e .             # normal installation
+```
+
+Development installation (instead of the plain `-e .` above):
+
+```powershell
+.\.venv\Scripts\pip install -e '.[dev]'
 ```
 
 ## Normal run
@@ -26,8 +42,10 @@ py -3.12 -m venv .venv
 
 - runs `opdisc run --quiet`,
 - appends output to `logs\run-YYYYMMDD.log`,
-- maps exit codes: `0` ok, `1` partial source failures, `2` fatal,
-  `3` already-running (lock),
+- maps exit codes (same contract as `opdisc collect`): `0` no failures /
+  nothing due / at least one source succeeded, `1` all attempted sources
+  failed, `2` fatal/config error, `3` already-running (lock),
+- surfaces the code to Task Scheduler as the task result.
 - surfaces the code to Task Scheduler as the task result.
 
 ## Scheduled task

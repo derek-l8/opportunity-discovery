@@ -25,6 +25,21 @@ def new_run_id() -> str:
     return "run-" + datetime.now(UTC).strftime("%Y%m%dT%H%M%S%fZ")
 
 
+def workflow_exit_code(summary: RunSummary) -> int:
+    """Tolerant scheduling contract shared by `opdisc run` and `opdisc collect`.
+
+    - 0 when no source failed, no sources were due, or at least one
+      attempted source succeeded (partial failure is tolerated by design;
+      per-source health records the failures).
+    - 1 only when sources were attempted and every attempt failed.
+    Fatal/configuration errors return 2 before this helper is consulted;
+    a competing lock returns 3 from the CLI.
+    """
+    if summary.sources_attempted and summary.sources_failed == summary.sources_attempted:
+        return 1
+    return 0
+
+
 def ensure_ready(cfg: EngineConfig) -> sqlite3.Connection:
     """Initialize/migrate storage and sync the registry into the DB."""
     conn = dbm.connect(cfg.paths.data_dir / "opdisc.sqlite3")
@@ -147,10 +162,7 @@ def run_full_workflow(conn: sqlite3.Connection, cfg: EngineConfig, *,
             summary.detail["fatal"] = fatal_errors
             return 2, summary
         run_collect(conn, cfg, run_id, summary, force=force, fetcher=fetcher)
-        if summary.sources_failed and not summary.sources_succeeded and summary.sources_attempted:
-            exit_code = 1
-        elif summary.sources_failed:
-            exit_code = 0  # partial failure tolerated by design; see source-health
+        exit_code = workflow_exit_code(summary)
         if do_export:
             finalize_run(conn, cfg, run_id, summary)
         else:

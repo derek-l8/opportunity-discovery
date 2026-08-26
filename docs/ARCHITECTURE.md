@@ -55,7 +55,10 @@ source health. It never owns personal eligibility or priority.
 7. Deterministic scoring stores components and reason codes.
 8. Exports written atomically; delta computed against the last export
    checkpoint; checkpoints updated.
-9. Run summary persisted; exit code reflects partial/full failures.
+9. Run summary persisted; `run`/`collect` apply the shared tolerant exit
+   contract (`runner.workflow_exit_code`): 0 when nothing failed, nothing was
+   due, or at least one source succeeded; 1 only when all attempted sources
+   failed; 2 for fatal/config errors; 3 when another run holds the lock.
 
 ## Failure isolation
 
