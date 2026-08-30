@@ -42,7 +42,7 @@ alternatives; either produces the same repository-local `.venv`:
 
 ```powershell
 .\scripts\install.ps1                 # normal install with checks, or manually:
-py -3.12 -m venv .venv
+py -3.14 -m venv .venv
 .\.venv\Scripts\pip install -e .      # normal installation (runtime only)
 .\scripts\run.ps1                     # normal scheduled run (logs + exit codes)
 ```
@@ -50,6 +50,12 @@ py -3.12 -m venv .venv
 A **normal installation** (`pip install -e .`) is all scheduled runs need.
 A **development installation** adds test/lint/type tooling:
 `.\.venv\Scripts\pip install -e '.[dev]'`.
+
+Python 3.14 is the recommended default for new installations. Python 3.11,
+3.12, 3.13, and 3.14 are supported; the installer selects the newest compatible
+installed interpreter, so users without 3.14 can use 3.13, 3.12, or 3.11.
+Existing virtual environments keep the Python version with which they were
+created and do not upgrade automatically.
 
 Task Scheduler setup/removal (does not run automatically; you invoke these):
 

@@ -1,4 +1,5 @@
 """Reusable deterministic test utilities (no pytest fixtures here; see conftest.py)."""
+
 from __future__ import annotations
 
 import json
@@ -42,9 +43,9 @@ class MockFetcher:
         self.calls: list[str] = []
         from types import SimpleNamespace
 
-        self.cfg = SimpleNamespace(fetch=SimpleNamespace(max_retries=2,
-                                                         backoff_base_seconds=0.0,
-                                                         backoff_max_seconds=0.0))
+        self.cfg = SimpleNamespace(
+            fetch=SimpleNamespace(max_retries=2, backoff_base_seconds=0.0, backoff_max_seconds=0.0)
+        )
         self.throttle = SimpleNamespace(wait=lambda domain: None)
         self.client = SimpleNamespace(post=self._post)
 
@@ -59,18 +60,28 @@ class MockFetcher:
                 return route
         return (404, "not found", {})
 
-    def fetch(self, url: str, *, extra_headers: dict[str, str] | None = None,
-              use_cache_fallback: bool = True) -> FetchOutcome:
+    def fetch(
+        self, url: str, *, extra_headers: dict[str, str] | None = None, use_cache_fallback: bool = True
+    ) -> FetchOutcome:
         self.calls.append(url)
         status, body, headers = self._lookup(url)
         return FetchOutcome(
-            url=url, status=status, text=body,
+            url=url,
+            status=status,
+            text=body,
             content_type=headers.get("content-type"),
-            etag=headers.get("etag"), last_modified=headers.get("last-modified"),
+            etag=headers.get("etag"),
+            last_modified=headers.get("last-modified"),
             not_modified=(status == 304),
-            state=("not-modified" if status == 304
-                   else "ok" if status < 400
-                   else "rate-limited" if status == 429 else "failed"),
+            state=(
+                "not-modified"
+                if status == 304
+                else "ok"
+                if status < 400
+                else "rate-limited"
+                if status == 429
+                else "failed"
+            ),
             error=None if status < 400 else f"HTTP {status}",
         )
 

@@ -3,6 +3,7 @@
 Public endpoints (no credentials):
     https://boards-api.greenhouse.io/v1/boards/{org}/jobs?content=true
 """
+
 from __future__ import annotations
 
 import json
@@ -19,14 +20,14 @@ class GreenhouseAdapter:
     def run(self, ctx) -> AdapterResult:  # type: ignore[no-untyped-def]
         org = ctx.source.endpoint_config.get("board") or ctx.source.endpoint_config.get("org")
         if not org:
-            return AdapterResult(ok=False, state="check-failed",
-                                 detail="greenhouse adapter requires endpoint_config.board")
+            return AdapterResult(
+                ok=False, state="check-failed", detail="greenhouse adapter requires endpoint_config.board"
+            )
         url = f"https://boards-api.greenhouse.io/v1/boards/{org}/jobs?content=true"
         out = ctx.fetcher.fetch(url)
         if out.not_modified and not out.text:
             # Unchanged upstream but no cached body available.
-            return AdapterResult(ok=True, empty_ok=True, http_status=304,
-                                 detail="not modified")
+            return AdapterResult(ok=True, empty_ok=True, http_status=304, detail="not modified")
         # A 304 carries the cached body in out.text; parse it like a normal
         # response so observations continue and closures stay accurate.
         if not out.ok:
@@ -34,12 +35,14 @@ class GreenhouseAdapter:
         try:
             data = parse_json_body(out.text)
         except (ValueError, json.JSONDecodeError) as exc:
-            return AdapterResult(ok=False, state="format-changed", detail=f"bad JSON: {exc}",
-                                 http_status=out.status)
+            return AdapterResult(
+                ok=False, state="format-changed", detail=f"bad JSON: {exc}", http_status=out.status
+            )
         jobs = data.get("jobs")
         if not isinstance(jobs, list):
-            return AdapterResult(ok=False, state="format-changed", detail="missing 'jobs' array",
-                                 http_status=out.status)
+            return AdapterResult(
+                ok=False, state="format-changed", detail="missing 'jobs' array", http_status=out.status
+            )
         records = [self._record(job, org, ctx.excerpt_chars) for job in jobs]
         return AdapterResult(ok=True, records=records, empty_ok=True, http_status=out.status)
 
@@ -67,7 +70,8 @@ class GreenhouseAdapter:
             provider_req_id=str(job.get("id")) if job.get("id") is not None else None,
             location_text=loc_text,
             remote_signal=(
-                "remote" if loc_text and ("remote" in loc_text.lower() or "anywhere" in loc_text.lower())
+                "remote"
+                if loc_text and ("remote" in loc_text.lower() or "anywhere" in loc_text.lower())
                 else None
             ),
             posted_date=posted,

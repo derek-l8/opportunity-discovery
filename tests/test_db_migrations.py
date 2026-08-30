@@ -12,13 +12,20 @@ def test_migrations_apply_and_are_idempotent(tmp_path):
     applied_second = migrate(conn)
     assert applied_second == []
     # tables exist and are stable across re-open
-    tables = {
-        r["name"] for r in conn.execute(
-            "SELECT name FROM sqlite_master WHERE type='table'")
-    }
-    for expected in ("sources", "source_checks", "collection_runs", "opportunities",
-                     "observations", "provenance", "aliases", "duplicate_decisions",
-                     "changes", "export_checkpoints", "raw_cache"):
+    tables = {r["name"] for r in conn.execute("SELECT name FROM sqlite_master WHERE type='table'")}
+    for expected in (
+        "sources",
+        "source_checks",
+        "collection_runs",
+        "opportunities",
+        "observations",
+        "provenance",
+        "aliases",
+        "duplicate_decisions",
+        "changes",
+        "export_checkpoints",
+        "raw_cache",
+    ):
         assert expected in tables
     conn.close()
     conn2 = connect(db_path)
@@ -33,6 +40,7 @@ def test_foreign_keys_enforced(tmp_path):
         with __import__("pytest").raises(sqlite3.IntegrityError):
             conn.execute(
                 "INSERT INTO source_checks (source_id, run_id, checked_at, state)"
-                " VALUES ('missing-source', NULL, '2026-01-01', 'healthy')")
+                " VALUES ('missing-source', NULL, '2026-01-01', 'healthy')"
+            )
     finally:
         conn.close()

@@ -1,4 +1,5 @@
 """Validate real export artifacts against the shipped JSON Schemas."""
+
 import json
 from pathlib import Path
 
@@ -29,12 +30,23 @@ def exported(tmp_path, engine_config):
     conn = make_db(tmp_path)
     fetcher = Fetcher(engine_config, conn=conn)
     fixture = tmp_path / "feed.json"
-    fixture.write_text(json.dumps({"jobs": [
-        {"title": "FPGA Design Intern", "url": "https://acme.example.com/1",
-         "season": "Summer 2027", "compensation": "$40/hr paid",
-         "location": "Santa Clara, CA"}]}), encoding="utf-8")
-    spec = source(adapter="jsonfeed",
-                  endpoint_config={"url": fixture.as_uri(), "records_path": "jobs"})
+    fixture.write_text(
+        json.dumps(
+            {
+                "jobs": [
+                    {
+                        "title": "FPGA Design Intern",
+                        "url": "https://acme.example.com/1",
+                        "season": "Summer 2027",
+                        "compensation": "$40/hr paid",
+                        "location": "Santa Clara, CA",
+                    }
+                ]
+            }
+        ),
+        encoding="utf-8",
+    )
+    spec = source(adapter="jsonfeed", endpoint_config={"url": fixture.as_uri(), "records_path": "jobs"})
     sync_sources_to_db(conn, [spec])
     from opportunity_discovery.runner import finalize_run
 
@@ -49,13 +61,11 @@ def test_candidates_validate(exported):
     schema = json.loads((SCHEMA_DIR / "candidate.schema.json").read_text(encoding="utf-8"))
     registry = load_registry()
     for line in (exported / "candidates.jsonl").read_text().splitlines():
-        jsonschema.Draft202012Validator(schema, registry=registry).validate(
-            json.loads(line))
+        jsonschema.Draft202012Validator(schema, registry=registry).validate(json.loads(line))
 
 
 def test_delta_packet_validates(exported):
-    schema = json.loads(
-        (SCHEMA_DIR / "delta-packet.schema.json").read_text(encoding="utf-8"))
+    schema = json.loads((SCHEMA_DIR / "delta-packet.schema.json").read_text(encoding="utf-8"))
     registry = load_registry()
     doc = json.loads((exported / "delta_packet.json").read_text(encoding="utf-8"))
     jsonschema.Draft202012Validator(schema, registry=registry).validate(doc)

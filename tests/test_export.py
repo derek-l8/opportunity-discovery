@@ -20,9 +20,21 @@ def seed(engine_config, tmp_path, payload: str):
 
 
 def test_exports_written_atomically_and_deterministic(engine_config, tmp_path):
-    conn = seed(engine_config, tmp_path, json.dumps({"jobs": [
-        {"id": 1, "title": "Firmware Intern",
-         "absolute_url": "https://boards.greenhouse.io/acme/jobs/1"}]}))
+    conn = seed(
+        engine_config,
+        tmp_path,
+        json.dumps(
+            {
+                "jobs": [
+                    {
+                        "id": 1,
+                        "title": "Firmware Intern",
+                        "absolute_url": "https://boards.greenhouse.io/acme/jobs/1",
+                    }
+                ]
+            }
+        ),
+    )
     a = export_all(conn, engine_config, "run-x")
     b = export_all(conn, engine_config, "run-x")
     for artifact in ("candidates", "review_queue"):
@@ -36,11 +48,22 @@ def test_exports_written_atomically_and_deterministic(engine_config, tmp_path):
 def test_delta_packet_second_run_is_empty(engine_config, tmp_path):
     conn = make_db(tmp_path)
     fetcher = MockFetcher()
-    payload = json.dumps({"jobs": [
-        {"id": 1, "title": "Firmware Intern",
-         "absolute_url": "https://boards.greenhouse.io/acme/jobs/1"},
-        {"id": 2, "title": "Software Intern",
-         "absolute_url": "https://boards.greenhouse.io/acme/jobs/2"}]})
+    payload = json.dumps(
+        {
+            "jobs": [
+                {
+                    "id": 1,
+                    "title": "Firmware Intern",
+                    "absolute_url": "https://boards.greenhouse.io/acme/jobs/1",
+                },
+                {
+                    "id": 2,
+                    "title": "Software Intern",
+                    "absolute_url": "https://boards.greenhouse.io/acme/jobs/2",
+                },
+            ]
+        }
+    )
     fetcher.add("https://boards-api.greenhouse.io", 200, payload)
     spec = source()
     sync_sources_to_db(conn, [spec])
@@ -54,11 +77,22 @@ def test_delta_packet_second_run_is_empty(engine_config, tmp_path):
     assert second["delta_packet"]["count"] == 0  # identical rerun -> empty delta
 
     # material change produces exactly one delta entry again
-    changed = json.dumps({"jobs": [
-        {"id": 1, "title": "Senior Firmware Intern",
-         "absolute_url": "https://boards.greenhouse.io/acme/jobs/1"},
-        {"id": 2, "title": "Software Intern",
-         "absolute_url": "https://boards.greenhouse.io/acme/jobs/2"}]})
+    changed = json.dumps(
+        {
+            "jobs": [
+                {
+                    "id": 1,
+                    "title": "Senior Firmware Intern",
+                    "absolute_url": "https://boards.greenhouse.io/acme/jobs/1",
+                },
+                {
+                    "id": 2,
+                    "title": "Software Intern",
+                    "absolute_url": "https://boards.greenhouse.io/acme/jobs/2",
+                },
+            ]
+        }
+    )
     fetcher.add("https://boards-api.greenhouse.io", 200, changed)
     s3 = RunSummary(run_id="run-3", started_at="2026-08-24T00:00:00Z")
     Pipeline(conn, engine_config, "run-3", s3).process_source(spec, fetcher)
@@ -69,11 +103,15 @@ def test_delta_packet_second_run_is_empty(engine_config, tmp_path):
 
 def test_packet_pagination_continuation(engine_config, tmp_path):
     engine_config.export.packet_char_limit = 1500
-    jobs = [{"id": i,
-             "title": f"FPGA Design Verification Internship Position Number {i}",
-             "absolute_url": f"https://boards.greenhouse.io/acme/jobs/{i}",
-             "content": "detailed description " * 20}
-            for i in range(1, 12)]
+    jobs = [
+        {
+            "id": i,
+            "title": f"FPGA Design Verification Internship Position Number {i}",
+            "absolute_url": f"https://boards.greenhouse.io/acme/jobs/{i}",
+            "content": "detailed description " * 20,
+        }
+        for i in range(1, 12)
+    ]
     conn = seed(engine_config, tmp_path, json.dumps({"jobs": jobs}))
     export_all(conn, engine_config, "run-x")
     out_dir = tmp_path / "output"
@@ -91,36 +129,65 @@ def test_packet_pagination_continuation(engine_config, tmp_path):
 
 
 def test_review_queue_membership_reasons(engine_config, tmp_path):
-    conn = seed(engine_config, tmp_path, json.dumps({"jobs": [
-        {"id": 1, "title": "Firmware Intern",
-         "absolute_url": "https://boards.greenhouse.io/acme/jobs/1"},
-        {"id": 2, "title": "Office Administrator Assistant",
-         "absolute_url": "https://boards.greenhouse.io/acme/jobs/2"}]}))
+    conn = seed(
+        engine_config,
+        tmp_path,
+        json.dumps(
+            {
+                "jobs": [
+                    {
+                        "id": 1,
+                        "title": "Firmware Intern",
+                        "absolute_url": "https://boards.greenhouse.io/acme/jobs/1",
+                    },
+                    {
+                        "id": 2,
+                        "title": "Office Administrator Assistant",
+                        "absolute_url": "https://boards.greenhouse.io/acme/jobs/2",
+                    },
+                ]
+            }
+        ),
+    )
     rows = {r["title"]: r for r in conn.execute("SELECT * FROM opportunities")}
     member_relevant, reasons = is_review_queue_member(rows["Firmware Intern"])
     assert member_relevant
     member_irrelevant, _ = is_review_queue_member(rows["Office Administrator Assistant"])
     assert not member_irrelevant
     # excluded records stay in candidates but leave the review queue
-    conn.execute("UPDATE opportunities SET reason_codes_json=? WHERE title=?",
-                 (json.dumps(["exclude:school-term-coop"]), "Firmware Intern"))
-    refreshed = conn.execute("SELECT * FROM opportunities WHERE title=?",
-                             ("Firmware Intern",)).fetchone()
+    conn.execute(
+        "UPDATE opportunities SET reason_codes_json=? WHERE title=?",
+        (json.dumps(["exclude:school-term-coop"]), "Firmware Intern"),
+    )
+    refreshed = conn.execute("SELECT * FROM opportunities WHERE title=?", ("Firmware Intern",)).fetchone()
     member_excluded, _ = is_review_queue_member(refreshed)
     assert not member_excluded
     conn.close()
 
 
 def test_candidates_include_excluded_records(engine_config, tmp_path):
-    conn = seed(engine_config, tmp_path, json.dumps({"jobs": [
-        {"id": 1, "title": "Spring 2027 Co-op: Hardware Engineer",
-         "absolute_url": "https://boards.greenhouse.io/acme/jobs/1"}]}))
+    conn = seed(
+        engine_config,
+        tmp_path,
+        json.dumps(
+            {
+                "jobs": [
+                    {
+                        "id": 1,
+                        "title": "Spring 2027 Co-op: Hardware Engineer",
+                        "absolute_url": "https://boards.greenhouse.io/acme/jobs/1",
+                    }
+                ]
+            }
+        ),
+    )
     info = export_all(conn, engine_config, "run-x")
     assert info["candidates"]["count"] == 1  # kept in SQLite + full export
-    review = [json.loads(line) for line in
-              (tmp_path / "output" / "review_queue.jsonl").read_text().splitlines()]
-    assert all("exclude:school-term-coop" not in (r.get("reason_codes") or [])
-               or False for r in review)  # suppressed from queue with reason code
-    cand = [json.loads(line) for line in
-            (tmp_path / "output" / "candidates.jsonl").read_text().splitlines()]
+    review = [
+        json.loads(line) for line in (tmp_path / "output" / "review_queue.jsonl").read_text().splitlines()
+    ]
+    assert all(
+        "exclude:school-term-coop" not in (r.get("reason_codes") or []) or False for r in review
+    )  # suppressed from queue with reason code
+    cand = [json.loads(line) for line in (tmp_path / "output" / "candidates.jsonl").read_text().splitlines()]
     assert any("exclude:school-term-coop" in (c.get("reason_codes") or []) for c in cand)

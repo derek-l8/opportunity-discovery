@@ -11,12 +11,16 @@
 
 ## Installation
 
-**`install.ps1` reports "No Python 3.11+ interpreter found"**
-The installer tried the Windows py launcher (`py -3.11` through `py -3.14`)
-and `python.exe` on PATH; none provided a working Python ≥ 3.11. Install
-Python 3.11+ from python.org (enable "Add python.exe to PATH") and re-run.
+**`install.ps1` reports "No compatible Python interpreter found"**
+The installer tried `py -3.14`, `py -3.13`, `py -3.12`, `py -3.11`, then
+`python.exe` on PATH. Install a supported Python and re-run. Python 3.14 is
+recommended for new installations; 3.11, 3.12, 3.13, and 3.14 are supported.
+The newest compatible installed version is selected automatically.
 The installer and the manual commands in `docs/OPERATIONS_WINDOWS.md` are
 alternatives — either produces the same `.venv`.
+
+Existing virtual environments do not upgrade their Python automatically.
+Remove and recreate `.venv` deliberately if you want to change its version.
 
 ## Common issues
 

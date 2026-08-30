@@ -4,6 +4,7 @@ A source counts as validated only when a live probe confirms identity,
 adapter fit, expected format, and distinguishable valid-empty behavior.
 Failures are recorded with reasons; they never break ordinary runs.
 """
+
 from __future__ import annotations
 
 import logging
@@ -41,8 +42,12 @@ def validate_source(spec: SourceSpec, cfg, *, timeout_grace: bool = True) -> tup
     return VALIDATION_FAILED, result.detail or "check failed"
 
 
-def validate_all(sources: list[SourceSpec], conn: sqlite3.Connection, cfg,  # type: ignore[no-untyped-def]
-                 concurrency: int = 6) -> dict[str, dict[str, str]]:
+def validate_all(
+    sources: list[SourceSpec],
+    conn: sqlite3.Connection,
+    cfg,  # type: ignore[no-untyped-def]
+    concurrency: int = 6,
+) -> dict[str, dict[str, str]]:
     """Validate all enabled sources concurrently; persist results."""
     results: dict[str, dict[str, str]] = {}
     today = datetime.now(UTC).date().isoformat()
@@ -66,13 +71,13 @@ def validate_all(sources: list[SourceSpec], conn: sqlite3.Connection, cfg,  # ty
             "status": status,
             "detail": s.quarantine_reason or "disabled by registry",
         }
-        _persist(conn, s.source_id, results[s.source_id]["status"],
-                 results[s.source_id]["detail"], None)
+        _persist(conn, s.source_id, results[s.source_id]["status"], results[s.source_id]["detail"], None)
     return results
 
 
-def _persist(conn: sqlite3.Connection, source_id: str, status: str, detail: str,
-             validated_on: str | None) -> None:
+def _persist(
+    conn: sqlite3.Connection, source_id: str, status: str, detail: str, validated_on: str | None
+) -> None:
     conn.execute(
         "UPDATE sources SET validation_status=?, last_validated=COALESCE(?, last_validated),"
         " updated_at=? WHERE source_id=?",

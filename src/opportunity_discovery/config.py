@@ -1,4 +1,5 @@
 """Configuration loading and validation (config/default.toml, overridable)."""
+
 from __future__ import annotations
 
 import tomllib

@@ -3,6 +3,7 @@
 The public lead layer never stores applicant-specific data; see
 docs/INTEGRATION_CONTRACT.md for the two-layer data contract.
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass, field
@@ -44,9 +45,7 @@ class SourceSpec:
             errors.append(f"{self.source_id}: adapter is required")
         cfg = self.endpoint_config or {}
         if not any(k in cfg for k in ("url", "endpoint", "tenant", "board")):
-            errors.append(
-                f"{self.source_id}: endpoint_config must define 'url' (or adapter-specific keys)"
-            )
+            errors.append(f"{self.source_id}: endpoint_config must define 'url' (or adapter-specific keys)")
         return errors
 
 

@@ -6,6 +6,7 @@ Public endpoint pattern (no credentials):
 
 Only configured tenants/sites are contacted; no tenant discovery is performed.
 """
+
 from __future__ import annotations
 
 import json
@@ -29,8 +30,9 @@ class WorkdayAdapter:
         cfg = ctx.source.endpoint_config
         base = cfg.get("url")  # e.g. https://nvidia.wd5.myworkdayjobs.com/NVIDIAExternal
         if not base:
-            return AdapterResult(ok=False, state="check-failed",
-                                 detail="workday adapter requires endpoint_config.url")
+            return AdapterResult(
+                ok=False, state="check-failed", detail="workday adapter requires endpoint_config.url"
+            )
         parts = urlsplit(base)
         host_m = re.match(
             r"^(?:www\.)?(?P<tenant>[^.]+)\.(?P<host>wd\d+\.myworkday(?:jobs|sites)\.com)$",
@@ -39,8 +41,9 @@ class WorkdayAdapter:
         path_parts = [p for p in parts.path.split("/") if p]
         site = cfg.get("site") or (path_parts[-1] if path_parts else None)
         if not host_m or not site:
-            return AdapterResult(ok=False, state="check-failed",
-                                 detail=f"cannot determine workday tenant/site from {base}")
+            return AdapterResult(
+                ok=False, state="check-failed", detail=f"cannot determine workday tenant/site from {base}"
+            )
         tenant = cfg.get("tenant") or host_m.group("tenant")
         api = f"https://{host_m.group('tenant')}.{host_m.group('host')}/wday/cxs/{tenant}/{site}/jobs"
         records: list[RawOpportunity] = []
@@ -61,8 +64,9 @@ class WorkdayAdapter:
                         headers=headers,
                     )
                 except Exception as exc:
-                    return AdapterResult(ok=False, state="check-failed",
-                                         detail=f"workday request failed: {exc}")
+                    return AdapterResult(
+                        ok=False, state="check-failed", detail=f"workday request failed: {exc}"
+                    )
                 status = resp.status_code
                 if status in _RETRY_STATUS and attempt <= ctx.fetcher.cfg.fetch.max_retries:
                     _time.sleep(backoff)
@@ -70,17 +74,20 @@ class WorkdayAdapter:
                     continue
                 break
             if status == 429:
-                return AdapterResult(ok=False, state="rate-limited", http_status=status,
-                                     detail="HTTP 429 from workday CXS")
+                return AdapterResult(
+                    ok=False, state="rate-limited", http_status=status, detail="HTTP 429 from workday CXS"
+                )
             if status != 200:
                 state = "format-changed" if status in (404, 410) else "check-failed"
-                return AdapterResult(ok=False, state=state, http_status=status,
-                                     detail=f"HTTP {status} from {api}")
+                return AdapterResult(
+                    ok=False, state=state, http_status=status, detail=f"HTTP {status} from {api}"
+                )
             try:
                 data = json.loads(resp.text)
             except ValueError as exc:
-                return AdapterResult(ok=False, state="format-changed", detail=f"bad JSON: {exc}",
-                                     http_status=status)
+                return AdapterResult(
+                    ok=False, state="format-changed", detail=f"bad JSON: {exc}", http_status=status
+                )
             total = int(data.get("total") or 0)
             postings = data.get("jobPostings") or []
             for posting in postings:

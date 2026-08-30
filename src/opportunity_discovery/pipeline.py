@@ -1,4 +1,5 @@
 """Collection pipeline: fetch -> normalize -> reconcile -> detect changes -> score."""
+
 from __future__ import annotations
 
 import json
@@ -24,8 +25,7 @@ def _now() -> str:
 
 
 class Pipeline:
-    def __init__(self, conn: sqlite3.Connection, cfg: EngineConfig, run_id: str,
-                 summary: RunSummary) -> None:
+    def __init__(self, conn: sqlite3.Connection, cfg: EngineConfig, run_id: str, summary: RunSummary) -> None:
         self.conn = conn
         self.cfg = cfg
         self.run_id = run_id
@@ -33,8 +33,7 @@ class Pipeline:
         self._observed_ids: set[str] = set()
         # ensure the run row exists before child rows reference it
         conn.execute(
-            "INSERT OR IGNORE INTO collection_runs (run_id, started_at, mode)"
-            " VALUES (?, ?, 'collect')",
+            "INSERT OR IGNORE INTO collection_runs (run_id, started_at, mode) VALUES (?, ?, 'collect')",
             (run_id, summary.started_at),
         )
         conn.commit()
@@ -42,9 +41,7 @@ class Pipeline:
     # ------------------------------------------------------------- collection
     def process_source(self, source: SourceSpec, fetcher: Fetcher) -> None:
         """Run one source end-to-end with full isolation."""
-        result: AdapterResult = run_source(
-            source, fetcher, excerpt_chars=self.cfg.export.excerpt_chars
-        )
+        result: AdapterResult = run_source(source, fetcher, excerpt_chars=self.cfg.export.excerpt_chars)
         self._record_check(source, result)
         if not result.ok:
             # Preserve prior success: never let a failed check mutate records.
@@ -98,8 +95,13 @@ class Pipeline:
             VALUES (?, ?, ?, ?, ?, ?, ?)
             """,
             (
-                source.source_id, self.run_id, _now(), state, result.http_status,
-                result.detail, 0,
+                source.source_id,
+                self.run_id,
+                _now(),
+                state,
+                result.http_status,
+                result.detail,
+                0,
             ),
         )
 
@@ -236,8 +238,9 @@ class Pipeline:
         self._touch_provenance_url(kept_id, source_id, url, now)
         self.conn.commit()
 
-    def _apply_observation(self, existing: sqlite3.Row, source: SourceSpec,
-                           raw: RawOpportunity, *, opp_id_override: str | None) -> bool:
+    def _apply_observation(
+        self, existing: sqlite3.Row, source: SourceSpec, raw: RawOpportunity, *, opp_id_override: str | None
+    ) -> bool:
         """Update an existing opportunity with a fresh observation; detect changes."""
         opp_id = opp_id_override or str(existing["opportunity_id"])
         now = _now()
@@ -278,16 +281,18 @@ class Pipeline:
             if col == "description_hash":
                 old_desc_hash = existing["description_hash"]
                 new_desc_hash = description_hash(fields["description_excerpt"])
-                if old_desc_hash and new_desc_hash and old_desc_hash != new_desc_hash \
-                        and _may_overwrite("description"):
-                    changed["description"] = {
-                        "old": old_desc_hash, "new": new_desc_hash}
+                if (
+                    old_desc_hash
+                    and new_desc_hash
+                    and old_desc_hash != new_desc_hash
+                    and _may_overwrite("description")
+                ):
+                    changed["description"] = {"old": old_desc_hash, "new": new_desc_hash}
                     updates["description_hash"] = new_desc_hash
                     updates["description_excerpt"] = fields["description_excerpt"]
                     _set_owner("description")
                 continue
-            if (new_val not in (None, "") and new_val != old_val
-                    and _may_overwrite(col)):
+            if new_val not in (None, "") and new_val != old_val and _may_overwrite(col):
                 changed[col] = {"old": old_val, "new": new_val}
                 updates[col] = new_val
                 _set_owner(col)
@@ -298,8 +303,7 @@ class Pipeline:
             change_type = c.CHANGE_REOPENED
         elif changed:
             change_type = (
-                c.CHANGE_DEADLINE if set(changed) <= {"deadline", "deadline_tz"}
-                else c.CHANGE_MATERIAL
+                c.CHANGE_DEADLINE if set(changed) <= {"deadline", "deadline_tz"} else c.CHANGE_MATERIAL
             )
         if change_type == c.CHANGE_REOPENED:
             updates["active"] = 1
@@ -329,22 +333,34 @@ class Pipeline:
         # Rescore on material change so score components stay current.
         if change_type in (c.CHANGE_MATERIAL, c.CHANGE_DEADLINE, c.CHANGE_REOPENED):
             refreshed = RawOpportunity(
-                title=fields["title"], canonical_url=fields["canonical_url"] or "",
-                organization=fields["organization"], provider=fields["provider"],
-                provider_req_id=fields["provider_req_id"], location_text=fields["location_text"],
-                remote_signal=fields["remote_signal"], posted_date=fields["posted_date"],
-                deadline=fields["deadline"], deadline_tz=fields["deadline_tz"],
+                title=fields["title"],
+                canonical_url=fields["canonical_url"] or "",
+                organization=fields["organization"],
+                provider=fields["provider"],
+                provider_req_id=fields["provider_req_id"],
+                location_text=fields["location_text"],
+                remote_signal=fields["remote_signal"],
+                posted_date=fields["posted_date"],
+                deadline=fields["deadline"],
+                deadline_tz=fields["deadline_tz"],
                 compensation_text=fields["compensation_text"],
                 relocation_text=fields["relocation_text"],
                 description_excerpt=fields["description_excerpt"],
-                employment_type=fields["employment_type"], season=fields["season"],
+                employment_type=fields["employment_type"],
+                season=fields["season"],
             )
             tags, components, signals, reasons = self._score(refreshed)
             self.conn.execute(
                 "UPDATE opportunities SET role_family_tags_json=?, score_components_json=?,"
                 " signals_json=?, generic_score=?, reason_codes_json=? WHERE opportunity_id=?",
-                (json.dumps(tags), json.dumps(components.__dict__), json.dumps(signals),
-                 components.total, json.dumps(reasons), opp_id),
+                (
+                    json.dumps(tags),
+                    json.dumps(components.__dict__),
+                    json.dumps(signals),
+                    components.total,
+                    json.dumps(reasons),
+                    opp_id,
+                ),
             )
         # reset consecutive misses
         self._set_consecutive_misses(opp_id, 0)
@@ -385,8 +401,7 @@ class Pipeline:
             "location_city": parts[0] if len(parts) > 0 else None,
             "location_state": parts[1] if len(parts) > 1 else None,
             "location_country": (
-                parts[-1] if len(parts) > 2
-                else ("USA" if parts and "usa" in loc.lower() else None)
+                parts[-1] if len(parts) > 2 else ("USA" if parts and "usa" in loc.lower() else None)
             ),
             "remote_signal": remote,
             "season": season,
@@ -492,8 +507,7 @@ class Pipeline:
         )
 
 
-def expected_opportunities_from_sources(conn: sqlite3.Connection,
-                                        source_ids: list[str]) -> dict[str, str]:  # type: ignore[type-arg]
+def expected_opportunities_from_sources(conn: sqlite3.Connection, source_ids: list[str]) -> dict[str, str]:  # type: ignore[type-arg]
     """Map active opportunity_id -> provenance source_id limited to given sources."""
     out: dict[str, str] = {}
     if not source_ids:

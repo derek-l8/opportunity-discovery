@@ -6,6 +6,7 @@ Contract (see runner.workflow_exit_code):
 - 2: configuration error or unexpected fatal failure
 - 3: another run holds data/run.lock
 """
+
 from __future__ import annotations
 
 import os
@@ -33,8 +34,7 @@ def _validated_feed_source(source_id: str, url: str) -> dict:
 @pytest.fixture()
 def patched_fetcher(monkeypatch):
     fetcher = MockFetcher()
-    monkeypatch.setattr(
-        "opportunity_discovery.runner.Fetcher", lambda cfg, conn=None: fetcher)
+    monkeypatch.setattr("opportunity_discovery.runner.Fetcher", lambda cfg, conn=None: fetcher)
     return fetcher
 
 
@@ -62,41 +62,49 @@ def test_exit_code_all_failed_is_one():
 
 # --- CLI behavior ------------------------------------------------------------
 def test_collect_no_due_sources_exits_zero(engine_config, capsys):
-    write_sources_toml(engine_config, [{
-        "source_id": "pending-a", "display_name": "A", "organization": "O",
-        "adapter": "jsonfeed",
-        "endpoint_config": {"url": "https://a.example/feed.json"},
-        # validation_status defaults to pending -> never selected as due
-    }])
+    write_sources_toml(
+        engine_config,
+        [
+            {
+                "source_id": "pending-a",
+                "display_name": "A",
+                "organization": "O",
+                "adapter": "jsonfeed",
+                "endpoint_config": {"url": "https://a.example/feed.json"},
+                # validation_status defaults to pending -> never selected as due
+            }
+        ],
+    )
     assert _run(engine_config, "collect") == 0
     capsys.readouterr()
 
 
 def test_collect_all_sources_failed_exits_one(engine_config, patched_fetcher, capsys):
     patched_fetcher.add("https://bad.example/", 503, "upstream down")
-    write_sources_toml(engine_config, [
-        _validated_feed_source("feed-bad", "https://bad.example/feed.json")])
+    write_sources_toml(engine_config, [_validated_feed_source("feed-bad", "https://bad.example/feed.json")])
     assert _run(engine_config, "collect", "--force") == 1
     capsys.readouterr()
 
 
 def test_run_all_sources_failed_exits_one(engine_config, patched_fetcher, capsys):
     patched_fetcher.add("https://bad.example/", 503, "upstream down")
-    write_sources_toml(engine_config, [
-        _validated_feed_source("feed-bad", "https://bad.example/feed.json")])
+    write_sources_toml(engine_config, [_validated_feed_source("feed-bad", "https://bad.example/feed.json")])
     assert _run(engine_config, "run", "--force") == 1
     capsys.readouterr()
 
 
 def test_partial_failure_exits_zero(engine_config, patched_fetcher, capsys):
-    patched_fetcher.add("https://ok.example/", 200,
-                        '{"jobs": [{"title": "Intern", '
-                        '"url": "https://ok.example/apply/1"}]}')
+    patched_fetcher.add(
+        "https://ok.example/", 200, '{"jobs": [{"title": "Intern", "url": "https://ok.example/apply/1"}]}'
+    )
     patched_fetcher.add("https://bad.example/", 503, "upstream down")
-    write_sources_toml(engine_config, [
-        _validated_feed_source("feed-ok", "https://ok.example/feed.json"),
-        _validated_feed_source("feed-bad", "https://bad.example/feed.json"),
-    ])
+    write_sources_toml(
+        engine_config,
+        [
+            _validated_feed_source("feed-ok", "https://ok.example/feed.json"),
+            _validated_feed_source("feed-bad", "https://bad.example/feed.json"),
+        ],
+    )
     assert _run(engine_config, "collect", "--force") == 0
     assert _run(engine_config, "run", "--force") == 0
     capsys.readouterr()
@@ -112,16 +120,23 @@ def test_config_error_exits_two(engine_config, tmp_path, capsys):
 
 def test_registry_fatal_error_exits_two(engine_config, patched_fetcher, capsys):
     # Missing required registry key is a configuration-level fatal failure.
-    write_sources_toml(engine_config, [{
-        "source_id": "incomplete", "display_name": "I", "adapter": "jsonfeed",
-        "endpoint_config": {"url": "https://x.example/feed.json"}}])
+    write_sources_toml(
+        engine_config,
+        [
+            {
+                "source_id": "incomplete",
+                "display_name": "I",
+                "adapter": "jsonfeed",
+                "endpoint_config": {"url": "https://x.example/feed.json"},
+            }
+        ],
+    )
     assert _run(engine_config, "run", "--force") == 2
     capsys.readouterr()
 
 
 def test_lock_held_exits_three(engine_config, tmp_path, capsys):
-    write_sources_toml(engine_config, [
-        _validated_feed_source("feed-a", "https://a.example/feed.json")])
+    write_sources_toml(engine_config, [_validated_feed_source("feed-a", "https://a.example/feed.json")])
     lock_path = engine_config.paths.data_dir / "run.lock"
     lock_path.parent.mkdir(parents=True, exist_ok=True)
     lock_path.write_text(str(os.getpid()), encoding="utf-8")

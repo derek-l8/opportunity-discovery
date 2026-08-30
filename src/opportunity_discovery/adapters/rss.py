@@ -1,4 +1,5 @@
 """RSS / Atom feed adapter."""
+
 from __future__ import annotations
 
 import email.utils
@@ -25,13 +26,13 @@ class RssAdapter:
         cfg = ctx.source.endpoint_config
         url = cfg.get("url")
         if not url:
-            return AdapterResult(ok=False, state="check-failed",
-                                 detail="rss adapter requires endpoint_config.url")
+            return AdapterResult(
+                ok=False, state="check-failed", detail="rss adapter requires endpoint_config.url"
+            )
         out = ctx.fetcher.fetch(url)
         if out.not_modified and not out.text:
             # Unchanged upstream but no cached body available.
-            return AdapterResult(ok=True, empty_ok=True, http_status=304,
-                                 detail="not modified")
+            return AdapterResult(ok=True, empty_ok=True, http_status=304, detail="not modified")
         # A 304 carries the cached body in out.text; parse it like a normal
         # response so observations continue and closures stay accurate.
         if not out.ok:
@@ -40,9 +41,12 @@ class RssAdapter:
 
         parsed = feedparser.parse(out.text or "")
         if parsed.bozo and not parsed.entries:
-            return AdapterResult(ok=False, state="format-changed",
-                                 detail=f"feed parse error: {parsed.bozo_exception}",
-                                 http_status=out.status)
+            return AdapterResult(
+                ok=False,
+                state="format-changed",
+                detail=f"feed parse error: {parsed.bozo_exception}",
+                http_status=out.status,
+            )
         records: list[RawOpportunity] = []
         for entry in parsed.entries:
             link = entry.get("link")

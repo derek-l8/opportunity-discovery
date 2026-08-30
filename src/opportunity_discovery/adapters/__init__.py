@@ -1,4 +1,5 @@
 """Adapter package: import side registers all built-in adapters."""
+
 from __future__ import annotations
 
 # Importing these modules performs @register_adapter registration.

@@ -7,6 +7,7 @@ endpoint_config:
     link_attribute: href            # optional
     deadline_selector: ".deadline"  # optional
 """
+
 from __future__ import annotations
 
 import re
@@ -24,13 +25,15 @@ class HtmlListAdapter:
         url = cfg.get("url")
         item_selector = cfg.get("item_selector")
         if not url or not item_selector:
-            return AdapterResult(ok=False, state="check-failed",
-                                 detail="htmllist adapter requires endpoint_config.url and item_selector")
+            return AdapterResult(
+                ok=False,
+                state="check-failed",
+                detail="htmllist adapter requires endpoint_config.url and item_selector",
+            )
         out = ctx.fetcher.fetch(url)
         if out.not_modified and not out.text:
             # Unchanged upstream but no cached body available.
-            return AdapterResult(ok=True, empty_ok=True, http_status=304,
-                                 detail="not modified")
+            return AdapterResult(ok=True, empty_ok=True, http_status=304, detail="not modified")
         # A 304 carries the cached body in out.text; parse it like a normal
         # response so observations continue and closures stay accurate.
         if not out.ok:
@@ -41,9 +44,12 @@ class HtmlListAdapter:
         soup = BeautifulSoup(out.text or "", "html.parser")
         items = soup.select(item_selector)
         if not items:
-            return AdapterResult(ok=False, state="format-changed",
-                                 detail=f"selector '{item_selector}' matched nothing",
-                                 http_status=out.status)
+            return AdapterResult(
+                ok=False,
+                state="format-changed",
+                detail=f"selector '{item_selector}' matched nothing",
+                http_status=out.status,
+            )
         title_sel = cfg.get("title_selector")
         deadline_sel = cfg.get("deadline_selector")
         base_url = url
@@ -61,8 +67,7 @@ class HtmlListAdapter:
                 link_el = item.find("a")
                 title = item.get_text(strip=True)
             href_attr = str(cfg.get("link_attribute", "href"))
-            if (not title or link_el is None
-                    or not isinstance(link_el, Tag) or not link_el.get(href_attr)):
+            if not title or link_el is None or not isinstance(link_el, Tag) or not link_el.get(href_attr):
                 continue
             from urllib.parse import urljoin
 

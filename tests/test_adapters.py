@@ -4,8 +4,7 @@ from tests.helpers import load_fixture, source
 
 
 def test_greenhouse_success(mock_fetcher):
-    mock_fetcher.add("https://boards-api.greenhouse.io", 200,
-                     load_fixture("greenhouse_jobs.json"))
+    mock_fetcher.add("https://boards-api.greenhouse.io", 200, load_fixture("greenhouse_jobs.json"))
     result = run_source(source(), mock_fetcher)
     assert result.ok and len(result.records) == 2
     rec = result.records[0]
@@ -23,10 +22,9 @@ def test_greenhouse_empty_is_valid_empty(mock_fetcher):
 
 def test_lever_success_and_remote_signal(mock_fetcher):
     from tests.helpers import source as src
-    spec = src(source_id="lever-acmehw", adapter="lever",
-               endpoint_config={"board": "acmehw"})
-    mock_fetcher.add("https://api.lever.co/v0/postings/acmehw", 200,
-                     load_fixture("lever_postings.json"))
+
+    spec = src(source_id="lever-acmehw", adapter="lever", endpoint_config={"board": "acmehw"})
+    mock_fetcher.add("https://api.lever.co/v0/postings/acmehw", 200, load_fixture("lever_postings.json"))
     result = run_source(spec, mock_fetcher)
     assert result.ok and len(result.records) == 2
     remote = result.records[1]
@@ -36,10 +34,11 @@ def test_lever_success_and_remote_signal(mock_fetcher):
 
 def test_ashby_success(mock_fetcher):
     from tests.helpers import source as src
-    spec = src(source_id="ashby-acmerobotics", adapter="ashby",
-               endpoint_config={"board": "acmerobotics"})
-    mock_fetcher.add("https://api.ashbyhq.com/posting-api/job-board/acmerobotics", 200,
-                     load_fixture("ashby_board.json"))
+
+    spec = src(source_id="ashby-acmerobotics", adapter="ashby", endpoint_config={"board": "acmerobotics"})
+    mock_fetcher.add(
+        "https://api.ashbyhq.com/posting-api/job-board/acmerobotics", 200, load_fixture("ashby_board.json")
+    )
     result = run_source(spec, mock_fetcher)
     assert result.ok and len(result.records) == 2
     assert result.records[0].provider == "ashby"
@@ -48,10 +47,13 @@ def test_ashby_success(mock_fetcher):
 
 def test_smartrecruiters_success(mock_fetcher):
     from tests.helpers import source as src
-    spec = src(source_id="sr-acmesemi", adapter="smartrecruiters",
-               endpoint_config={"company": "acmesemi"})
-    mock_fetcher.add("https://api.smartrecruiters.com/v1/companies/acmesemi/postings", 200,
-                     load_fixture("smartrecruiters_postings.json"))
+
+    spec = src(source_id="sr-acmesemi", adapter="smartrecruiters", endpoint_config={"company": "acmesemi"})
+    mock_fetcher.add(
+        "https://api.smartrecruiters.com/v1/companies/acmesemi/postings",
+        200,
+        load_fixture("smartrecruiters_postings.json"),
+    )
     result = run_source(spec, mock_fetcher)
     assert result.ok and len(result.records) == 2
     rec = result.records[0]
@@ -62,9 +64,16 @@ def test_smartrecruiters_success(mock_fetcher):
 
 def test_workday_success_uses_post(mock_fetcher):
     from tests.helpers import source as src
-    spec = src(source_id="workday-acme", adapter="workday",
-               endpoint_config={"url": "https://acme.wd1.myworkdayjobs.com/External",
-                                "tenant": "acme", "site": "External"})
+
+    spec = src(
+        source_id="workday-acme",
+        adapter="workday",
+        endpoint_config={
+            "url": "https://acme.wd1.myworkdayjobs.com/External",
+            "tenant": "acme",
+            "site": "External",
+        },
+    )
     api = "https://acme.wd1.myworkdayjobs.com/wday/cxs/acme/External/jobs"
     mock_fetcher.add(api, 200, load_fixture("workday_jobs.json"))
     result = run_source(spec, mock_fetcher)
@@ -76,16 +85,24 @@ def test_workday_success_uses_post(mock_fetcher):
 
 def test_jsonfeed_field_mapping(mock_fetcher):
     from tests.helpers import source as src
-    spec = src(source_id="json-acmechips", adapter="jsonfeed", organization="Acme Chips",
-               endpoint_config={
-                   "url": "https://acmechips.example.com/feed.json",
-                   "records_path": "jobs",
-                   "fields": {"title": "title", "canonical_url": "jobUrl",
-                              "season": "season", "deadline": "deadline",
-                              "compensation_text": "compensation"},
-               })
-    mock_fetcher.add("https://acmechips.example.com/feed.json", 200,
-                     load_fixture("feed.json"))
+
+    spec = src(
+        source_id="json-acmechips",
+        adapter="jsonfeed",
+        organization="Acme Chips",
+        endpoint_config={
+            "url": "https://acmechips.example.com/feed.json",
+            "records_path": "jobs",
+            "fields": {
+                "title": "title",
+                "canonical_url": "jobUrl",
+                "season": "season",
+                "deadline": "deadline",
+                "compensation_text": "compensation",
+            },
+        },
+    )
+    mock_fetcher.add("https://acmechips.example.com/feed.json", 200, load_fixture("feed.json"))
     result = run_source(spec, mock_fetcher)
     assert result.ok and len(result.records) == 2
     first = result.records[0]
@@ -98,10 +115,13 @@ def test_jsonfeed_field_mapping(mock_fetcher):
 
 def test_csvfeed_column_mapping(mock_fetcher):
     from tests.helpers import source as src
-    spec = src(source_id="csv-community", adapter="csvfeed",
-               endpoint_config={"url": "https://community.example.org/list.csv"})
-    mock_fetcher.add("https://community.example.org/list.csv", 200,
-                     load_fixture("feed.csv"))
+
+    spec = src(
+        source_id="csv-community",
+        adapter="csvfeed",
+        endpoint_config={"url": "https://community.example.org/list.csv"},
+    )
+    mock_fetcher.add("https://community.example.org/list.csv", 200, load_fixture("feed.csv"))
     result = run_source(spec, mock_fetcher)
     assert result.ok and len(result.records) == 2
     rec = result.records[0]
@@ -111,10 +131,14 @@ def test_csvfeed_column_mapping(mock_fetcher):
 
 def test_rss_feed(mock_fetcher):
     from tests.helpers import source as src
-    spec = src(source_id="rss-acme", adapter="rss", organization="Acme Labs",
-               endpoint_config={"url": "https://acmelabs.example.org/feed.xml"})
-    mock_fetcher.add("https://acmelabs.example.org/feed.xml", 200,
-                     load_fixture("feed.xml"))
+
+    spec = src(
+        source_id="rss-acme",
+        adapter="rss",
+        organization="Acme Labs",
+        endpoint_config={"url": "https://acmelabs.example.org/feed.xml"},
+    )
+    mock_fetcher.add("https://acmelabs.example.org/feed.xml", 200, load_fixture("feed.xml"))
     result = run_source(spec, mock_fetcher)
     assert result.ok and len(result.records) == 2
     rec = result.records[0]
@@ -124,9 +148,12 @@ def test_rss_feed(mock_fetcher):
 
 def test_github_markdown_table(mock_fetcher):
     from tests.helpers import source as src
-    spec = src(source_id="gh-board", adapter="githublist",
-               endpoint_config={"url": "https://raw.example.org/board.md",
-                                "format": "table"})
+
+    spec = src(
+        source_id="gh-board",
+        adapter="githublist",
+        endpoint_config={"url": "https://raw.example.org/board.md", "format": "table"},
+    )
     mock_fetcher.add("https://raw.example.org/board.md", 200, load_fixture("board.md"))
     result = run_source(spec, mock_fetcher)
     assert result.ok and len(result.records) == 2
@@ -137,11 +164,17 @@ def test_github_markdown_table(mock_fetcher):
 
 def test_htmllist_selectors(mock_fetcher):
     from tests.helpers import source as src
-    spec = src(source_id="html-acme", adapter="htmllist",
-               endpoint_config={"url": "https://acme.example.com/opps",
-                                "item_selector": "ul.programs li",
-                                "title_selector": "h3 a",
-                                "deadline_selector": ".deadline"})
+
+    spec = src(
+        source_id="html-acme",
+        adapter="htmllist",
+        endpoint_config={
+            "url": "https://acme.example.com/opps",
+            "item_selector": "ul.programs li",
+            "title_selector": "h3 a",
+            "deadline_selector": ".deadline",
+        },
+    )
     mock_fetcher.add("https://acme.example.com/opps", 200, load_fixture("list.html"))
     result = run_source(spec, mock_fetcher)
     assert result.ok and len(result.records) == 2
@@ -152,12 +185,17 @@ def test_htmllist_selectors(mock_fetcher):
 
 def test_sitemap_include_exclude(mock_fetcher):
     from tests.helpers import source as src
-    spec = src(source_id="sitemap-acmelab", adapter="sitemap",
-               endpoint_config={"url": "https://acmelab.example.com/sitemap.xml",
-                                "include_regex": "/opportunities/",
-                                "exclude_regex": "/(tag|category)/"})
-    mock_fetcher.add("https://acmelab.example.com/sitemap.xml", 200,
-                     load_fixture("sitemap.xml"))
+
+    spec = src(
+        source_id="sitemap-acmelab",
+        adapter="sitemap",
+        endpoint_config={
+            "url": "https://acmelab.example.com/sitemap.xml",
+            "include_regex": "/opportunities/",
+            "exclude_regex": "/(tag|category)/",
+        },
+    )
+    mock_fetcher.add("https://acmelab.example.com/sitemap.xml", 200, load_fixture("sitemap.xml"))
     result = run_source(spec, mock_fetcher)
     assert result.ok and len(result.records) == 2
     rec = result.records[0]
@@ -168,6 +206,7 @@ def test_sitemap_include_exclude(mock_fetcher):
 def test_timeout_maps_to_check_failed_not_empty(mock_fetcher):
     def timeout_route(url):
         return (None, "", {}) if False else (503, "upstream timeout", {})
+
     mock_fetcher.routes["https://boards-api.greenhouse.io"] = timeout_route
     result = run_source(source(), mock_fetcher)
     assert not result.ok
@@ -196,9 +235,7 @@ def test_adapter_failure_isolated_per_source(mock_fetcher):
 
 
 def test_not_modified_304_is_healthy_not_drift(mock_fetcher):
-    mock_fetcher.routes["https://boards-api.greenhouse.io"] = (
-        lambda url: (304, "", {"etag": '"v1"'})
-    )
+    mock_fetcher.routes["https://boards-api.greenhouse.io"] = lambda url: (304, "", {"etag": '"v1"'})
     result = run_source(source(), mock_fetcher)
     assert result.ok
     assert result.state == "healthy"
@@ -208,8 +245,6 @@ def test_not_modified_304_is_healthy_not_drift(mock_fetcher):
 def test_304_with_cached_body_is_parsed(mock_fetcher):
     """A 304 must parse its cached body so observations (and closures) stay accurate."""
     cached = load_fixture("greenhouse_jobs.json")
-    mock_fetcher.routes["https://boards-api.greenhouse.io"] = (
-        lambda url: (304, cached, {"etag": '"v1"'})
-    )
+    mock_fetcher.routes["https://boards-api.greenhouse.io"] = lambda url: (304, cached, {"etag": '"v1"'})
     result = run_source(source(), mock_fetcher)
     assert result.ok and len(result.records) == 2

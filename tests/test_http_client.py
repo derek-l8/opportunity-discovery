@@ -1,4 +1,5 @@
 import json
+import threading
 
 import httpx
 
@@ -98,20 +99,27 @@ def test_cache_fallback_on_failure(engine_config):
 
 
 def test_fetch_many_isolates_failures(engine_config):
+    urls = [
+        "https://good.example.com/a",
+        "https://bad.example.com/b",
+        "https://good.example.com/c",
+        "https://good.example.com/d",
+    ]
+    requests_ready = threading.Barrier(len(urls))
+
     def handler(request):
+        requests_ready.wait(timeout=5)
         if "bad" in str(request.url):
             raise httpx.ConnectError("boom")
         return httpx.Response(200, content=b"x")
 
+    engine_config.fetch.max_retries = 0
     fetcher, conn = make_fetcher(engine_config, handler)
     try:
-        results = fetcher.fetch_many([
-            "https://good.example.com/a", "https://bad.example.com/b",
-            "https://good.example.com/c",
-        ])
-        assert len(results) == 3
+        results = fetcher.fetch_many(urls, worker=len(urls))
+        assert [result.url for result in results] == urls
         by_url = {r.url: r for r in results}
-        assert by_url["https://good.example.com/a"].ok
+        assert all(by_url[url].ok for url in urls if "bad" not in url)
         assert not by_url["https://bad.example.com/b"].ok
         assert by_url["https://bad.example.com/b"].error
     finally:
@@ -149,7 +157,7 @@ def test_file_scheme_fetch_percent_encoded_name(engine_config, tmp_path):
 def test_file_scheme_fetch_localhost_authority(engine_config, tmp_path):
     p = tmp_path / "localhost.json"
     p.write_text('{"c": 3}', encoding="utf-8")
-    uri = "file://localhost" + p.as_uri()[len("file://"):]
+    uri = "file://localhost" + p.as_uri()[len("file://") :]
     fetcher, conn = make_fetcher(engine_config, lambda req: httpx.Response(500))
     try:
         out = fetcher.fetch(uri)

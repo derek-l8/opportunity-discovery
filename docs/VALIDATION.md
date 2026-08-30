@@ -324,3 +324,47 @@ environment.
   the 2026-08-25 live results above remain the latest live evidence.
 - The publication-audit file count reflects currently tracked files (95);
   committing the new test file raises it to 96 with no expected findings.
+
+## Python 3.14, Windows-installer, CI, and formatting repair (2026-08-30 UTC)
+
+Scope: make Python 3.14 the recommended installation default while retaining
+Python 3.11-3.14 support, prevent failed interpreter probes from terminating
+the Windows installer, add deterministic native-Windows regression tests,
+expand CI, and apply Ruff's formatter. No schema, scoring, identity,
+collection, or exit-code semantic changes were made.
+
+### Validation obtained on this host
+
+Environment: Debian Linux, existing CPython 3.12.14 repository environment,
+plus a fresh uv-managed CPython 3.14.7 environment. This host has no native
+Windows or PowerShell runtime.
+
+| Gate | Command | Result |
+| --- | --- | --- |
+| Initialize | `.venv/bin/opdisc init` | storage ready; no pending migrations; 272 sources synced |
+| Configuration | `.venv/bin/opdisc --json validate-config` | ok; 272 total, 248 enabled, 24 disabled |
+| Formatter | `.venv/bin/ruff format --check src tests` | 53 files already formatted |
+| Linter | `.venv/bin/ruff check src tests` | All checks passed |
+| Type checker | `.venv/bin/mypy` | Success: no issues in 33 source files |
+| Deterministic tests (3.12) | `.venv/bin/python -m pytest -m "not live"` | 125 passed, 4 native-Windows tests skipped |
+| Publication audit | `.venv/bin/opdisc audit .` | 97 tracked files scanned, 0 errors, 0 warnings |
+| Whitespace check | `git diff --check` | passed with no output |
+| Python 3.14 install | `UV_CACHE_DIR=/workspace/.tools/py314-cache .tools/uv pip install --python /workspace/.tools/py314-venv/bin/python -e '.[dev]'` | runtime and development dependencies installed successfully under CPython 3.14.7 |
+| Python 3.14 formatter | `.tools/py314-venv/bin/ruff format --check src tests` | 53 files already formatted |
+| Python 3.14 linter | `.tools/py314-venv/bin/ruff check src tests` | All checks passed |
+| Python 3.14 deterministic tests | `.tools/py314-venv/bin/python -m pytest -m "not live"` | 125 passed, 4 native-Windows tests skipped |
+
+`ruff format src tests` reported 47 reformatted files. One was the functionally
+updated Windows test module; the other 46 files contain formatting-only
+changes.
+
+### Not obtained on this host
+
+- A fresh native-Windows installer smoke test was not possible because no
+  native Windows host is available.
+- The native fallback, PATH fallback, no-compatible-interpreter, and fatal
+  venv-creation cases are implemented as Windows-only PowerShell subprocess
+  tests. They were collected but skipped on Linux and therefore still require
+  execution by the expanded Windows CI matrix or a native Windows checkout.
+- GitHub Actions was not run because this worktree was neither committed nor
+  pushed.

@@ -10,6 +10,7 @@ endpoint_config:
         location_text: Location
     link_regex: "(?i)apply"      # optional: pick the link whose text matches (bullets)
 """
+
 from __future__ import annotations
 
 import re
@@ -32,8 +33,12 @@ _COLUMN_ALIASES = {
 }
 
 _DEFAULT_COLUMNS = {
-    "title": "title", "canonical_url": "link", "organization": "company",
-    "location_text": "location", "season": "term", "deadline": "deadline",
+    "title": "title",
+    "canonical_url": "link",
+    "organization": "company",
+    "location_text": "location",
+    "season": "term",
+    "deadline": "deadline",
 }
 
 
@@ -57,13 +62,13 @@ class GithubListAdapter:
         cfg = ctx.source.endpoint_config
         url = cfg.get("url")
         if not url:
-            return AdapterResult(ok=False, state="check-failed",
-                                 detail="githublist adapter requires endpoint_config.url")
+            return AdapterResult(
+                ok=False, state="check-failed", detail="githublist adapter requires endpoint_config.url"
+            )
         out = ctx.fetcher.fetch(url)
         if out.not_modified and not out.text:
             # Unchanged upstream but no cached body available.
-            return AdapterResult(ok=True, empty_ok=True, http_status=304,
-                                 detail="not modified")
+            return AdapterResult(ok=True, empty_ok=True, http_status=304, detail="not modified")
         # A 304 carries the cached body in out.text; parse it like a normal
         # response so observations continue and closures stay accurate.
         if not out.ok:
@@ -79,27 +84,28 @@ class GithubListAdapter:
             records, rows_seen = self._parse_bullets(text, cfg, default_org)
         empty_ok = bool(records) or rows_seen == 0
         return AdapterResult(
-            ok=empty_ok, records=records, empty_ok=True,
+            ok=empty_ok,
+            records=records,
+            empty_ok=True,
             state="healthy" if empty_ok else "format-changed",
             detail=None if empty_ok else "content present but no recognizable entries",
             http_status=out.status,
         )
 
-    def _parse_table(self, text: str, cfg: dict,
-                     default_org: str | None) -> tuple[list[RawOpportunity], int]:
+    def _parse_table(self, text: str, cfg: dict, default_org: str | None) -> tuple[list[RawOpportunity], int]:
         columns = {**_DEFAULT_COLUMNS, **(cfg.get("columns") or {})}
         header: list[str] | None = None
         colmap: dict[str, int] | None = None
         records: list[RawOpportunity] = []
         rows_seen = 0
 
-        def make_cell(bound_cells: list[str],
-                      bound_map: dict[str, int]) -> Callable[[str], str | None]:
+        def make_cell(bound_cells: list[str], bound_map: dict[str, int]) -> Callable[[str], str | None]:
             def cell(logical: str) -> str | None:
                 idx = bound_map.get(logical)
                 if idx is None or idx >= len(bound_cells):
                     return None
                 return bound_cells[idx].strip() or None
+
             return cell
 
         for line in text.splitlines():
@@ -136,8 +142,9 @@ class GithubListAdapter:
                 )
         return records, rows_seen
 
-    def _parse_html_table(self, text: str, cfg: dict,
-                          default_org: str | None) -> tuple[list[RawOpportunity], int]:
+    def _parse_html_table(
+        self, text: str, cfg: dict, default_org: str | None
+    ) -> tuple[list[RawOpportunity], int]:
         """Parse simple HTML <table> markup embedded in GitHub READMEs."""
         from bs4 import BeautifulSoup
 
@@ -146,8 +153,7 @@ class GithubListAdapter:
         rows_seen = 0
         records: list[RawOpportunity] = []
         for table in soup.find_all("table"):
-            header_cells = [th.get_text(strip=True).lower()
-                            for th in table.find_all("th")]
+            header_cells = [th.get_text(strip=True).lower() for th in table.find_all("th")]
             if not header_cells:
                 continue
             colmap = _map_columns(header_cells, columns)
@@ -163,15 +169,13 @@ class GithubListAdapter:
                 bound_cells = tuple(row_cells)
                 bound_map = dict(colmap)
 
-                def cell(logical: str, _cells=bound_cells,
-                         _map_d=bound_map) -> str | None:
+                def cell(logical: str, _cells=bound_cells, _map_d=bound_map) -> str | None:
                     idx = _map_d.get(logical)
                     if idx is None or idx >= len(_cells):
                         return None
                     return _cells[idx].get_text(strip=True) or None
 
-                def link(logical: str, _cells=bound_cells,
-                         _map_d=bound_map, _cell=cell) -> str | None:
+                def link(logical: str, _cells=bound_cells, _map_d=bound_map, _cell=cell) -> str | None:
                     idx = _map_d.get(logical)
                     if idx is None or idx >= len(_cells):
                         return None
@@ -197,8 +201,9 @@ class GithubListAdapter:
                 )
         return records, rows_seen
 
-    def _parse_bullets(self, text: str, cfg: dict,
-                       default_org: str | None) -> tuple[list[RawOpportunity], int]:
+    def _parse_bullets(
+        self, text: str, cfg: dict, default_org: str | None
+    ) -> tuple[list[RawOpportunity], int]:
         link_regex: Any = cfg.get("link_regex")
         records: list[RawOpportunity] = []
         rows_seen = 0
@@ -219,7 +224,9 @@ class GithubListAdapter:
             title = _LINK.sub("", stripped).strip(" -–—:")
             title = re.split(r"\s+[–—-]\s+", title)[0].strip()
             if chosen[1].startswith("http"):
-                records.append(RawOpportunity(title=title or chosen[0],
-                                              canonical_url=chosen[1],
-                                              organization=default_org))
+                records.append(
+                    RawOpportunity(
+                        title=title or chosen[0], canonical_url=chosen[1], organization=default_org
+                    )
+                )
         return records, rows_seen

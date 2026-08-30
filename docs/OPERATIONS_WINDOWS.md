@@ -13,15 +13,20 @@ installation** (tests, Ruff, Mypy) use the dev extra shown at the end.
 ```powershell
 cd path\to\opportunity-discovery
 
-# Option A: installer (locates and verifies Python 3.11+ via the py launcher
-#           or python.exe, then performs the same steps as Option B)
+# Option A: installer (selects the newest compatible installed Python via the
+#           py launcher or python.exe, then performs the same steps as Option B)
 .\scripts\install.ps1
 
 # Option B: manual
-py -3.12 -m venv .venv                       # any Python 3.11+ works
+py -3.14 -m venv .venv                       # recommended for new installs
 .\.venv\Scripts\python -m pip install --upgrade pip
 .\.venv\Scripts\pip install -e .             # normal installation
 ```
+
+Python 3.14 is the current recommended/default version. Python 3.11, 3.12,
+3.13, and 3.14 remain supported, and the installer tries them newest-first.
+If 3.14 is unavailable, use 3.13, 3.12, or 3.11. An existing `.venv` does not
+automatically upgrade its Python; recreate it explicitly to change versions.
 
 Development installation (instead of the plain `-e .` above):
 

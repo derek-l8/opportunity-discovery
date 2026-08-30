@@ -1,4 +1,5 @@
 """Bounded, polite HTTP fetching with retries, conditional requests, and caching."""
+
 from __future__ import annotations
 
 import logging
@@ -79,6 +80,7 @@ class Fetcher:
 
             migrate(self.conn)  # ensure raw_cache exists for standalone fetchers
         self.conn.row_factory = _sq.Row
+        self._conn_lock = threading.RLock()
         self.client = httpx.Client(
             timeout=cfg.fetch.timeout_seconds,
             follow_redirects=True,
@@ -92,8 +94,9 @@ class Fetcher:
     def close(self) -> None:
         self.client.close()
 
-    def fetch(self, url: str, *, extra_headers: dict[str, str] | None = None,
-              use_cache_fallback: bool = True) -> FetchOutcome:
+    def fetch(
+        self, url: str, *, extra_headers: dict[str, str] | None = None, use_cache_fallback: bool = True
+    ) -> FetchOutcome:
         start_ms = time.monotonic_ns() // 1_000_000
         if url.startswith("file://"):
             return self._fetch_file(url, start_ms)
@@ -102,8 +105,12 @@ class Fetcher:
 
         robots_applies = self.cfg.fetch.respect_robots and parts.scheme in ("http", "https")
         if robots_applies and not self._robots_allows(url):
-                return FetchOutcome(url=url, state="robots-blocked", error="disallowed by robots.txt",
-                                    duration_ms=time.monotonic_ns() // 1_000_000 - start_ms)
+            return FetchOutcome(
+                url=url,
+                state="robots-blocked",
+                error="disallowed by robots.txt",
+                duration_ms=time.monotonic_ns() // 1_000_000 - start_ms,
+            )
 
         cond_headers = self._conditional_headers(url)
         headers = dict(extra_headers or {})
@@ -152,17 +159,27 @@ class Fetcher:
                 cached = self._load_cache(url)
                 if cached is not None:
                     out = FetchOutcome(
-                        url=url, status=cached["status"], body=cached["body"],
+                        url=url,
+                        status=cached["status"],
+                        body=cached["body"],
                         text=(cached["body"] or b"").decode("utf-8", "replace"),
-                        content_type=cached["content_type"], etag=cached["etag"],
-                        last_modified=cached["last_modified"], from_cache=True,
-                        state="degraded", error=f"{error}; served from cache",
+                        content_type=cached["content_type"],
+                        etag=cached["etag"],
+                        last_modified=cached["last_modified"],
+                        from_cache=True,
+                        state="degraded",
+                        error=f"{error}; served from cache",
                         duration_ms=time.monotonic_ns() // 1_000_000 - start_ms,
                     )
                     return out
             out_state = HEALTH_RATE_LIMITED if status == 429 else "failed"
-            return FetchOutcome(url=url, status=status, error=error, state=out_state,
-                                duration_ms=time.monotonic_ns() // 1_000_000 - start_ms)
+            return FetchOutcome(
+                url=url,
+                status=status,
+                error=error,
+                state=out_state,
+                duration_ms=time.monotonic_ns() // 1_000_000 - start_ms,
+            )
 
     def fetch_many(self, urls: list[str], worker: int | None = None) -> list[FetchOutcome]:
         max_workers = min(worker or self.cfg.fetch.max_concurrency, len(urls) or 1)
@@ -181,8 +198,12 @@ class Fetcher:
     # ----------------------------------------------------------------- helpers
     def _fetch_file(self, url: str, start_ms: int) -> FetchOutcome:
         def failed(message: str) -> FetchOutcome:
-            return FetchOutcome(url=url, error=message, state="failed",
-                                duration_ms=time.monotonic_ns() // 1_000_000 - start_ms)
+            return FetchOutcome(
+                url=url,
+                error=message,
+                state="failed",
+                duration_ms=time.monotonic_ns() // 1_000_000 - start_ms,
+            )
 
         try:
             parts = urlsplit(url)
@@ -195,8 +216,10 @@ class Fetcher:
         if authority not in (None, "localhost"):
             # Remote/network authorities (UNC hosts, other machines) are unsupported;
             # never silently map them onto a malformed local path.
-            return failed(f"unsupported file URI authority {parts.netloc!r}: "
-                          "only local files (empty or 'localhost' host) are supported")
+            return failed(
+                f"unsupported file URI authority {parts.netloc!r}: "
+                "only local files (empty or 'localhost' host) are supported"
+            )
         try:
             path = Path(url2pathname(parts.path))
             data = path.read_bytes()
@@ -204,12 +227,22 @@ class Fetcher:
             return failed(str(exc))
         suffix = path.suffix.lower().lstrip(".")
         ctype = {
-            "json": "application/json", "csv": "text/csv", "xml": "application/xml",
-            "html": "text/html", "md": "text/markdown", "txt": "text/plain",
+            "json": "application/json",
+            "csv": "text/csv",
+            "xml": "application/xml",
+            "html": "text/html",
+            "md": "text/markdown",
+            "txt": "text/plain",
         }.get(suffix, "application/octet-stream")
-        return FetchOutcome(url=url, status=200, body=data,
-                            text=data.decode("utf-8", "replace"), content_type=ctype,
-                            state="ok", duration_ms=time.monotonic_ns() // 1_000_000 - start_ms)
+        return FetchOutcome(
+            url=url,
+            status=200,
+            body=data,
+            text=data.decode("utf-8", "replace"),
+            content_type=ctype,
+            state="ok",
+            duration_ms=time.monotonic_ns() // 1_000_000 - start_ms,
+        )
 
     def _robots_allows(self, url: str) -> bool:
         parts = urlsplit(url)
@@ -235,9 +268,10 @@ class Fetcher:
             return True
 
     def _conditional_headers(self, url: str) -> dict[str, str]:
-        row = self.conn.execute(
-            "SELECT etag, last_modified FROM raw_cache WHERE url = ?", (url,)
-        ).fetchone()
+        with self._conn_lock:
+            row = self.conn.execute(
+                "SELECT etag, last_modified FROM raw_cache WHERE url = ?", (url,)
+            ).fetchone()
         headers: dict[str, str] = {}
         if row:
             if row["etag"]:
@@ -247,21 +281,25 @@ class Fetcher:
         return headers
 
     def _serve_304(self, url: str, resp: httpx.Response, start_ms: int) -> FetchOutcome:
-        row = self.conn.execute(
-            "SELECT status, content_type, content, etag, last_modified FROM raw_cache WHERE url = ?",
-            (url,),
-        ).fetchone()
+        with self._conn_lock:
+            row = self.conn.execute(
+                "SELECT status, content_type, content, etag, last_modified FROM raw_cache WHERE url = ?",
+                (url,),
+            ).fetchone()
         if row and row["content"] is not None:
             body = bytes(row["content"])
         else:
             body = b""
         return FetchOutcome(
-            url=url, status=304, body=body,
+            url=url,
+            status=304,
+            body=body,
             text=body.decode("utf-8", "replace") if body else None,
             content_type=row["content_type"] if row else None,
             etag=resp.headers.get("etag") or (row["etag"] if row else None),
             last_modified=resp.headers.get("last-modified") or (row["last_modified"] if row else None),
-            not_modified=True, state="not-modified",
+            not_modified=True,
+            state="not-modified",
             duration_ms=time.monotonic_ns() // 1_000_000 - start_ms,
         )
 
@@ -270,42 +308,50 @@ class Fetcher:
 
         now = datetime.now(UTC)
         expires = now + timedelta(days=self.cfg.fetch.cache_days)
-        self.conn.execute(
-            """
-            INSERT INTO raw_cache (url, fetched_at, status, content_type, content,
-                                   content_hash, etag, last_modified, expires_at)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-            ON CONFLICT(url) DO UPDATE SET
-                fetched_at=excluded.fetched_at, status=excluded.status,
-                content_type=excluded.content_type, content=excluded.content,
-                content_hash=excluded.content_hash, etag=excluded.etag,
-                last_modified=excluded.last_modified, expires_at=excluded.expires_at
-            """,
-            (
-                url, now.isoformat(), resp.status_code,
-                resp.headers.get("content-type"), resp.content,
-                None, resp.headers.get("etag"), resp.headers.get("last-modified"),
-                expires.isoformat(),
-            ),
-        )
-        self.conn.commit()
+        with self._conn_lock:
+            self.conn.execute(
+                """
+                INSERT INTO raw_cache (url, fetched_at, status, content_type, content,
+                                       content_hash, etag, last_modified, expires_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ON CONFLICT(url) DO UPDATE SET
+                    fetched_at=excluded.fetched_at, status=excluded.status,
+                    content_type=excluded.content_type, content=excluded.content,
+                    content_hash=excluded.content_hash, etag=excluded.etag,
+                    last_modified=excluded.last_modified, expires_at=excluded.expires_at
+                """,
+                (
+                    url,
+                    now.isoformat(),
+                    resp.status_code,
+                    resp.headers.get("content-type"),
+                    resp.content,
+                    None,
+                    resp.headers.get("etag"),
+                    resp.headers.get("last-modified"),
+                    expires.isoformat(),
+                ),
+            )
+            self.conn.commit()
 
     def _load_cache(self, url: str) -> dict | None:
-        row = self.conn.execute(
-            "SELECT status, content_type, content, etag, last_modified FROM raw_cache WHERE url = ?",
-            (url,),
-        ).fetchone()
+        with self._conn_lock:
+            row = self.conn.execute(
+                "SELECT status, content_type, content, etag, last_modified FROM raw_cache WHERE url = ?",
+                (url,),
+            ).fetchone()
         if row and row["content"] is not None:
             return {
-                "status": row["status"], "body": bytes(row["content"]),
-                "content_type": row["content_type"], "etag": row["etag"],
+                "status": row["status"],
+                "body": bytes(row["content"]),
+                "content_type": row["content_type"],
+                "etag": row["etag"],
                 "last_modified": row["last_modified"],
             }
         return None
 
     @staticmethod
-    def _retry_delay(status: int | None, base_backoff: float,
-                     resp: httpx.Response | None = None) -> float:
+    def _retry_delay(status: int | None, base_backoff: float, resp: httpx.Response | None = None) -> float:
         jitter = random.uniform(0, 0.5 * base_backoff)
         if resp is not None:
             retry_after = resp.headers.get("Retry-After")

@@ -1,4 +1,5 @@
 """opdisc command-line interface."""
+
 from __future__ import annotations
 
 import argparse
@@ -201,14 +202,14 @@ def cmd_source_health(args: argparse.Namespace) -> int:
 def cmd_status(args: argparse.Namespace) -> int:
     cfg, _errors = _load(args.config)
     conn = ensure_ready(cfg)
-    last_run = conn.execute(
-        "SELECT * FROM collection_runs ORDER BY started_at DESC LIMIT 1").fetchone()
+    last_run = conn.execute("SELECT * FROM collection_runs ORDER BY started_at DESC LIMIT 1").fetchone()
     opp_counts = {
         "total": conn.execute("SELECT COUNT(*) n FROM opportunities").fetchone()["n"],
         "active": conn.execute("SELECT COUNT(*) n FROM opportunities WHERE active=1").fetchone()["n"],
         "new_last_run": conn.execute(
             "SELECT COUNT(*) n FROM changes WHERE change_type='new' AND detected_at > COALESCE("
-            "(SELECT MAX(exported_at) FROM export_checkpoints), '1970-01-01')").fetchone()["n"],
+            "(SELECT MAX(exported_at) FROM export_checkpoints), '1970-01-01')"
+        ).fetchone()["n"],
         "review_queue_est": conn.execute(
             "SELECT COUNT(*) n FROM opportunities o WHERE o.active=1 AND"
             " NOT EXISTS (SELECT 1 FROM json_each(o.reason_codes_json) je WHERE je.value LIKE 'exclude:%')"
@@ -227,8 +228,10 @@ def cmd_status(args: argparse.Namespace) -> int:
     if args.json_output:
         print(json.dumps(payload, indent=2))
     elif not args.quiet:
-        print(f"opportunities: {opp_counts['total']} total, {opp_counts['active']} active,"
-              f" ~{opp_counts['review_queue_est']} review-queue candidates")
+        print(
+            f"opportunities: {opp_counts['total']} total, {opp_counts['active']} active,"
+            f" ~{opp_counts['review_queue_est']} review-queue candidates"
+        )
         print(f"last run: {payload['last_run']['run_id'] if payload['last_run'] else 'none'}")
         print(f"sources: {health['summary']}")
     return 0
@@ -240,9 +243,11 @@ def cmd_audit(args: argparse.Namespace) -> int:
     if args.json_output:
         print(json.dumps(report.to_dict(), indent=2))
     elif not args.quiet:
-        print(f"scanned {report.files_scanned} tracked files;"
-              f" {len(report.errors)} errors, "
-              f"{len(report.findings) - len(report.errors)} warnings")
+        print(
+            f"scanned {report.files_scanned} tracked files;"
+            f" {len(report.errors)} errors, "
+            f"{len(report.findings) - len(report.errors)} warnings"
+        )
         for f in report.findings:
             loc = f.path + (f":{f.line}" if f.line else "")
             print(f"  [{f.severity}] {f.rule}: {loc} {f.detail or ''}")
@@ -342,8 +347,9 @@ def build_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument("--version", action="version", version=f"opdisc {__version__}")
     parser.add_argument("--quiet", "-q", action="store_true", help="suppress normal output")
-    parser.add_argument("--json", dest="json_output", action="store_true",
-                        help="machine-readable JSON output")
+    parser.add_argument(
+        "--json", dest="json_output", action="store_true", help="machine-readable JSON output"
+    )
     parser.add_argument("--config", help="path to engine TOML config")
 
     sub = parser.add_subparsers(dest="command", required=True)
