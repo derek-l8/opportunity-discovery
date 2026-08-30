@@ -1,4 +1,5 @@
 """Deterministic end-to-end workflow shared by the CLI and scheduled runs."""
+
 from __future__ import annotations
 
 import json
@@ -52,9 +53,15 @@ def ensure_ready(cfg: EngineConfig) -> sqlite3.Connection:
     return conn
 
 
-def run_collect(conn: sqlite3.Connection, cfg: EngineConfig, run_id: str,
-                summary: RunSummary, *, force: bool = False,
-                fetcher: Fetcher | None = None) -> RunSummary:
+def run_collect(
+    conn: sqlite3.Connection,
+    cfg: EngineConfig,
+    run_id: str,
+    summary: RunSummary,
+    *,
+    force: bool = False,
+    fetcher: Fetcher | None = None,
+) -> RunSummary:
     """Fetch due sources and ingest. Isolated per source."""
     sources, errors = load_sources(cfg.sources_file)
     for err in errors:
@@ -67,9 +74,7 @@ def run_collect(conn: sqlite3.Connection, cfg: EngineConfig, run_id: str,
     try:
         pipeline = Pipeline(conn, cfg, run_id, summary)
         successful = set()
-        expected = expected_opportunities_from_sources(
-            conn, [s.source_id for s in targets]
-        )
+        expected = expected_opportunities_from_sources(conn, [s.source_id for s in targets])
         for spec in targets:
             try:
                 pipeline.process_source(spec, fetcher)
@@ -91,14 +96,12 @@ def run_collect(conn: sqlite3.Connection, cfg: EngineConfig, run_id: str,
     return summary
 
 
-def finalize_run(conn: sqlite3.Connection, cfg: EngineConfig, run_id: str,
-                 summary: RunSummary) -> None:
+def finalize_run(conn: sqlite3.Connection, cfg: EngineConfig, run_id: str, summary: RunSummary) -> None:
     """Write exports + run summary atomically; persist run row."""
     artifacts = export_all(conn, cfg, run_id)
     summary.review_queue_count = artifacts.get("review_queue", {}).get("count", 0)
     summary.finished_at = _now()
-    existing = conn.execute(
-        "SELECT 1 FROM collection_runs WHERE run_id=?", (run_id,)).fetchone()
+    existing = conn.execute("SELECT 1 FROM collection_runs WHERE run_id=?", (run_id,)).fetchone()
     if existing:
         conn.execute(
             """
@@ -109,37 +112,51 @@ def finalize_run(conn: sqlite3.Connection, cfg: EngineConfig, run_id: str,
             WHERE run_id=?
             """,
             (
-                summary.finished_at, summary.mode, summary.exit_code,
-                summary.sources_attempted, summary.sources_succeeded,
-                summary.sources_failed, summary.records_seen,
-                summary.opportunities_new, summary.opportunities_changed,
-                summary.opportunities_closed, json.dumps(summary.to_dict()["detail"]),
+                summary.finished_at,
+                summary.mode,
+                summary.exit_code,
+                summary.sources_attempted,
+                summary.sources_succeeded,
+                summary.sources_failed,
+                summary.records_seen,
+                summary.opportunities_new,
+                summary.opportunities_changed,
+                summary.opportunities_closed,
+                json.dumps(summary.to_dict()["detail"]),
                 run_id,
             ),
         )
     else:
         conn.execute(
-        """
+            """
         INSERT INTO collection_runs (run_id, started_at, finished_at, mode, exit_code,
             sources_attempted, sources_succeeded, sources_failed, records_seen,
             opportunities_new, opportunities_changed, opportunities_closed, summary_json)
         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """,
-        (
-            run_id, summary.started_at, summary.finished_at, summary.mode, summary.exit_code,
-            summary.sources_attempted, summary.sources_succeeded, summary.sources_failed,
-            summary.records_seen, summary.opportunities_new, summary.opportunities_changed,
-            summary.opportunities_closed, json.dumps(summary.to_dict()["detail"]),
-        ),
-    )
+            (
+                run_id,
+                summary.started_at,
+                summary.finished_at,
+                summary.mode,
+                summary.exit_code,
+                summary.sources_attempted,
+                summary.sources_succeeded,
+                summary.sources_failed,
+                summary.records_seen,
+                summary.opportunities_new,
+                summary.opportunities_changed,
+                summary.opportunities_closed,
+                json.dumps(summary.to_dict()["detail"]),
+            ),
+        )
     # run_summary.json artifact
     from pathlib import Path
 
     out_path = Path(cfg.paths.output_dir) / "run_summary.json"
     out_path.parent.mkdir(parents=True, exist_ok=True)
     tmp = out_path.with_suffix(".json.tmp")
-    doc = {"schema_version": "1.0", **summary.to_dict(),
-           "artifacts": {k: v for k, v in artifacts.items()}}
+    doc = {"schema_version": "1.0", **summary.to_dict(), "artifacts": {k: v for k, v in artifacts.items()}}
     tmp.write_text(json.dumps(doc, sort_keys=True, indent=2), encoding="utf-8")
     import os
 
@@ -147,9 +164,14 @@ def finalize_run(conn: sqlite3.Connection, cfg: EngineConfig, run_id: str,
     conn.commit()
 
 
-def run_full_workflow(conn: sqlite3.Connection, cfg: EngineConfig, *,
-                      force: bool = False, fetcher: Fetcher | None = None,
-                      do_export: bool = True) -> tuple[int, RunSummary]:
+def run_full_workflow(
+    conn: sqlite3.Connection,
+    cfg: EngineConfig,
+    *,
+    force: bool = False,
+    fetcher: Fetcher | None = None,
+    do_export: bool = True,
+) -> tuple[int, RunSummary]:
     """The normal deterministic workflow behind `opdisc run` / Task Scheduler."""
     run_id = new_run_id()
     summary = RunSummary(run_id=run_id, started_at=_now())
@@ -173,11 +195,20 @@ def run_full_workflow(conn: sqlite3.Connection, cfg: EngineConfig, *,
                    records_seen=?, opportunities_new=?, opportunities_changed=?,
                    opportunities_closed=?, summary_json=?
                    WHERE run_id=?""",
-                (summary.finished_at, summary.mode, exit_code,
-                 summary.sources_attempted, summary.sources_succeeded,
-                 summary.sources_failed, summary.records_seen,
-                 summary.opportunities_new, summary.opportunities_changed,
-                 summary.opportunities_closed, json.dumps(summary.detail), run_id),
+                (
+                    summary.finished_at,
+                    summary.mode,
+                    exit_code,
+                    summary.sources_attempted,
+                    summary.sources_succeeded,
+                    summary.sources_failed,
+                    summary.records_seen,
+                    summary.opportunities_new,
+                    summary.opportunities_changed,
+                    summary.opportunities_closed,
+                    json.dumps(summary.detail),
+                    run_id,
+                ),
             )
             conn.commit()
     except Exception as exc:

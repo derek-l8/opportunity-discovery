@@ -10,6 +10,7 @@ endpoint_config:
         location_text: Location
         season: Term
 """
+
 from __future__ import annotations
 
 import csv
@@ -37,13 +38,13 @@ class CsvFeedAdapter:
         cfg = ctx.source.endpoint_config
         url = cfg.get("url")
         if not url:
-            return AdapterResult(ok=False, state="check-failed",
-                                 detail="csvfeed adapter requires endpoint_config.url")
+            return AdapterResult(
+                ok=False, state="check-failed", detail="csvfeed adapter requires endpoint_config.url"
+            )
         out = ctx.fetcher.fetch(url)
         if out.not_modified and not out.text:
             # Unchanged upstream but no cached body available.
-            return AdapterResult(ok=True, empty_ok=True, http_status=304,
-                                 detail="not modified")
+            return AdapterResult(ok=True, empty_ok=True, http_status=304, detail="not modified")
         # A 304 carries the cached body in out.text; parse it like a normal
         # response so observations continue and closures stay accurate.
         if not out.ok:
@@ -54,11 +55,13 @@ class CsvFeedAdapter:
             reader = csv.DictReader(io.StringIO(text), delimiter=delimiter)
             rows = list(reader)
         except csv.Error as exc:
-            return AdapterResult(ok=False, state="format-changed", detail=f"CSV parse error: {exc}",
-                                 http_status=out.status)
+            return AdapterResult(
+                ok=False, state="format-changed", detail=f"CSV parse error: {exc}", http_status=out.status
+            )
         if not rows and not text.strip():
-            return AdapterResult(ok=True, records=[], empty_ok=True, http_status=out.status,
-                                 detail="empty csv")
+            return AdapterResult(
+                ok=True, records=[], empty_ok=True, http_status=out.status, detail="empty csv"
+            )
         columns = {**_DEFAULT_COLUMNS, **(cfg.get("columns") or {})}
 
         def col(row: dict, logical: str):
@@ -97,7 +100,11 @@ class CsvFeedAdapter:
             )
         # If the file parsed but yielded nothing while having rows -> format drift.
         empty_ok = len(records) > 0 or len(rows) == 0
-        return AdapterResult(ok=empty_ok, records=records, empty_ok=True,
-                             state="healthy" if empty_ok else "format-changed",
-                             detail=None if empty_ok else "rows present but no recognizable columns",
-                             http_status=out.status)
+        return AdapterResult(
+            ok=empty_ok,
+            records=records,
+            empty_ok=True,
+            state="healthy" if empty_ok else "format-changed",
+            detail=None if empty_ok else "rows present but no recognizable columns",
+            http_status=out.status,
+        )

@@ -3,6 +3,7 @@
 Public endpoint (no credentials):
     https://api.smartrecruiters.com/v1/companies/{org}/postings?limit=100&q=&offset=N
 """
+
 from __future__ import annotations
 
 import json
@@ -22,8 +23,11 @@ class SmartRecruitersAdapter:
     def run(self, ctx) -> AdapterResult:  # type: ignore[no-untyped-def]
         company = ctx.source.endpoint_config.get("company") or ctx.source.endpoint_config.get("org")
         if not company:
-            return AdapterResult(ok=False, state="check-failed",
-                                 detail="smartrecruiters adapter requires endpoint_config.company")
+            return AdapterResult(
+                ok=False,
+                state="check-failed",
+                detail="smartrecruiters adapter requires endpoint_config.company",
+            )
         records: list[RawOpportunity] = []
         offset = 0
         total: int | None = None
@@ -37,18 +41,19 @@ class SmartRecruitersAdapter:
             status = out.status or status
             if not out.ok:
                 if out.not_modified and not out.text:
-                    return AdapterResult(ok=True, empty_ok=True, http_status=304,
-                                         detail="not modified")
+                    return AdapterResult(ok=True, empty_ok=True, http_status=304, detail="not modified")
                 return outcome_to_result(out)
             try:
                 data = parse_json_body(out.text)
             except (ValueError, json.JSONDecodeError) as exc:
-                return AdapterResult(ok=False, state="format-changed", detail=f"bad JSON: {exc}",
-                                     http_status=out.status)
+                return AdapterResult(
+                    ok=False, state="format-changed", detail=f"bad JSON: {exc}", http_status=out.status
+                )
             postings = data.get("content")
             if postings is None:
-                return AdapterResult(ok=False, state="format-changed",
-                                     detail="missing 'content' array", http_status=out.status)
+                return AdapterResult(
+                    ok=False, state="format-changed", detail="missing 'content' array", http_status=out.status
+                )
             for posting in postings:
                 records.append(self._record(posting, company, ctx.excerpt_chars))
             total = int(data.get("totalFound") or 0)
@@ -82,13 +87,10 @@ class SmartRecruitersAdapter:
             provider_req_id=posting.get("id"),
             location_text=loc_text,
             remote_signal=(
-                "remote" if "remote" in name.lower() or "remote" in (loc_text or "").lower()
-                else None
+                "remote" if "remote" in name.lower() or "remote" in (loc_text or "").lower() else None
             ),
             posted_date=released[:10] or None,
             compensation_text=comp_text,
             employment_type=None,
-            description_excerpt=bounded_excerpt(
-                (posting.get("mission") or ""), excerpt_chars
-            ),
+            description_excerpt=bounded_excerpt((posting.get("mission") or ""), excerpt_chars),
         )

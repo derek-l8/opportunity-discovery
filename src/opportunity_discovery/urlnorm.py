@@ -1,4 +1,5 @@
 """URL normalization, tracking-parameter stripping, and ATS pattern detection."""
+
 from __future__ import annotations
 
 import re
@@ -7,16 +8,36 @@ from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
 
 # Common tracking parameters that never determine a requisition.
 TRACKING_PARAMS = {
-    "utm_source", "utm_medium", "utm_campaign", "utm_term", "utm_content",
-    "utm_id", "fbclid", "gclid", "dclid", "msclkid", "mc_cid", "mc_eid",
-    "_ga", "ref", "ref_src", "ref_url", "source", "srsltid", "yclid",
-    "igshid", "si", "spm", "scid", "gh_src", "gh_jid",
+    "utm_source",
+    "utm_medium",
+    "utm_campaign",
+    "utm_term",
+    "utm_content",
+    "utm_id",
+    "fbclid",
+    "gclid",
+    "dclid",
+    "msclkid",
+    "mc_cid",
+    "mc_eid",
+    "_ga",
+    "ref",
+    "ref_src",
+    "ref_url",
+    "source",
+    "srsltid",
+    "yclid",
+    "igshid",
+    "si",
+    "spm",
+    "scid",
+    "gh_src",
+    "gh_jid",
 }
 
 # Parameters known to carry the actual requisition and must be preserved even if
 # they collide with generic names above (checked case-insensitively).
-PRESERVE_PARAMS = {"jobid", "job_id", "req", "reqid", "requisition_id", "id",
-                   "gh_jid", "ashby_jid"}
+PRESERVE_PARAMS = {"jobid", "job_id", "req", "reqid", "requisition_id", "id", "gh_jid", "ashby_jid"}
 
 _SCHEME_FIXES = {"http": "https"}
 
@@ -72,12 +93,8 @@ _GREENHOUSE_RE = re.compile(
     r"(?:/jobs/(?P<req>\w+))?",
     re.IGNORECASE,
 )
-_LEVER_RE = re.compile(
-    r"https?://jobs\.(?:eu\.)?lever\.co/(?P<org>[\w-]+)(?:/(?P<req>\w+))?", re.IGNORECASE
-)
-_ASHBY_RE = re.compile(
-    r"https?://jobs\.ashbyhq\.com/(?P<org>[\w.-]+)(?:/(?P<req>[\w-]+))?", re.IGNORECASE
-)
+_LEVER_RE = re.compile(r"https?://jobs\.(?:eu\.)?lever\.co/(?P<org>[\w-]+)(?:/(?P<req>\w+))?", re.IGNORECASE)
+_ASHBY_RE = re.compile(r"https?://jobs\.ashbyhq\.com/(?P<org>[\w.-]+)(?:/(?P<req>[\w-]+))?", re.IGNORECASE)
 _SMART_RE = re.compile(
     r"https?://(?:careers|jobs|www)\.smartrecruiters\.com/(?P<org>[\w-]+)"
     r"(?:/(?P<req>[\w-]+))?",

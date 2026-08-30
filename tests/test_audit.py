@@ -1,4 +1,3 @@
-
 from opportunity_discovery.audit import audit_repository
 
 
@@ -67,8 +66,7 @@ def test_benign_fixture_content_is_not_flagged(tmp_path):
 
 def test_credential_under_test_fixture_still_detected(tmp_path):
     """Regression: the old blanket tests//examples exemption is gone."""
-    write(tmp_path, "tests/fixtures/adapters/app.py",
-          f'API_KEY = "{AWS_LIKE_KEY}"\n')
+    write(tmp_path, "tests/fixtures/adapters/app.py", f'API_KEY = "{AWS_LIKE_KEY}"\n')
     report = audit_repository(tmp_path)
     hits = {f.rule: f.path for f in report.errors}
     assert hits.get("aws-access-key") == "tests/fixtures/adapters/app.py"
@@ -83,8 +81,7 @@ def test_prohibited_file_under_tests_still_detected(tmp_path):
 def test_machine_path_under_example_still_detected(tmp_path):
     write(tmp_path, "examples/notes.md", "see " + WIN_USER_PATH + "\\here" + "\n")
     report = audit_repository(tmp_path)
-    assert any(f.rule == "windows-user-path" and f.path == "examples/notes.md"
-               for f in report.errors)
+    assert any(f.rule == "windows-user-path" and f.path == "examples/notes.md" for f in report.errors)
 
 
 def test_tracked_test_source_contains_no_scan_matching_literals():
@@ -99,5 +96,4 @@ def test_tracked_test_source_contains_no_scan_matching_literals():
     if not (root / ".git").exists():  # not a checkout (e.g. installed wheel)
         return
     report = audit_repository(root)
-    assert report.errors == [], "\n".join(
-        f"{f.rule} {f.path}:{f.line}" for f in report.errors)
+    assert report.errors == [], "\n".join(f"{f.rule} {f.path}:{f.line}" for f in report.errors)

@@ -105,10 +105,13 @@ def test_fetch_many_isolates_failures(engine_config):
 
     fetcher, conn = make_fetcher(engine_config, handler)
     try:
-        results = fetcher.fetch_many([
-            "https://good.example.com/a", "https://bad.example.com/b",
-            "https://good.example.com/c",
-        ])
+        results = fetcher.fetch_many(
+            [
+                "https://good.example.com/a",
+                "https://bad.example.com/b",
+                "https://good.example.com/c",
+            ]
+        )
         assert len(results) == 3
         by_url = {r.url: r for r in results}
         assert by_url["https://good.example.com/a"].ok
@@ -149,7 +152,7 @@ def test_file_scheme_fetch_percent_encoded_name(engine_config, tmp_path):
 def test_file_scheme_fetch_localhost_authority(engine_config, tmp_path):
     p = tmp_path / "localhost.json"
     p.write_text('{"c": 3}', encoding="utf-8")
-    uri = "file://localhost" + p.as_uri()[len("file://"):]
+    uri = "file://localhost" + p.as_uri()[len("file://") :]
     fetcher, conn = make_fetcher(engine_config, lambda req: httpx.Response(500))
     try:
         out = fetcher.fetch(uri)

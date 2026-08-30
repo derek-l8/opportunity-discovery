@@ -5,6 +5,7 @@ endpoint_config:
     include_regex: "/opportunities/"      # only URLs matching are kept
     exclude_regex: "/(tag|category)/"     # optional
 """
+
 from __future__ import annotations
 
 import re
@@ -25,13 +26,13 @@ class SitemapAdapter:
         cfg = ctx.source.endpoint_config
         url = cfg.get("url")
         if not url:
-            return AdapterResult(ok=False, state="check-failed",
-                                 detail="sitemap adapter requires endpoint_config.url")
+            return AdapterResult(
+                ok=False, state="check-failed", detail="sitemap adapter requires endpoint_config.url"
+            )
         out = ctx.fetcher.fetch(url)
         if out.not_modified and not out.text:
             # Unchanged upstream but no cached body available.
-            return AdapterResult(ok=True, empty_ok=True, http_status=304,
-                                 detail="not modified")
+            return AdapterResult(ok=True, empty_ok=True, http_status=304, detail="not modified")
         # A 304 carries the cached body in out.text; parse it like a normal
         # response so observations continue and closures stay accurate.
         if not out.ok:
@@ -41,8 +42,9 @@ class SitemapAdapter:
         try:
             root = ElementTree.fromstring(out.text or "")
         except ElementTree.ParseError as exc:
-            return AdapterResult(ok=False, state="format-changed", detail=f"XML parse error: {exc}",
-                                 http_status=out.status)
+            return AdapterResult(
+                ok=False, state="format-changed", detail=f"XML parse error: {exc}", http_status=out.status
+            )
         include = re.compile(cfg["include_regex"]) if cfg.get("include_regex") else None
         exclude = re.compile(cfg["exclude_regex"]) if cfg.get("exclude_regex") else None
         records: list[RawOpportunity] = []

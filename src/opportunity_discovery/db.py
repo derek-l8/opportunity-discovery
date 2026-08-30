@@ -1,4 +1,5 @@
 """SQLite storage: connections, versioned idempotent migrations."""
+
 from __future__ import annotations
 
 import importlib.resources
@@ -49,9 +50,7 @@ def migrate(conn: sqlite3.Connection) -> list[int]:
         """
     )
     conn.commit()
-    applied = {
-        row["version"] for row in conn.execute("SELECT version FROM schema_migrations")
-    }
+    applied = {row["version"] for row in conn.execute("SELECT version FROM schema_migrations")}
     newly_applied: list[int] = []
     for version, name, sql in _available_migrations():
         if version in applied:

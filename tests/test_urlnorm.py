@@ -12,10 +12,8 @@ def test_preserves_requisition_params():
 
 
 def test_scheme_host_fragment_normalization():
-    assert (normalize_url("http://EXAMPLE.com:443/a//b/#frag")
-            == "https://example.com/a/b/")
-    assert (normalize_url("https://example.com:8080/x?b=2&a=1")
-            == "https://example.com:8080/x?a=1&b=2")
+    assert normalize_url("http://EXAMPLE.com:443/a//b/#frag") == "https://example.com/a/b/"
+    assert normalize_url("https://example.com:8080/x?b=2&a=1") == "https://example.com:8080/x?a=1&b=2"
 
 
 def test_detect_greenhouse():

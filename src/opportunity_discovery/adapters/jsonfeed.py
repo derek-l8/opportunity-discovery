@@ -15,6 +15,7 @@ endpoint_config:
         season: season
         employment_type: type
 """
+
 from __future__ import annotations
 
 import json
@@ -58,13 +59,13 @@ class JsonFeedAdapter:
         cfg = ctx.source.endpoint_config
         url = cfg.get("url")
         if not url:
-            return AdapterResult(ok=False, state="check-failed",
-                                 detail="jsonfeed adapter requires endpoint_config.url")
+            return AdapterResult(
+                ok=False, state="check-failed", detail="jsonfeed adapter requires endpoint_config.url"
+            )
         out = ctx.fetcher.fetch(url)
         if out.not_modified and not out.text:
             # Unchanged upstream but no cached body available.
-            return AdapterResult(ok=True, empty_ok=True, http_status=304,
-                                 detail="not modified")
+            return AdapterResult(ok=True, empty_ok=True, http_status=304, detail="not modified")
         # A 304 carries the cached body in out.text; parse it like a normal
         # response so observations continue and closures stay accurate.
         if not out.ok:
@@ -72,14 +73,18 @@ class JsonFeedAdapter:
         try:
             data = parse_json_body(out.text)
         except (ValueError, json.JSONDecodeError) as exc:
-            return AdapterResult(ok=False, state="format-changed", detail=f"bad JSON: {exc}",
-                                 http_status=out.status)
+            return AdapterResult(
+                ok=False, state="format-changed", detail=f"bad JSON: {exc}", http_status=out.status
+            )
         records_path = cfg.get("records_path", "")
         items: Any = _dig(data, records_path) if records_path else data
         if not isinstance(items, list):
-            return AdapterResult(ok=False, state="format-changed",
-                                 detail=f"'{records_path or 'root'}' is not an array",
-                                 http_status=out.status)
+            return AdapterResult(
+                ok=False,
+                state="format-changed",
+                detail=f"'{records_path or 'root'}' is not an array",
+                http_status=out.status,
+            )
         field_map = {**_DEFAULT_FIELDS, **(cfg.get("fields") or {})}
         records: list[RawOpportunity] = []
         for item in items:
@@ -104,7 +109,8 @@ class JsonFeedAdapter:
                     compensation_text=_dig(item, field_map["compensation_text"]),
                     relocation_text=_dig(item, field_map["relocation_text"]),
                     description_excerpt=bounded_excerpt(
-                        _dig(item, field_map["description_excerpt"]), ctx.excerpt_chars),
+                        _dig(item, field_map["description_excerpt"]), ctx.excerpt_chars
+                    ),
                     season=_dig(item, field_map["season"]),
                     employment_type=_dig(item, field_map["employment_type"]),
                 )

@@ -8,6 +8,7 @@ application data.
 Known limitations are documented in docs/SECURITY_AND_PRIVACY.md; the audit
 is a heuristic net, not a guarantee.
 """
+
 from __future__ import annotations
 
 import json
@@ -24,39 +25,62 @@ CREDENTIAL_PATTERNS = [
     ("slack-token", re.compile(r"\bxox[baprs]-[A-Za-z0-9-]{10,}\b")),
     ("google-api-key", re.compile(r"\bAIza[0-9A-Za-z_-]{35}\b")),
     ("openai-key", re.compile(r"\bsk-(proj-)?[A-Za-z0-9_-]{20,}\b")),
-    ("generic-secret-assignment", re.compile(
-        r"(?i)\b(api[_-]?key|secret|password|passwd|token)\b\s*[:=]\s*['\"]?[A-Za-z0-9+/_-]{16,}")),
+    (
+        "generic-secret-assignment",
+        re.compile(r"(?i)\b(api[_-]?key|secret|password|passwd|token)\b\s*[:=]\s*['\"]?[A-Za-z0-9+/_-]{16,}"),
+    ),
     ("private-key-block", re.compile(r"-----BEGIN [A-Z ]*PRIVATE KEY-----")),
-    ("connection-string", re.compile(
-        r"(?i)\b(postgres|mysql|mongodb(\+srv)?|amqp)://[^\s'\"]+:[^\s'\"]+@")),
+    ("connection-string", re.compile(r"(?i)\b(postgres|mysql|mongodb(\+srv)?|amqp)://[^\s'\"]+:[^\s'\"]+@")),
 ]
 
 PATH_PATTERNS = [
-    ("windows-user-path", re.compile(r"[A-Za-z]:\\Users\\[A-Za-z][\w.-]*", )),
+    (
+        "windows-user-path",
+        re.compile(
+            r"[A-Za-z]:\\Users\\[A-Za-z][\w.-]*",
+        ),
+    ),
     ("windows-profile-path", re.compile(r"(?i)[A-Za-z]:\\Documents and Settings\\")),
     ("wsl-user-mount", re.compile(r"/mnt/c/Users/[A-Za-z][\w.-]*")),
     ("home-abs-path", re.compile(r"(?<![\w/])/home/[A-Za-z][\w.-]*/")),
 ]
 
 BANNED_FILENAMES = [
-    ".env", ".env.local", ".env.production",
-    "id_rsa", "id_ed25519", "id_ecdsa",
-    "credentials.json", "client_secret.json",
+    ".env",
+    ".env.local",
+    ".env.production",
+    "id_rsa",
+    "id_ed25519",
+    "id_ecdsa",
+    "credentials.json",
+    "client_secret.json",
 ]
 
 BANNED_SUFFIXES = [
-    ".sqlite", ".sqlite3", ".db", ".db-journal", ".sqlite-wal", ".sqlite-shm",
-    ".log", ".pem", ".key", ".p12", ".pdf",
+    ".sqlite",
+    ".sqlite3",
+    ".db",
+    ".db-journal",
+    ".sqlite-wal",
+    ".sqlite-shm",
+    ".log",
+    ".pem",
+    ".key",
+    ".p12",
+    ".pdf",
     # live payload artifacts that should never be committed
-    "-packet.json", "_health.json",
+    "-packet.json",
+    "_health.json",
 ]
 
 BANNED_DIR_PARTS = {"node_modules", "__pycache__", ".venv", "venv", "data", "output", "logs"}
 
 PERSONAL_DATA_HINTS = [
     ("resume-file", re.compile(r"(?i)\b(resume|cv|transcript)[\w-]*\.(pdf|docx?)\b")),
-    ("application-status-language", re.compile(
-        r"(?i)\b(my application (status|outcome)|i applied|interviewed at)\b")),
+    (
+        "application-status-language",
+        re.compile(r"(?i)\b(my application (status|outcome)|i applied|interviewed at)\b"),
+    ),
 ]
 
 
@@ -98,9 +122,7 @@ class AuditReport:
 
 def _tracked_files(root: Path) -> list[Path]:
     try:
-        out = subprocess.run(
-            ["git", "ls-files"], cwd=str(root), capture_output=True, text=True, check=True
-        )
+        out = subprocess.run(["git", "ls-files"], cwd=str(root), capture_output=True, text=True, check=True)
         if out.stdout.strip():
             return sorted(root / line for line in out.stdout.splitlines() if line.strip())
         # Nothing tracked yet: fall through to a working-tree preview so the
@@ -113,8 +135,16 @@ def _tracked_files(root: Path) -> list[Path]:
     # reported as findings.
     results: list[Path] = []
     skip_dirs = {
-        "node_modules", "__pycache__", ".venv", "venv", "dist", "build",
-        ".mypy_cache", ".ruff_cache", ".pytest_cache", ".git",
+        "node_modules",
+        "__pycache__",
+        ".venv",
+        "venv",
+        "dist",
+        "build",
+        ".mypy_cache",
+        ".ruff_cache",
+        ".pytest_cache",
+        ".git",
     }
     for path in root.rglob("*"):
         rel_parts = set(path.relative_to(root).parts)
@@ -160,20 +190,24 @@ def audit_repository(root: Path) -> AuditReport:
             for rule_name, pattern in CREDENTIAL_PATTERNS:
                 m = pattern.search(line)
                 if m:
-                    report.findings.append(Finding(
-                        "error", rule_name, rel, lineno,
-                        "possible credential literal (value not recorded)", ))
+                    report.findings.append(
+                        Finding(
+                            "error",
+                            rule_name,
+                            rel,
+                            lineno,
+                            "possible credential literal (value not recorded)",
+                        )
+                    )
             for rule_name, pattern in PATH_PATTERNS:
                 m = pattern.search(line)
                 if m:
-                    report.findings.append(Finding(
-                        "error", rule_name, rel, lineno, m.group(0)[:60]))
+                    report.findings.append(Finding("error", rule_name, rel, lineno, m.group(0)[:60]))
             if rel.endswith(".md") or rel.startswith(("docs/",)):
                 for rule_name, pattern in PERSONAL_DATA_HINTS:
                     m = pattern.search(line)
                     if m:
-                        report.findings.append(Finding(
-                            "warning", rule_name, rel, lineno, m.group(0)[:60]))
+                        report.findings.append(Finding("warning", rule_name, rel, lineno, m.group(0)[:60]))
     return report
 
 

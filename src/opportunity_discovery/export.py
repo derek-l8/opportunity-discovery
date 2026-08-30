@@ -3,6 +3,7 @@
 Artifacts are written atomically (temp file + os.replace). See
 docs/INTEGRATION_CONTRACT.md and schemas/*.schema.json.
 """
+
 from __future__ import annotations
 
 import hashlib
@@ -112,9 +113,7 @@ def attach_provenance(conn: sqlite3.Connection, candidate: dict[str, Any]) -> di
 
 
 def _iter_candidates(conn: sqlite3.Connection) -> Iterator[sqlite3.Row]:
-    yield from conn.execute(
-        "SELECT * FROM opportunities ORDER BY opportunity_id"
-    )  # deterministic ordering
+    yield from conn.execute("SELECT * FROM opportunities ORDER BY opportunity_id")  # deterministic ordering
 
 
 def is_review_queue_member(row: sqlite3.Row) -> tuple[bool, list[str]]:
@@ -123,17 +122,13 @@ def is_review_queue_member(row: sqlite3.Row) -> tuple[bool, list[str]]:
     score = float(row["generic_score"] or 0.0)
     excluded_codes = [r for r in reasons if r.startswith("exclude:")]
     tags = json.loads(row["role_family_tags_json"] or "[]")
-    include = (
-        bool(tags)
-        and not excluded_codes
-        and score > 0
-        and int(row["active"] or 0) == 1
-    )
+    include = bool(tags) and not excluded_codes and score > 0 and int(row["active"] or 0) == 1
     return include, reasons
 
 
-def export_all(conn: sqlite3.Connection, cfg: EngineConfig, run_id: str | None,
-               *, output_dir: Path | None = None) -> dict[str, Any]:
+def export_all(
+    conn: sqlite3.Connection, cfg: EngineConfig, run_id: str | None, *, output_dir: Path | None = None
+) -> dict[str, Any]:
     """Write all export artifacts atomically; returns artifact info."""
     out_dir = Path(output_dir) if output_dir else cfg.paths.output_dir
     out_dir.mkdir(parents=True, exist_ok=True)
@@ -151,7 +146,8 @@ def export_all(conn: sqlite3.Connection, cfg: EngineConfig, run_id: str | None,
     payload = b"".join(line + b"\n" for line in lines)
     _atomic_write(candidates_path, payload)
     written["candidates"] = {
-        "path": str(candidates_path), "count": total_count,
+        "path": str(candidates_path),
+        "count": total_count,
         "sha256": hashlib.sha256(payload).hexdigest(),
     }
 
@@ -169,7 +165,8 @@ def export_all(conn: sqlite3.Connection, cfg: EngineConfig, run_id: str | None,
     rpayload = b"".join(line + b"\n" for line in rlines)
     _atomic_write(review_path, rpayload)
     written["review_queue"] = {
-        "path": str(review_path), "count": review_count,
+        "path": str(review_path),
+        "count": review_count,
         "sha256": hashlib.sha256(rpayload).hexdigest(),
     }
 
@@ -226,7 +223,10 @@ def export_all(conn: sqlite3.Connection, cfg: EngineConfig, run_id: str | None,
             "INSERT INTO export_checkpoints (artifact, exported_at, run_id, packet_hash,"
             " counts_json) VALUES (?, ?, ?, ?, ?)",
             (
-                artifact, now, run_id, info.get("sha256"),
+                artifact,
+                now,
+                run_id,
+                info.get("sha256"),
                 json.dumps({"count": info.get("count", 0)}),
             ),
         )
@@ -236,7 +236,9 @@ def export_all(conn: sqlite3.Connection, cfg: EngineConfig, run_id: str | None,
             "INSERT INTO export_checkpoints (artifact, exported_at, run_id, packet_hash,"
             " counts_json) VALUES (?, ?, ?, NULL, ?)",
             (
-                f"delta{suffix}", now, run_id,
+                f"delta{suffix}",
+                now,
+                run_id,
                 json.dumps({"count": len(doc.get("candidates", []))}),
             ),
         )
@@ -245,8 +247,9 @@ def export_all(conn: sqlite3.Connection, cfg: EngineConfig, run_id: str | None,
     return written
 
 
-def _paginate_delta(conn: sqlite3.Connection, rows: list[sqlite3.Row],
-                    base: dict[str, Any], cfg: EngineConfig) -> list[tuple[str, dict[str, Any]]]:
+def _paginate_delta(
+    conn: sqlite3.Connection, rows: list[sqlite3.Row], base: dict[str, Any], cfg: EngineConfig
+) -> list[tuple[str, dict[str, Any]]]:
     limit = cfg.export.packet_char_limit
     docs: list[tuple[list[dict[str, Any]], int]] = []
     current: list[dict[str, Any]] = []
@@ -284,9 +287,7 @@ def _paginate_delta(conn: sqlite3.Connection, rows: list[sqlite3.Row],
 
 
 def build_source_health(conn: sqlite3.Connection, generated_at: str) -> dict[str, Any]:
-    sources = conn.execute(
-        "SELECT * FROM sources ORDER BY source_id"
-    ).fetchall()
+    sources = conn.execute("SELECT * FROM sources ORDER BY source_id").fetchall()
     out_sources = []
     summary: dict[str, int] = {}
     for src in sources:

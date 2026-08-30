@@ -9,6 +9,7 @@ Priority of identity evidence (strongest first):
 Identity is never computed from fuzzy title similarity; two records with
 different identity keys are never merged on that basis alone.
 """
+
 from __future__ import annotations
 
 import hashlib

@@ -1,4 +1,5 @@
 """Public source registry loading (config/sources.toml)."""
+
 from __future__ import annotations
 
 import tomllib
@@ -9,9 +10,18 @@ from .models import SourceSpec
 
 REQUIRED_SOURCE_KEYS = {"source_id", "display_name", "organization", "adapter"}
 KNOWN_SOURCE_KEYS = REQUIRED_SOURCE_KEYS | {
-    "landing_url", "endpoint_config", "categories", "tags", "cadence_hours",
-    "enabled", "official_source", "rate_limit_min_seconds", "last_validated",
-    "validation_status", "provenance_note", "quarantine_reason",
+    "landing_url",
+    "endpoint_config",
+    "categories",
+    "tags",
+    "cadence_hours",
+    "enabled",
+    "official_source",
+    "rate_limit_min_seconds",
+    "last_validated",
+    "validation_status",
+    "provenance_note",
+    "quarantine_reason",
 }
 
 
@@ -106,11 +116,23 @@ def sync_sources_to_db(conn, sources: list[SourceSpec]) -> int:  # type: ignore[
                 updated_at=excluded.updated_at
             """,
             (
-                s.source_id, s.display_name, s.organization, s.adapter, s.landing_url,
-                json.dumps(s.endpoint_config), json.dumps(s.categories), json.dumps(s.tags),
-                s.cadence_hours, int(s.enabled), int(s.official_source),
-                s.rate_limit_min_seconds, s.last_validated, s.validation_status,
-                s.provenance_note, s.quarantine_reason, now,
+                s.source_id,
+                s.display_name,
+                s.organization,
+                s.adapter,
+                s.landing_url,
+                json.dumps(s.endpoint_config),
+                json.dumps(s.categories),
+                json.dumps(s.tags),
+                s.cadence_hours,
+                int(s.enabled),
+                int(s.official_source),
+                s.rate_limit_min_seconds,
+                s.last_validated,
+                s.validation_status,
+                s.provenance_note,
+                s.quarantine_reason,
+                now,
             ),
         )
         count += 1

@@ -4,6 +4,7 @@ An adapter turns one fetched public payload into RawOpportunity records.
 Adapters must distinguish a *valid empty result* from a *failure*; a network
 or parser failure must never be reported as zero opportunities.
 """
+
 from __future__ import annotations
 
 import json
@@ -92,8 +93,9 @@ def get_adapter(name: str) -> Adapter:
     return adapter
 
 
-def run_source(source: SourceSpec, fetcher: Fetcher, *,
-               excerpt_chars: int = DEFAULT_EXCERPT_CHARS) -> AdapterResult:
+def run_source(
+    source: SourceSpec, fetcher: Fetcher, *, excerpt_chars: int = DEFAULT_EXCERPT_CHARS
+) -> AdapterResult:
     """Run one source through its adapter with full failure isolation."""
     ctx = FetchContext(source=source, fetcher=fetcher, excerpt_chars=excerpt_chars)
     try:
@@ -104,14 +106,10 @@ def run_source(source: SourceSpec, fetcher: Fetcher, *,
         result = adapter.run(ctx)
     except Exception as exc:  # isolation boundary
         log.warning("adapter %s failed for %s: %s", source.adapter, source.source_id, exc)
-        return AdapterResult(ok=False, state=c.HEALTH_CHECK_FAILED,
-                             detail=f"adapter error: {type(exc).__name__}: {exc}")
-    if (
-        result.ok
-        and not result.records
-        and not result.empty_ok
-        and result.http_status != 304
-    ):
+        return AdapterResult(
+            ok=False, state=c.HEALTH_CHECK_FAILED, detail=f"adapter error: {type(exc).__name__}: {exc}"
+        )
+    if result.ok and not result.records and not result.empty_ok and result.http_status != 304:
         # Parser ran but found nothing it recognized: treat as format drift.
         # A 304 Not-Modified is a *successful* unchanged response, never drift.
         result.ok = False

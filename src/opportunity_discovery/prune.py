@@ -1,4 +1,5 @@
 """Explicit retention pruning. Defaults to dry-run; durable history is kept."""
+
 from __future__ import annotations
 
 import sqlite3
@@ -9,8 +10,9 @@ def _cutoff(days: int) -> str:
     return (datetime.now(UTC) - timedelta(days=days)).isoformat()
 
 
-def plan_prune(conn: sqlite3.Connection, *, cache_days: int, log_days: int,
-               check_days: int) -> list[dict[str, object]]:
+def plan_prune(
+    conn: sqlite3.Connection, *, cache_days: int, log_days: int, check_days: int
+) -> list[dict[str, object]]:
     plans = [
         ("raw_cache", "expires_at < ?", (_cutoff(0),)),
         ("raw_cache", "fetched_at < ? AND expires_at < ?", (_cutoff(cache_days), _cutoff(cache_days))),

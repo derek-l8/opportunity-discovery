@@ -1,4 +1,5 @@
 """Run lock preventing overlapping mutations (Windows- and POSIX-safe)."""
+
 from __future__ import annotations
 
 import contextlib
