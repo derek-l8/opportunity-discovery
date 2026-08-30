@@ -80,6 +80,7 @@ class Fetcher:
 
             migrate(self.conn)  # ensure raw_cache exists for standalone fetchers
         self.conn.row_factory = _sq.Row
+        self._conn_lock = threading.RLock()
         self.client = httpx.Client(
             timeout=cfg.fetch.timeout_seconds,
             follow_redirects=True,
@@ -267,7 +268,10 @@ class Fetcher:
             return True
 
     def _conditional_headers(self, url: str) -> dict[str, str]:
-        row = self.conn.execute("SELECT etag, last_modified FROM raw_cache WHERE url = ?", (url,)).fetchone()
+        with self._conn_lock:
+            row = self.conn.execute(
+                "SELECT etag, last_modified FROM raw_cache WHERE url = ?", (url,)
+            ).fetchone()
         headers: dict[str, str] = {}
         if row:
             if row["etag"]:
@@ -277,10 +281,11 @@ class Fetcher:
         return headers
 
     def _serve_304(self, url: str, resp: httpx.Response, start_ms: int) -> FetchOutcome:
-        row = self.conn.execute(
-            "SELECT status, content_type, content, etag, last_modified FROM raw_cache WHERE url = ?",
-            (url,),
-        ).fetchone()
+        with self._conn_lock:
+            row = self.conn.execute(
+                "SELECT status, content_type, content, etag, last_modified FROM raw_cache WHERE url = ?",
+                (url,),
+            ).fetchone()
         if row and row["content"] is not None:
             body = bytes(row["content"])
         else:
@@ -303,36 +308,38 @@ class Fetcher:
 
         now = datetime.now(UTC)
         expires = now + timedelta(days=self.cfg.fetch.cache_days)
-        self.conn.execute(
-            """
-            INSERT INTO raw_cache (url, fetched_at, status, content_type, content,
-                                   content_hash, etag, last_modified, expires_at)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-            ON CONFLICT(url) DO UPDATE SET
-                fetched_at=excluded.fetched_at, status=excluded.status,
-                content_type=excluded.content_type, content=excluded.content,
-                content_hash=excluded.content_hash, etag=excluded.etag,
-                last_modified=excluded.last_modified, expires_at=excluded.expires_at
-            """,
-            (
-                url,
-                now.isoformat(),
-                resp.status_code,
-                resp.headers.get("content-type"),
-                resp.content,
-                None,
-                resp.headers.get("etag"),
-                resp.headers.get("last-modified"),
-                expires.isoformat(),
-            ),
-        )
-        self.conn.commit()
+        with self._conn_lock:
+            self.conn.execute(
+                """
+                INSERT INTO raw_cache (url, fetched_at, status, content_type, content,
+                                       content_hash, etag, last_modified, expires_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ON CONFLICT(url) DO UPDATE SET
+                    fetched_at=excluded.fetched_at, status=excluded.status,
+                    content_type=excluded.content_type, content=excluded.content,
+                    content_hash=excluded.content_hash, etag=excluded.etag,
+                    last_modified=excluded.last_modified, expires_at=excluded.expires_at
+                """,
+                (
+                    url,
+                    now.isoformat(),
+                    resp.status_code,
+                    resp.headers.get("content-type"),
+                    resp.content,
+                    None,
+                    resp.headers.get("etag"),
+                    resp.headers.get("last-modified"),
+                    expires.isoformat(),
+                ),
+            )
+            self.conn.commit()
 
     def _load_cache(self, url: str) -> dict | None:
-        row = self.conn.execute(
-            "SELECT status, content_type, content, etag, last_modified FROM raw_cache WHERE url = ?",
-            (url,),
-        ).fetchone()
+        with self._conn_lock:
+            row = self.conn.execute(
+                "SELECT status, content_type, content, etag, last_modified FROM raw_cache WHERE url = ?",
+                (url,),
+            ).fetchone()
         if row and row["content"] is not None:
             return {
                 "status": row["status"],

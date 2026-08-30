@@ -55,7 +55,7 @@ if (-not $script:PyExe) {
            ($attemptedRoutes -join ", ") + ". Install Python 3.11, 3.12, 3.13, " +
            "or 3.14, then re-run this script.")
 }
-Write-Host ("Using Python: " + (($script:PyExe + $script:PyArgs + @("(compatible version verified)") ) -join " "))
+Write-Host ("Using Python: " + ((@($script:PyExe) + $script:PyArgs + @("(compatible version verified)")) -join " "))
 if ($ProbeOnly) { exit 0 }
 
 Write-Host "Creating virtual environment..."
