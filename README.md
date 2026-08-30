@@ -74,10 +74,13 @@ opdisc add-source ...     append a source to config/sources.toml
 opdisc prune              retention pruning (dry-run by default)
 ```
 
-All commands accept `--quiet` and `--json` for Task Scheduler-friendly output.
+All commands accept the global `--quiet`, `--json`, and `--config` options.
+Place global options before the subcommand, for example
+`opdisc --json status` or `opdisc --quiet run`.
 `opdisc run` / `opdisc collect` share one tolerant exit contract:
 `0` no source failed, nothing was due, or at least one attempted source
-succeeded (partial failures are tolerated and visible in `source-health`);
+succeeded (a partial run is tolerated; failed checks remain visible in
+`source-health` and prior successful state is preserved);
 `1` sources were attempted but all failed; `2` fatal/config error;
 `3` another run already active (lock).
 

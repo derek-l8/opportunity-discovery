@@ -26,17 +26,17 @@ function Test-Python311 {
 
 if (Get-Command py -ErrorAction SilentlyContinue) {
     foreach ($minor in @(14, 13, 12, 11)) {
-        if (Test-Python311 -Exe "py" -Args @("-3.$minor")) {
+        if (Test-Python311 -Exe "py" -LauncherArgs @("-3.$minor")) {
             $script:PyExe = "py"; $script:PyArgs = @("-3.$minor"); break
         }
     }
-    if (-not $script:PyExe -and (Test-Python311 -Exe "py" -Args @("-3"))) {
+    if (-not $script:PyExe -and (Test-Python311 -Exe "py" -LauncherArgs @("-3"))) {
         $script:PyExe = "py"; $script:PyArgs = @("-3")
     }
 }
 if (-not $script:PyExe) {
     $pythonOnPath = Get-Command python.exe -ErrorAction SilentlyContinue
-    if ($pythonOnPath -and (Test-Python311 -Exe $pythonOnPath.Source -Args @())) {
+    if ($pythonOnPath -and (Test-Python311 -Exe $pythonOnPath.Source -LauncherArgs @())) {
         $script:PyExe = $pythonOnPath.Source; $script:PyArgs = @()
     }
 }

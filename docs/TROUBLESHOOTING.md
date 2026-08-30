@@ -20,6 +20,18 @@ alternatives — either produces the same `.venv`.
 
 ## Common issues
 
+**`opdisc: error: unrecognized arguments: --quiet` (or `--json`)**
+These are global options and must precede the subcommand. Use
+`opdisc --quiet run` or `opdisc --json source-health`, not
+`opdisc run --quiet`.
+
+**A scheduled run reports a nonzero task result**
+Open the newest `logs\run-YYYYMMDD.log` and inspect
+`output\source_health.json`. Exit `1` means every attempted source failed but
+prior successful lead state was preserved. Exit `2` is a hard configuration
+or workflow failure; run `opdisc validate-config`, then retry `opdisc run`
+interactively. Exit `3` means another run owns the lock.
+
 **`another run appears active`**
 A previous run crashed leaving a stale lock. The lock self-heals if the pid is
 dead; otherwise delete `data/run.lock` after confirming no `opdisc` process is
