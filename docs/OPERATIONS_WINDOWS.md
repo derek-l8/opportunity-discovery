@@ -40,13 +40,18 @@ Development installation (instead of the plain `-e .` above):
 
 `scripts/run.ps1`:
 
-- runs `opdisc run --quiet`,
+- runs `opdisc --quiet run` (global CLI options precede the subcommand),
 - appends output to `logs\run-YYYYMMDD.log`,
 - maps exit codes (same contract as `opdisc collect`): `0` no failures /
   nothing due / at least one source succeeded, `1` all attempted sources
   failed, `2` fatal/config error, `3` already-running (lock),
 - surfaces the code to Task Scheduler as the task result.
-- surfaces the code to Task Scheduler as the task result.
+
+A partial source failure still returns `0` by design: successful sources are
+exported, failed checks preserve their last successful state, and details are
+available in `output\source_health.json`. An all-source or hard failure is
+recorded in `output\run_summary.json` when export finalization was reached;
+the dated log always records the process exit code.
 
 ## Scheduled task
 

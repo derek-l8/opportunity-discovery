@@ -327,10 +327,11 @@ def cmd_prune(args: argparse.Namespace) -> int:
 
 def _summary_line(summary) -> str:  # type: ignore[no-untyped-def]
     return (
-        f"{summary.run_id}: sources {summary.sources_succeeded}/{summary.sources_attempted} ok,"
-        f" records={summary.records_seen}, new={summary.opportunities_new},"
-        f" changed={summary.opportunities_changed}, closed={summary.opportunities_closed},"
-        f" review_queue={summary.review_queue_count}"
+        f"{summary.run_id}: source checks: {summary.sources_succeeded} succeeded,"
+        f" {summary.sources_failed} failed, {summary.sources_attempted} attempted;"
+        f" source records: {summary.records_seen}; unverified leads:"
+        f" {summary.opportunities_new} new, {summary.opportunities_changed} changed,"
+        f" {summary.opportunities_closed} closed, {summary.review_queue_count} in review queue"
     )
 
 

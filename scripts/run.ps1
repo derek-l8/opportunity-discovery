@@ -14,7 +14,7 @@ $log = Join-Path $logsDir "run-$stamp.log"
 $stampIso = Get-Date -Format o
 Add-Content -Path $log -Value "=== run start $stampIso ==="
 
-& .\.venv\Scripts\opdisc.exe run --quiet *>> $log
+& .\.venv\Scripts\opdisc.exe --quiet run *>> $log
 $code = $LASTEXITCODE
 
 $endIso = Get-Date -Format o
