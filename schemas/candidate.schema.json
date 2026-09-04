@@ -136,6 +136,30 @@
     "deadline_timezone": {
       "type": "string"
     },
+    "overview_url": {
+      "type": ["string", "null"]
+    },
+    "application_url": {
+      "type": ["string", "null"]
+    },
+    "program_family_id": {
+      "type": ["string", "null"]
+    },
+    "cycle_id": {
+      "type": ["string", "null"]
+    },
+    "event_start_date": {
+      "type": ["string", "null"]
+    },
+    "event_end_date": {
+      "type": ["string", "null"]
+    },
+    "application_state": {
+      "enum": ["application-open", "notification-only", "closed", "unknown"]
+    },
+    "requirements_text": {
+      "type": ["string", "null"]
+    },
     "compensation_text": {
       "type": [
         "string",
@@ -226,9 +250,33 @@
         "reopened",
         "apparently-closed",
         "deadline-changed",
+        "application-opened",
+        "application-closed",
+        "requirements-changed",
+        "dates-changed",
+        "location-changed",
         "materially-changed",
         "check-failed"
       ]
+    },
+    "change_events": {
+      "type": "array",
+      "items": {
+        "enum": [
+          "new",
+          "no-change",
+          "reopened",
+          "apparently-closed",
+          "deadline-changed",
+          "application-opened",
+          "application-closed",
+          "requirements-changed",
+          "dates-changed",
+          "location-changed",
+          "materially-changed",
+          "check-failed"
+        ]
+      }
     },
     "active": {
       "type": "boolean"

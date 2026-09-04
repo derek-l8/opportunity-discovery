@@ -2,8 +2,10 @@
 
 from __future__ import annotations
 
+import ipaddress
 import logging
 import random
+import socket
 import sqlite3
 import threading
 import time
@@ -11,7 +13,7 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass
 from datetime import UTC
 from pathlib import Path
-from urllib.parse import urlsplit
+from urllib.parse import urljoin, urlsplit
 from urllib.request import url2pathname
 from urllib.robotparser import RobotFileParser
 
@@ -29,6 +31,7 @@ RETRYABLE_STATUS = {408, 425, 429, 500, 502, 503, 504}
 @dataclass
 class FetchOutcome:
     url: str
+    final_url: str | None = None
     status: int | None = None
     body: bytes | None = None
     text: str | None = None
@@ -83,7 +86,7 @@ class Fetcher:
         self._conn_lock = threading.RLock()
         self.client = httpx.Client(
             timeout=cfg.fetch.timeout_seconds,
-            follow_redirects=True,
+            follow_redirects=False,
             headers={"User-Agent": USER_AGENT, "Accept-Encoding": "gzip"},
         )
         self.throttle = _DomainThrottle(cfg.fetch.per_domain_min_interval_seconds)
@@ -95,11 +98,24 @@ class Fetcher:
         self.client.close()
 
     def fetch(
-        self, url: str, *, extra_headers: dict[str, str] | None = None, use_cache_fallback: bool = True
+        self,
+        url: str,
+        *,
+        extra_headers: dict[str, str] | None = None,
+        use_cache_fallback: bool = True,
+        allowed_hosts: set[str] | None = None,
     ) -> FetchOutcome:
         start_ms = time.monotonic_ns() // 1_000_000
         if url.startswith("file://"):
             return self._fetch_file(url, start_ms)
+        destination_error = self._destination_error(url, allowed_hosts)
+        if destination_error:
+            return FetchOutcome(
+                url=url,
+                error=destination_error,
+                state="failed",
+                duration_ms=time.monotonic_ns() // 1_000_000 - start_ms,
+            )
         parts = urlsplit(url)
         domain = parts.hostname or ""
 
@@ -123,28 +139,37 @@ class Fetcher:
             self.throttle.wait(domain)
             resp = None
             try:
-                resp = self.client.get(url, headers=headers)
+                resp, final_url = self._get_with_safe_redirects(url, headers, allowed_hosts)
             except (httpx.TimeoutException, httpx.TransportError) as exc:
                 error = f"{type(exc).__name__}: {exc}"
                 status = None
+            except ValueError as exc:
+                error = str(exc)
+                status = 400  # unsafe redirects/configuration errors are never retryable
             else:
                 status = resp.status_code
                 if status == 304:
-                    return self._serve_304(url, resp, start_ms)
+                    return self._serve_304(url, final_url, resp, start_ms)
                 if status < 400:
-                    self._store_cache(url, resp)
-                    return FetchOutcome(
-                        url=url,
-                        status=status,
-                        body=resp.content,
-                        text=resp.text,
-                        content_type=resp.headers.get("content-type"),
-                        etag=resp.headers.get("etag"),
-                        last_modified=resp.headers.get("last-modified"),
-                        state="ok",
-                        duration_ms=time.monotonic_ns() // 1_000_000 - start_ms,
-                    )
-                error = f"HTTP {status}"
+                    if len(resp.content) > self.cfg.fetch.max_response_bytes:
+                        error = f"response exceeded max_response_bytes={self.cfg.fetch.max_response_bytes}"
+                        status = 413
+                    else:
+                        self._store_cache(url, resp)
+                        return FetchOutcome(
+                            url=url,
+                            final_url=final_url,
+                            status=status,
+                            body=resp.content,
+                            text=resp.text,
+                            content_type=resp.headers.get("content-type"),
+                            etag=resp.headers.get("etag"),
+                            last_modified=resp.headers.get("last-modified"),
+                            state="ok",
+                            duration_ms=time.monotonic_ns() // 1_000_000 - start_ms,
+                        )
+                else:
+                    error = f"HTTP {status}"
 
             retryable = status is None or status in RETRYABLE_STATUS
             if retryable and attempt <= self.cfg.fetch.max_retries:
@@ -160,6 +185,7 @@ class Fetcher:
                 if cached is not None:
                     out = FetchOutcome(
                         url=url,
+                        final_url=url,
                         status=cached["status"],
                         body=cached["body"],
                         text=(cached["body"] or b"").decode("utf-8", "replace"),
@@ -175,6 +201,7 @@ class Fetcher:
             out_state = HEALTH_RATE_LIMITED if status == 429 else "failed"
             return FetchOutcome(
                 url=url,
+                final_url=None,
                 status=status,
                 error=error,
                 state=out_state,
@@ -236,6 +263,7 @@ class Fetcher:
         }.get(suffix, "application/octet-stream")
         return FetchOutcome(
             url=url,
+            final_url=url,
             status=200,
             body=data,
             text=data.decode("utf-8", "replace"),
@@ -253,8 +281,12 @@ class Fetcher:
             rp = RobotFileParser()
             robots_url = f"{origin}/robots.txt"
             try:
-                resp = self.client.get(robots_url, headers={"User-Agent": USER_AGENT})
+                resp, _final_url = self._get_with_safe_redirects(
+                    robots_url, {"User-Agent": USER_AGENT}, {parts.hostname or ""}
+                )
                 if resp.status_code == 200:
+                    if len(resp.content) > self.cfg.fetch.max_response_bytes:
+                        return False
                     rp.parse(resp.text.splitlines())
                 else:
                     rp.allow_all = True  # type: ignore[attr-defined]
@@ -280,7 +312,7 @@ class Fetcher:
                 headers["If-Modified-Since"] = row["last_modified"]
         return headers
 
-    def _serve_304(self, url: str, resp: httpx.Response, start_ms: int) -> FetchOutcome:
+    def _serve_304(self, url: str, final_url: str, resp: httpx.Response, start_ms: int) -> FetchOutcome:
         with self._conn_lock:
             row = self.conn.execute(
                 "SELECT status, content_type, content, etag, last_modified FROM raw_cache WHERE url = ?",
@@ -292,6 +324,7 @@ class Fetcher:
             body = b""
         return FetchOutcome(
             url=url,
+            final_url=final_url,
             status=304,
             body=body,
             text=body.decode("utf-8", "replace") if body else None,
@@ -348,6 +381,98 @@ class Fetcher:
                 "etag": row["etag"],
                 "last_modified": row["last_modified"],
             }
+        return None
+
+    def _get_with_safe_redirects(
+        self, url: str, headers: dict[str, str], allowed_hosts: set[str] | None
+    ) -> tuple[httpx.Response, str]:
+        """Follow safe redirects and stream the final response within its byte budget."""
+        current = url
+        for redirect_count in range(self.cfg.fetch.max_redirects + 1):
+            destination_error = self._destination_error(current, allowed_hosts)
+            if destination_error:
+                raise ValueError(destination_error)
+            with self.client.stream("GET", current, headers=headers, follow_redirects=False) as streamed:
+                if streamed.status_code in (301, 302, 303, 307, 308):
+                    location = streamed.headers.get("location")
+                    if location:
+                        if redirect_count >= self.cfg.fetch.max_redirects:
+                            raise ValueError(f"redirect limit exceeded ({self.cfg.fetch.max_redirects})")
+                        current = urljoin(current, location)
+                        continue
+                    raise ValueError(f"redirect HTTP {streamed.status_code} did not provide Location")
+                if 300 <= streamed.status_code < 400 and streamed.status_code != 304:
+                    raise ValueError(f"unsupported redirect response HTTP {streamed.status_code}")
+                content_length = streamed.headers.get("content-length")
+                if content_length:
+                    try:
+                        declared_length = int(content_length)
+                    except ValueError:
+                        declared_length = 0
+                    if declared_length > self.cfg.fetch.max_response_bytes:
+                        raise ValueError(
+                            f"response exceeded max_response_bytes={self.cfg.fetch.max_response_bytes}"
+                        )
+                body = bytearray()
+                for chunk in streamed.iter_bytes():
+                    if len(body) + len(chunk) > self.cfg.fetch.max_response_bytes:
+                        raise ValueError(
+                            f"response exceeded max_response_bytes={self.cfg.fetch.max_response_bytes}"
+                        )
+                    body.extend(chunk)
+                response = httpx.Response(
+                    streamed.status_code,
+                    headers=streamed.headers,
+                    content=bytes(body),
+                    request=streamed.request,
+                )
+                return response, current
+        raise ValueError("redirect limit exceeded")
+
+    @staticmethod
+    def _destination_error(url: str, allowed_hosts: set[str] | None) -> str | None:
+        """Reject credentials, non-web schemes, private networks, and off-scope hosts."""
+        try:
+            parts = urlsplit(url)
+        except ValueError as exc:
+            return f"unsafe destination: invalid URL: {exc}"
+        if parts.scheme not in ("http", "https"):
+            return f"unsafe destination: unsupported scheme {parts.scheme!r}"
+        host = (parts.hostname or "").rstrip(".").lower()
+        if not host or parts.username or parts.password:
+            return "unsafe destination: host is missing or credentials are embedded"
+        try:
+            port = parts.port
+        except ValueError as exc:
+            return f"unsafe destination: invalid port: {exc}"
+        port = port or (443 if parts.scheme == "https" else 80)
+        normalized_allowed = {h.rstrip(".").lower() for h in (allowed_hosts or set())}
+        if normalized_allowed and host not in normalized_allowed:
+            return f"unsafe destination: host {host!r} is outside the configured host set"
+        if host == "localhost" or host.endswith(".localhost") or host.endswith(".local"):
+            return f"unsafe destination: local host {host!r} is not allowed"
+        try:
+            literal = ipaddress.ip_address(host)
+        except ValueError:
+            literal = None
+        if literal is not None:
+            return None if literal.is_global else f"unsafe destination: non-public address {host!r}"
+        # RFC-reserved example domains are safe only under synthetic transports and
+        # cannot resolve publicly. Real hostnames are resolved before requests so a
+        # DNS name cannot silently target loopback/private/link-local space.
+        if host == "example.com" or host.endswith(".example.com"):
+            return None
+        try:
+            addresses = {info[4][0] for info in socket.getaddrinfo(host, port, type=socket.SOCK_STREAM)}
+        except OSError as exc:
+            return f"unsafe destination: DNS resolution failed for {host!r}: {exc}"
+        for address in addresses:
+            try:
+                parsed = ipaddress.ip_address(address)
+            except ValueError:
+                return f"unsafe destination: invalid resolved address {address!r}"
+            if not parsed.is_global:
+                return f"unsafe destination: {host!r} resolved to non-public address {address!r}"
         return None
 
     @staticmethod

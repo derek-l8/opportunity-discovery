@@ -28,7 +28,7 @@ source health. It never owns personal eligibility or priority.
 | `models.py` | Typed dataclasses (`SourceSpec`, `RawOpportunity`, …) |
 | `urlnorm.py` | URL normalization, tracking-param stripping, ATS detection |
 | `identity.py` | Stable candidate IDs (priority ladder, no fuzzy merging) |
-| `http_client.py` | Polite fetching: bounded concurrency, per-domain throttle, retries w/ backoff+jitter, ETag/Last-Modified conditional requests, raw cache fallback, robots.txt |
+| `http_client.py` | Polite fetching: public-destination and redirect validation, response/redirect bounds, concurrency, per-domain throttle, retries, conditional requests, cache fallback, robots.txt |
 | `adapters/` | One adapter per source format; each distinguishes valid-empty from failure; per-source isolation in `run_source` |
 | `registry.py` | Load `config/sources.toml`, validate entries, cadence-based due selection |
 | `pipeline.py` | Fetch → observe → reconcile → detect changes → score |

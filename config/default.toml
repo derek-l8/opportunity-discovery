@@ -20,6 +20,8 @@ backoff_base_seconds = 1.5               # exponential backoff base
 backoff_max_seconds = 30
 respect_robots = true                    # honor robots.txt on HTML/RSS/sitemap lanes
 cache_days = 30                          # raw response cache retention
+max_redirects = 5                        # every redirect destination is revalidated
+max_response_bytes = 5000000             # bound parsed/cached response bodies
 
 [season]
 # Season logic is configuration-driven; change these values per cycle.

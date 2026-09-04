@@ -42,6 +42,8 @@ class FetchConfig:
     backoff_max_seconds: float = 30.0
     respect_robots: bool = True
     cache_days: int = 30
+    max_redirects: int = 5
+    max_response_bytes: int = 5_000_000
 
 
 @dataclass
@@ -74,6 +76,14 @@ class ChangeDetectionConfig:
             "location_text",
             "remote_signal",
             "deadline",
+            "overview_url",
+            "application_url",
+            "program_family_id",
+            "cycle_id",
+            "event_start_date",
+            "event_end_date",
+            "application_state",
+            "requirements_text",
             "compensation_text",
             "employment_type",
             "season",
@@ -157,8 +167,16 @@ def load_config(
         errors.append("fetch.max_concurrency must be between 1 and 32")
     if fetch.max_retries < 0 or fetch.max_retries > 10:
         errors.append("fetch.max_retries must be between 0 and 10")
+    if fetch.max_redirects < 0 or fetch.max_redirects > 10:
+        errors.append("fetch.max_redirects must be between 0 and 10")
+    if fetch.max_response_bytes < 1024 or fetch.max_response_bytes > 20_000_000:
+        errors.append("fetch.max_response_bytes must be between 1024 and 20000000")
     if export_cfg.packet_char_limit < 1000:
         errors.append("export.packet_char_limit must be >= 1000")
+    if not isinstance(scoring.review_queue_threshold, (int, float)) or scoring.review_queue_threshold < 0:
+        errors.append("scoring.review_queue_threshold must be a non-negative number")
+    if changes.closed_after_consecutive_successes < 1:
+        errors.append("change_detection.closed_after_consecutive_successes must be >= 1")
     if not season.target_season:
         errors.append("season.target_season must be non-empty")
 

@@ -74,6 +74,7 @@
               "check-failed",
               "rate-limited",
               "format-changed",
+              "coverage-warning",
               "disabled",
               "quarantined",
               "pending-check",
@@ -83,9 +84,32 @@
             ]
           },
           "last_check": {
-            "type": [
-              "object",
-              "null"
+            "oneOf": [
+              {
+                "type": "object",
+                "required": [
+                  "state",
+                  "checked_at",
+                  "records_seen",
+                  "new_records",
+                  "changed_records",
+                  "duration_ms"
+                ],
+                "properties": {
+                  "state": {"type": "string"},
+                  "checked_at": {"type": "string"},
+                  "http_status": {"type": ["integer", "null"]},
+                  "detail": {"type": ["string", "null"]},
+                  "records_seen": {"type": "integer"},
+                  "new_records": {"type": "integer"},
+                  "changed_records": {"type": "integer"},
+                  "duration_ms": {"type": ["integer", "null"]},
+                  "pages_fetched": {"type": ["integer", "null"]},
+                  "reported_total": {"type": ["integer", "null"]},
+                  "truncated": {"type": ["boolean", "null"]}
+                }
+              },
+              {"type": "null"}
             ]
           },
           "provenance_note": {

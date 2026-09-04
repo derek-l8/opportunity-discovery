@@ -41,9 +41,13 @@ counted as validated and never break runs.
 | `disabled` | Turned off in registry |
 | `quarantined` | Failed validation; reason recorded |
 
-A network failure is never reported as zero opportunities. Closure of an
-opportunity requires consecutive *successful* checks missing it
-(`closed_after_consecutive_successes`, default 3).
+A network failure is never reported as zero opportunities. Closure evidence is
+tracked separately for every opportunity/source pair. A complete successful
+check that does not observe the opportunity advances only that source's miss
+counter; an observation resets it. Failed, unattempted, or known-truncated
+sources preserve their counters. An opportunity closes only when every enabled,
+non-quarantined provenance source reaches
+`closed_after_consecutive_successes` (default 3).
 
 ## Politeness defaults
 

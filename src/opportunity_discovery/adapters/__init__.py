@@ -11,6 +11,7 @@ from . import (
     htmllist,  # noqa: F401,E402
     jsonfeed,  # noqa: F401,E402
     lever,  # noqa: F401,E402
+    programpage,  # noqa: F401,E402
     rss,  # noqa: F401,E402
     sitemap,  # noqa: F401,E402
     smartrecruiters,  # noqa: F401,E402

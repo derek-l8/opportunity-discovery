@@ -61,12 +61,18 @@ class MockFetcher:
         return (404, "not found", {})
 
     def fetch(
-        self, url: str, *, extra_headers: dict[str, str] | None = None, use_cache_fallback: bool = True
+        self,
+        url: str,
+        *,
+        extra_headers: dict[str, str] | None = None,
+        use_cache_fallback: bool = True,
+        allowed_hosts: set[str] | None = None,
     ) -> FetchOutcome:
         self.calls.append(url)
         status, body, headers = self._lookup(url)
         return FetchOutcome(
             url=url,
+            final_url=url,
             status=status,
             text=body,
             content_type=headers.get("content-type"),

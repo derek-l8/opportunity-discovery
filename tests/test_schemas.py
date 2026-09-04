@@ -10,7 +10,7 @@ from opportunity_discovery.http_client import Fetcher
 from opportunity_discovery.models import RunSummary
 from opportunity_discovery.pipeline import Pipeline
 from opportunity_discovery.registry import sync_sources_to_db
-from tests.helpers import make_db, source
+from tests.helpers import MockFetcher, load_fixture, make_db, source
 
 SCHEMA_DIR = Path(__file__).parent.parent / "schemas"
 
@@ -76,7 +76,72 @@ def test_run_summary_and_health_validate(exported):
     for artifact, schema_name in (
         ("run_summary.json", "run-summary.schema.json"),
         ("source_health.json", "source-health.schema.json"),
+        ("export_manifest.json", "export-manifest.schema.json"),
     ):
         schema = json.loads((SCHEMA_DIR / schema_name).read_text(encoding="utf-8"))
         doc = json.loads((exported / artifact).read_text(encoding="utf-8"))
         jsonschema.Draft202012Validator(schema, registry=registry).validate(doc)
+
+    health = json.loads((exported / "source_health.json").read_text(encoding="utf-8"))
+    last_check = health["sources"][0]["last_check"]
+    assert last_check["records_seen"] == 1
+    assert last_check["new_records"] == 1
+    assert last_check["changed_records"] == 0
+    assert last_check["duration_ms"] >= 0
+    assert last_check["pages_fetched"] == 1
+
+
+def test_program_export_validates_combined_optional_schemas(tmp_path, engine_config):
+    conn = make_db(tmp_path)
+    fetcher = MockFetcher()
+    overview = "https://schema.example.com/program"
+    application = "https://schema.example.com/program/2027"
+    fetcher.add(overview, 200, "<h1>Program overview</h1>")
+    fetcher.add(application, 200, load_fixture("program_application_open.html"))
+    spec = source(
+        source_id="program-schema",
+        organization="Synthetic Schema Organization",
+        adapter="program-page",
+        endpoint_config={
+            "overview_url": overview,
+            "max_pages": 2,
+            "selectors": {
+                "title": "h1",
+                "application_state": ".status",
+                "deadline": ".deadline",
+                "event_start_date": ".event-start",
+                "event_end_date": ".event-end",
+                "requirements_text": ".requirements",
+            },
+            "state_rules": [{"state": "application-open", "pattern": "(?i)applications? open"}],
+            "coverage": {"min_results": 1, "max_results": 1},
+            "programs": [
+                {
+                    "application_url": application,
+                    "program_family_id": "schema-program",
+                    "cycle_id": "2027-cycle",
+                }
+            ],
+        },
+    )
+    sync_sources_to_db(conn, [spec])
+    summary = RunSummary(run_id="program-schema-run", started_at="2026-09-01T00:00:00Z")
+    Pipeline(conn, engine_config, summary.run_id, summary).process_source(spec, fetcher)
+    from opportunity_discovery.runner import finalize_run
+
+    finalize_run(conn, engine_config, summary.run_id, summary)
+
+    registry = load_registry()
+    output = engine_config.paths.output_dir
+    candidate_schema = json.loads((SCHEMA_DIR / "candidate.schema.json").read_text(encoding="utf-8"))
+    delta_schema = json.loads((SCHEMA_DIR / "delta-packet.schema.json").read_text(encoding="utf-8"))
+    manifest_schema = json.loads((SCHEMA_DIR / "export-manifest.schema.json").read_text(encoding="utf-8"))
+    candidate = json.loads((output / "candidates.jsonl").read_text(encoding="utf-8").splitlines()[0])
+    delta = json.loads((output / "delta_packet.json").read_text(encoding="utf-8"))
+    manifest = json.loads((output / "export_manifest.json").read_text(encoding="utf-8"))
+    jsonschema.Draft202012Validator(candidate_schema, registry=registry).validate(candidate)
+    jsonschema.Draft202012Validator(delta_schema, registry=registry).validate(delta)
+    jsonschema.Draft202012Validator(manifest_schema, registry=registry).validate(manifest)
+    assert candidate["program_family_id"] == "schema-program"
+    assert candidate["change_events"] == ["new"]
+    conn.close()

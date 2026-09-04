@@ -18,10 +18,11 @@ After a normal run you get (in `output/`, regenerated atomically each run):
 | Artifact | Purpose |
 | --- | --- |
 | `candidates.jsonl` | Complete normalized export of every retained lead |
-| `review_queue.jsonl` | All currently plausible broadly relevant leads |
-| `delta_packet.json` (+ `.pN.json` pages) | Compact packet of only new/materially-changed/reopened leads since the last successful export — designed for token-efficient downstream review |
+| `review_queue.jsonl` | Active, non-excluded broadly relevant leads meeting `scoring.review_queue_threshold` |
+| `delta_packet.json` (+ `.pN.json` pages) | Compact packet of new and granularly changed leads since the last successful export — designed for token-efficient downstream review |
+| `export_manifest.json` | Deterministic generation ID, exact current delta page names, artifact hashes, and config/registry hashes |
 | `run_summary.json` | Counts, exit code, artifact hashes |
-| `source_health.json` | Per-source health: healthy / valid-empty / degraded / check-failed / rate-limited / format-changed / disabled / quarantined |
+| `source_health.json` | Per-source health, including coverage/format drift, seen/new/changed counts, elapsed time, and known pagination completeness |
 
 JSON Schemas for every external artifact are in `schemas/`.
 

@@ -192,3 +192,90 @@ def test_file_scheme_fetch_missing_file_is_failed_outcome(engine_config, tmp_pat
     finally:
         fetcher.close()
         conn.close()
+
+
+def test_redirect_to_private_destination_is_rejected_before_second_request(engine_config):
+    calls = []
+
+    def handler(request):
+        calls.append(str(request.url))
+        return httpx.Response(302, headers={"Location": "http://127.0.0.1/internal"})
+
+    fetcher, conn = make_fetcher(engine_config, handler)
+    try:
+        out = fetcher.fetch("https://public.example.com/start")
+        assert not out.ok
+        assert "non-public address" in (out.error or "")
+        assert calls == ["https://public.example.com/start"]
+    finally:
+        fetcher.close()
+        conn.close()
+
+
+def test_invalid_port_is_rejected_before_request(engine_config):
+    calls = []
+
+    def handler(request):
+        calls.append(str(request.url))
+        return httpx.Response(200, content=b"unexpected")
+
+    fetcher, conn = make_fetcher(engine_config, handler)
+    try:
+        out = fetcher.fetch("https://public.example.com:invalid/path")
+        assert not out.ok
+        assert "invalid port" in (out.error or "")
+        assert calls == []
+    finally:
+        fetcher.close()
+        conn.close()
+
+
+def test_redirect_outside_explicit_host_set_is_rejected(engine_config):
+    def handler(request):
+        return httpx.Response(302, headers={"Location": "https://other.example.com/next"})
+
+    fetcher, conn = make_fetcher(engine_config, handler)
+    engine_config.fetch.max_retries = 0
+    try:
+        out = fetcher.fetch("https://public.example.com/start", allowed_hosts={"public.example.com"})
+        assert not out.ok
+        assert "outside the configured host set" in (out.error or "")
+    finally:
+        fetcher.close()
+        conn.close()
+
+
+def test_redirect_without_location_is_failed_not_parsed(engine_config):
+    calls = []
+
+    def handler(request):
+        calls.append(str(request.url))
+        return httpx.Response(302, content=b"not source content")
+
+    fetcher, conn = make_fetcher(engine_config, handler)
+    try:
+        out = fetcher.fetch("https://public.example.com/start")
+        assert not out.ok
+        assert "did not provide Location" in (out.error or "")
+        assert calls == ["https://public.example.com/start"]
+    finally:
+        fetcher.close()
+        conn.close()
+
+
+def test_response_body_limit_fails_without_caching(engine_config):
+    engine_config.fetch.max_response_bytes = 4
+
+    def handler(request):
+        return httpx.Response(200, content=b"12345")
+
+    fetcher, conn = make_fetcher(engine_config, handler)
+    try:
+        out = fetcher.fetch("https://public.example.com/large")
+        assert not out.ok
+        assert "max_response_bytes=4" in (out.error or "")
+        cached = conn.execute("SELECT 1 FROM raw_cache").fetchone()
+        assert cached is None
+    finally:
+        fetcher.close()
+        conn.close()

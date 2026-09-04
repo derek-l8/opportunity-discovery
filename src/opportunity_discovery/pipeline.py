@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 import logging
 import sqlite3
+import time
 from datetime import UTC, datetime
 from typing import Any
 
@@ -30,7 +31,7 @@ class Pipeline:
         self.cfg = cfg
         self.run_id = run_id
         self.summary = summary
-        self._observed_ids: set[str] = set()
+        self._observed_by_source: dict[str, set[str]] = {}
         # ensure the run row exists before child rows reference it
         conn.execute(
             "INSERT OR IGNORE INTO collection_runs (run_id, started_at, mode) VALUES (?, ?, 'collect')",
@@ -41,8 +42,10 @@ class Pipeline:
     # ------------------------------------------------------------- collection
     def process_source(self, source: SourceSpec, fetcher: Fetcher) -> None:
         """Run one source end-to-end with full isolation."""
+        started_ns = time.monotonic_ns()
         result: AdapterResult = run_source(source, fetcher, excerpt_chars=self.cfg.export.excerpt_chars)
-        self._record_check(source, result)
+        duration_ms = max(0, (time.monotonic_ns() - started_ns) // 1_000_000)
+        self._record_check(source, result, duration_ms)
         if not result.ok:
             # Preserve prior success: never let a failed check mutate records.
             return
@@ -50,6 +53,7 @@ class Pipeline:
         # (e.g. title link + "read more" link) must not create field churn.
         seen_keys: set[str] = set()
         ingested = 0
+        changed_before = self.summary.opportunities_changed
         for raw in result.records:
             norm = normalize_url(raw.canonical_url)
             key, _basis = identity_key(
@@ -66,15 +70,32 @@ class Pipeline:
             seen_keys.add(batch_key)
             if self._ingest_record(source, raw):
                 ingested += 1
+        duration_ms = max(0, (time.monotonic_ns() - started_ns) // 1_000_000)
         self.conn.execute(
-            "UPDATE source_checks SET records_seen=?, new_records=? "
-            "WHERE check_id = (SELECT MAX(check_id) FROM source_checks WHERE source_id=?)",
-            (len(result.records), ingested, source.source_id),
+            "UPDATE source_checks SET records_seen=?, new_records=?, changed_records=?, duration_ms=? "
+            "WHERE check_id = (SELECT MAX(check_id) FROM source_checks "
+            "WHERE source_id=? AND run_id=?)",
+            (
+                len(result.records),
+                ingested,
+                self.summary.opportunities_changed - changed_before,
+                duration_ms,
+                source.source_id,
+                self.run_id,
+            ),
         )
         self.summary.records_seen += len(result.records)
+        self.summary.detail.setdefault("sources", {})[source.source_id].update(
+            {
+                "records_seen": len(result.records),
+                "records_new": ingested,
+                "records_changed": self.summary.opportunities_changed - changed_before,
+                "duration_ms": duration_ms,
+            }
+        )
         self.conn.commit()
 
-    def _record_check(self, source: SourceSpec, result: AdapterResult) -> None:
+    def _record_check(self, source: SourceSpec, result: AdapterResult, duration_ms: int) -> None:
         if not result.ok:
             state = result.state
         elif result.http_status == 304:
@@ -91,8 +112,9 @@ class Pipeline:
         self.conn.execute(
             """
             INSERT INTO source_checks (source_id, run_id, checked_at, state, http_status,
-                                       detail, duration_ms)
-            VALUES (?, ?, ?, ?, ?, ?, ?)
+                                       detail, duration_ms, pages_fetched, reported_total,
+                                       truncated)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             (
                 source.source_id,
@@ -101,9 +123,22 @@ class Pipeline:
                 state,
                 result.http_status,
                 result.detail,
-                0,
+                duration_ms,
+                result.pages_fetched,
+                result.reported_total,
+                None if result.truncated is None else int(result.truncated),
             ),
         )
+        self.summary.detail.setdefault("sources", {})[source.source_id] = {
+            "state": state,
+            "records_seen": 0,
+            "records_new": 0,
+            "records_changed": 0,
+            "duration_ms": duration_ms,
+            "pages_fetched": result.pages_fetched,
+            "reported_total": result.reported_total,
+            "truncated": result.truncated,
+        }
 
     # -------------------------------------------------------------- ingestion
     def _ingest_record(self, source: SourceSpec, raw: RawOpportunity) -> bool:
@@ -117,8 +152,6 @@ class Pipeline:
             canonical_url=raw.canonical_url,
             location_text=raw.location_text,
         )
-        self._observed_ids.add(opp_id)
-
         existing = self.conn.execute(
             "SELECT * FROM opportunities WHERE opportunity_id = ?", (opp_id,)
         ).fetchone()
@@ -127,11 +160,14 @@ class Pipeline:
         # evidence only (identical normalized URL after tracking-strip).
         duplicate_of = self._find_duplicate_by_url(opp_id, norm_url)
         if duplicate_of is not None:
+            self._observed_by_source.setdefault(source.source_id, set()).add(duplicate_of)
             self._merge_duplicate(duplicate_of, opp_id, source.source_id, norm_url)
             opp_row = self.conn.execute(
                 "SELECT * FROM opportunities WHERE opportunity_id = ?", (duplicate_of,)
             ).fetchone()
             return self._apply_observation(opp_row, source, raw, opp_id_override=duplicate_of)
+
+        self._observed_by_source.setdefault(source.source_id, set()).add(opp_id)
 
         fields = self._normalize_fields(raw, source)
         now = _now()
@@ -159,6 +195,14 @@ class Pipeline:
                 "posted_date": fields["posted_date"],
                 "deadline": fields["deadline"],
                 "deadline_tz": fields["deadline_tz"],
+                "overview_url": fields["overview_url"],
+                "application_url": fields["application_url"],
+                "program_family_id": fields["program_family_id"],
+                "cycle_id": fields["cycle_id"],
+                "event_start_date": fields["event_start_date"],
+                "event_end_date": fields["event_end_date"],
+                "application_state": fields["application_state"],
+                "requirements_text": fields["requirements_text"],
                 "compensation_text": fields["compensation_text"],
                 "relocation_text": fields["relocation_text"],
                 "description_excerpt": fields["description_excerpt"],
@@ -182,6 +226,7 @@ class Pipeline:
                 "last_changed": now,
                 "last_successful_check": now,
                 "field_owner_json": "{}",
+                "last_change_events_json": json.dumps([c.CHANGE_NEW]),
             }
             cols = ", ".join(record)
             placeholders = ", ".join("?" for _ in record)
@@ -229,6 +274,14 @@ class Pipeline:
                 (kept_id, merged_id),
             )
             self.conn.execute(f"DELETE FROM {table} WHERE opportunity_id = ?", (merged_id,))
+        self.conn.execute(
+            "UPDATE OR IGNORE opportunity_source_state SET opportunity_id=? WHERE opportunity_id=?",
+            (kept_id, merged_id),
+        )
+        self.conn.execute(
+            "DELETE FROM opportunity_source_state WHERE opportunity_id=?",
+            (merged_id,),
+        )
         self.conn.execute(
             "INSERT OR IGNORE INTO duplicate_decisions (kept_id, merged_id, basis, detail, decided_at)"
             " VALUES (?, ?, 'normalized-url-equal', ?, ?)",
@@ -298,24 +351,27 @@ class Pipeline:
                 _set_owner(col)
 
         change_type = c.CHANGE_NO_CHANGE
+        event_types: list[str] = []
         was_inactive = not int(existing["active"] or 0)
         if was_inactive:
             change_type = c.CHANGE_REOPENED
+            event_types = [c.CHANGE_REOPENED]
         elif changed:
-            change_type = (
-                c.CHANGE_DEADLINE if set(changed) <= {"deadline", "deadline_tz"} else c.CHANGE_MATERIAL
-            )
+            event_types = self._granular_change_types(existing, changed)
+            change_type = event_types[0]
         if change_type == c.CHANGE_REOPENED:
             updates["active"] = 1
-        if change_type in (c.CHANGE_REOPENED, c.CHANGE_DEADLINE, c.CHANGE_MATERIAL):
+        if event_types:
             updates["last_changed"] = now
             updates["change_type"] = change_type
-            detail: dict[str, Any] = dict(changed) or {"reactivated": True}
-            self.conn.execute(
-                "INSERT INTO changes (opportunity_id, run_id, change_type, changed_fields_json,"
-                " detected_at) VALUES (?, ?, ?, ?, ?)",
-                (opp_id, self.run_id, change_type, json.dumps(detail), now),
-            )
+            updates["last_change_events_json"] = json.dumps(event_types)
+            for event_type in event_types:
+                detail = self._event_detail(event_type, changed)
+                self.conn.execute(
+                    "INSERT INTO changes (opportunity_id, run_id, change_type, changed_fields_json,"
+                    " detected_at) VALUES (?, ?, ?, ?, ?)",
+                    (opp_id, self.run_id, event_type, json.dumps(detail), now),
+                )
             self.summary.opportunities_changed += 1
         # alias bookkeeping: alternate titles preserved
         if fields["title"] and fields["title"] != existing["title"]:
@@ -325,45 +381,55 @@ class Pipeline:
                 (opp_id, existing["title"]),
             )
         updates["field_owner_json"] = json.dumps(owners)
+        # Rescore the final merged record, not the incoming observation. This
+        # keeps every derived scoring field consistent with source ownership.
+        if event_types:
+
+            def final_value(column: str) -> Any:
+                return updates.get(column, existing[column])
+
+            refreshed = RawOpportunity(
+                title=final_value("title") or "",
+                canonical_url=final_value("canonical_url") or "",
+                organization=final_value("organization"),
+                provider=final_value("provider"),
+                provider_req_id=final_value("provider_req_id"),
+                location_text=final_value("location_text"),
+                remote_signal=final_value("remote_signal"),
+                posted_date=final_value("posted_date"),
+                deadline=final_value("deadline"),
+                deadline_tz=final_value("deadline_tz"),
+                overview_url=final_value("overview_url"),
+                application_url=final_value("application_url"),
+                program_family_id=final_value("program_family_id"),
+                cycle_id=final_value("cycle_id"),
+                event_start_date=final_value("event_start_date"),
+                event_end_date=final_value("event_end_date"),
+                application_state=final_value("application_state"),
+                requirements_text=final_value("requirements_text"),
+                compensation_text=final_value("compensation_text"),
+                relocation_text=final_value("relocation_text"),
+                description_excerpt=final_value("description_excerpt"),
+                employment_type=final_value("employment_type"),
+                season=final_value("season"),
+            )
+            tags, components, signals, reasons = self._score(refreshed)
+            updates.update(
+                {
+                    "requested_components_json": json.dumps(signals.get("requested_components", [])),
+                    "effort_estimate": signals.get("effort_estimate", c.EFFORT_UNKNOWN),
+                    "role_family_tags_json": json.dumps(tags),
+                    "score_components_json": json.dumps(components.__dict__),
+                    "signals_json": json.dumps(signals),
+                    "generic_score": components.total,
+                    "reason_codes_json": json.dumps(reasons),
+                }
+            )
         sets = ", ".join(f"{k} = ?" for k in updates)
         self.conn.execute(
             f"UPDATE opportunities SET {sets} WHERE opportunity_id = ?",
             (*updates.values(), opp_id),
         )
-        # Rescore on material change so score components stay current.
-        if change_type in (c.CHANGE_MATERIAL, c.CHANGE_DEADLINE, c.CHANGE_REOPENED):
-            refreshed = RawOpportunity(
-                title=fields["title"],
-                canonical_url=fields["canonical_url"] or "",
-                organization=fields["organization"],
-                provider=fields["provider"],
-                provider_req_id=fields["provider_req_id"],
-                location_text=fields["location_text"],
-                remote_signal=fields["remote_signal"],
-                posted_date=fields["posted_date"],
-                deadline=fields["deadline"],
-                deadline_tz=fields["deadline_tz"],
-                compensation_text=fields["compensation_text"],
-                relocation_text=fields["relocation_text"],
-                description_excerpt=fields["description_excerpt"],
-                employment_type=fields["employment_type"],
-                season=fields["season"],
-            )
-            tags, components, signals, reasons = self._score(refreshed)
-            self.conn.execute(
-                "UPDATE opportunities SET role_family_tags_json=?, score_components_json=?,"
-                " signals_json=?, generic_score=?, reason_codes_json=? WHERE opportunity_id=?",
-                (
-                    json.dumps(tags),
-                    json.dumps(components.__dict__),
-                    json.dumps(signals),
-                    components.total,
-                    json.dumps(reasons),
-                    opp_id,
-                ),
-            )
-        # reset consecutive misses
-        self._set_consecutive_misses(opp_id, 0)
         return False
 
     def _normalize_fields(self, raw: RawOpportunity, source: SourceSpec) -> dict[str, Any]:
@@ -409,6 +475,14 @@ class Pipeline:
             "posted_date": raw.posted_date,
             "deadline": raw.deadline,
             "deadline_tz": raw.deadline_tz,
+            "overview_url": normalize_url(raw.overview_url) if raw.overview_url else None,
+            "application_url": normalize_url(raw.application_url) if raw.application_url else None,
+            "program_family_id": raw.program_family_id,
+            "cycle_id": raw.cycle_id,
+            "event_start_date": raw.event_start_date,
+            "event_end_date": raw.event_end_date,
+            "application_state": raw.application_state,
+            "requirements_text": raw.requirements_text,
             "compensation_text": raw.compensation_text,
             "relocation_text": raw.relocation_text,
             "description_excerpt": raw.description_excerpt,
@@ -419,6 +493,58 @@ class Pipeline:
 
     def _score(self, raw: RawOpportunity):  # type: ignore[no-untyped-def]
         return classify(raw, self.cfg.scoring)
+
+    @staticmethod
+    def _granular_change_types(existing: sqlite3.Row, changed: dict[str, dict[str, Any]]) -> list[str]:
+        events: list[str] = []
+        if "application_state" in changed:
+            old_state = existing["application_state"]
+            new_state = changed["application_state"]["new"]
+            if new_state == c.APPLICATION_OPEN and old_state != c.APPLICATION_OPEN:
+                events.append(c.CHANGE_APPLICATION_OPENED)
+            elif old_state == c.APPLICATION_OPEN and new_state in (
+                c.APPLICATION_CLOSED,
+                c.APPLICATION_NOTIFICATION_ONLY,
+            ):
+                events.append(c.CHANGE_APPLICATION_CLOSED)
+        categories = (
+            (c.CHANGE_DEADLINE, {"deadline", "deadline_tz"}),
+            (c.CHANGE_REQUIREMENTS, {"requirements_text", "description"}),
+            (c.CHANGE_DATES, {"event_start_date", "event_end_date"}),
+            (c.CHANGE_LOCATION, {"location_text"}),
+        )
+        categorized: set[str] = {"application_state"}
+        for event_type, fields in categories:
+            triggered = (
+                "requirements_text" in changed
+                if event_type == c.CHANGE_REQUIREMENTS
+                else bool(fields & set(changed))
+            )
+            if triggered:
+                events.append(event_type)
+                categorized.update(fields)
+        if set(changed) - categorized or not events:
+            events.append(c.CHANGE_MATERIAL)
+        return events
+
+    @staticmethod
+    def _event_detail(event_type: str, changed: dict[str, dict[str, Any]]) -> dict[str, Any]:
+        fields_by_event = {
+            c.CHANGE_APPLICATION_OPENED: {"application_state"},
+            c.CHANGE_APPLICATION_CLOSED: {"application_state"},
+            c.CHANGE_DEADLINE: {"deadline", "deadline_tz"},
+            c.CHANGE_REQUIREMENTS: {"requirements_text", "description"},
+            c.CHANGE_DATES: {"event_start_date", "event_end_date"},
+            c.CHANGE_LOCATION: {"location_text"},
+        }
+        if event_type == c.CHANGE_REOPENED:
+            return {"reactivated": True}
+        selected = fields_by_event.get(event_type)
+        if selected is None:
+            categorized = set().union(*fields_by_event.values())
+            detail = {key: value for key, value in changed.items() if key not in categorized}
+            return detail or dict(changed)
+        return {key: value for key, value in changed.items() if key in selected}
 
     def _touch_provenance(self, opp_id: str, source: SourceSpec, raw: RawOpportunity, now: str) -> None:
         from urllib.parse import urlsplit
@@ -448,6 +574,7 @@ class Pipeline:
                 """,
                 (opp_id, source.source_id, landing, now, now),
             )
+        self._record_source_observation(opp_id, source.source_id, now)
 
     def _touch_provenance_url(self, opp_id: str, source_id: str, url: str, now: str) -> None:
         self.conn.execute(
@@ -460,56 +587,95 @@ class Pipeline:
             """,
             (opp_id, source_id, url, now, now),
         )
+        self._record_source_observation(opp_id, source_id, now)
 
-    # ------------------------------------------------------- post-run phases
-    def detect_closures(self, successful_sources: set[str], expected_opps: dict[str, str]) -> None:
-        """Mark apparently-closed only after consecutive *successful* misses."""
-        threshold = self.cfg.changes.closed_after_consecutive_successes
-        now = _now()
-        for opp_id, source_id in expected_opps.items():
-            if opp_id in self._observed_ids or source_id not in successful_sources:
-                continue
-            misses = self._get_consecutive_misses(opp_id) + 1
-            self._set_consecutive_misses(opp_id, misses)
-            if misses >= threshold:
-                cur = self.conn.execute(
-                    "SELECT active, change_type FROM opportunities WHERE opportunity_id=?",
-                    (opp_id,),
-                ).fetchone()
-                if cur and int(cur["active"] or 0) == 1:
-                    self.conn.execute(
-                        "UPDATE opportunities SET active=0, change_type=?, last_changed=?,"
-                        " last_seen=last_seen WHERE opportunity_id=?",
-                        (c.CHANGE_CLOSED, now, opp_id),
-                    )
-                    self.conn.execute(
-                        "INSERT INTO changes (opportunity_id, run_id, change_type,"
-                        " changed_fields_json, detected_at) VALUES (?, ?, ?, '{}', ?)",
-                        (opp_id, self.run_id, c.CHANGE_CLOSED, now),
-                    )
-                    self.summary.opportunities_closed += 1
-        self.conn.commit()
-
-    def _get_consecutive_misses(self, opp_id: str) -> int:
-        row = self.conn.execute(
-            "SELECT signals_json FROM opportunities WHERE opportunity_id=?", (opp_id,)
-        ).fetchone()
-        try:
-            return int((json.loads(row["signals_json"]) or {}).get("_consecutive_misses", 0))
-        except Exception:
-            return 0
-
-    def _set_consecutive_misses(self, opp_id: str, value: int) -> None:
+    def _record_source_observation(self, opp_id: str, source_id: str, now: str) -> None:
         self.conn.execute(
-            "UPDATE opportunities SET signals_json = json_set(COALESCE(signals_json,'{}'),"
-            " '$.\"_consecutive_misses\"', ?) WHERE opportunity_id=?",
-            (value, opp_id),
+            """
+            INSERT INTO opportunity_source_state (
+                opportunity_id, source_id, consecutive_successful_misses,
+                last_observed_at, last_checked_at
+            ) VALUES (?, ?, 0, ?, ?)
+            ON CONFLICT(opportunity_id, source_id) DO UPDATE SET
+                consecutive_successful_misses=0,
+                last_observed_at=excluded.last_observed_at,
+                last_checked_at=excluded.last_checked_at
+            """,
+            (opp_id, source_id, now, now),
         )
 
+    # ------------------------------------------------------- post-run phases
+    def detect_closures(self, successful_sources: set[str], expected_opps: dict[str, set[str]]) -> None:
+        """Close only after every usable provenance source reaches the miss threshold.
 
-def expected_opportunities_from_sources(conn: sqlite3.Connection, source_ids: list[str]) -> dict[str, str]:  # type: ignore[type-arg]
-    """Map active opportunity_id -> provenance source_id limited to given sources."""
-    out: dict[str, str] = {}
+        A miss advances only for a source that completed successfully in this
+        run and did not observe the opportunity. Failed, unattempted, and
+        truncated sources preserve their prior counters. Any observation resets
+        that source's counter. Disabled and quarantined sources are not closure
+        authorities.
+        """
+        threshold = self.cfg.changes.closed_after_consecutive_successes
+        now = _now()
+        affected: set[str] = set()
+        for opp_id, source_ids in expected_opps.items():
+            for source_id in source_ids & successful_sources:
+                if opp_id in self._observed_by_source.get(source_id, set()):
+                    continue
+                self.conn.execute(
+                    """
+                    INSERT INTO opportunity_source_state (
+                        opportunity_id, source_id, consecutive_successful_misses,
+                        last_checked_at
+                    ) VALUES (?, ?, 1, ?)
+                    ON CONFLICT(opportunity_id, source_id) DO UPDATE SET
+                        consecutive_successful_misses=
+                            opportunity_source_state.consecutive_successful_misses + 1,
+                        last_checked_at=excluded.last_checked_at
+                    """,
+                    (opp_id, source_id, now),
+                )
+                affected.add(opp_id)
+
+        for opp_id in affected:
+            states = self.conn.execute(
+                """
+                SELECT oss.consecutive_successful_misses AS misses
+                FROM opportunity_source_state oss
+                JOIN sources s ON s.source_id = oss.source_id
+                JOIN provenance p ON p.opportunity_id = oss.opportunity_id
+                                 AND p.source_id = oss.source_id
+                WHERE oss.opportunity_id=? AND s.enabled=1
+                  AND s.quarantine_reason IS NULL
+                GROUP BY oss.source_id
+                """,
+                (opp_id,),
+            ).fetchall()
+            if not states or any(int(row["misses"] or 0) < threshold for row in states):
+                continue
+            cur = self.conn.execute(
+                "SELECT active FROM opportunities WHERE opportunity_id=?",
+                (opp_id,),
+            ).fetchone()
+            if cur and int(cur["active"] or 0) == 1:
+                self.conn.execute(
+                    "UPDATE opportunities SET active=0, change_type=?, last_changed=?,"
+                    " last_change_events_json=? WHERE opportunity_id=?",
+                    (c.CHANGE_CLOSED, now, json.dumps([c.CHANGE_CLOSED]), opp_id),
+                )
+                self.conn.execute(
+                    "INSERT INTO changes (opportunity_id, run_id, change_type,"
+                    " changed_fields_json, detected_at) VALUES (?, ?, ?, '{}', ?)",
+                    (opp_id, self.run_id, c.CHANGE_CLOSED, now),
+                )
+                self.summary.opportunities_closed += 1
+        self.conn.commit()
+
+
+def expected_opportunities_from_sources(
+    conn: sqlite3.Connection, source_ids: list[str]
+) -> dict[str, set[str]]:
+    """Map each active opportunity to all targeted provenance sources."""
+    out: dict[str, set[str]] = {}
     if not source_ids:
         return out
     placeholders = ",".join("?" for _ in source_ids)
@@ -522,5 +688,5 @@ def expected_opportunities_from_sources(conn: sqlite3.Connection, source_ids: li
         source_ids,
     ).fetchall()
     for r in rows:
-        out[str(r["oid"])] = str(r["sid"])
+        out.setdefault(str(r["oid"]), set()).add(str(r["sid"]))
     return out
