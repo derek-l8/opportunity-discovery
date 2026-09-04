@@ -12,6 +12,11 @@ CHANGE_NO_CHANGE = "no-change"
 CHANGE_REOPENED = "reopened"
 CHANGE_CLOSED = "apparently-closed"
 CHANGE_DEADLINE = "deadline-changed"
+CHANGE_APPLICATION_OPENED = "application-opened"
+CHANGE_APPLICATION_CLOSED = "application-closed"
+CHANGE_REQUIREMENTS = "requirements-changed"
+CHANGE_DATES = "dates-changed"
+CHANGE_LOCATION = "location-changed"
 CHANGE_MATERIAL = "materially-changed"
 CHANGE_CHECK_FAILED = "check-failed"
 ALL_CHANGE_TYPES = (
@@ -20,6 +25,11 @@ ALL_CHANGE_TYPES = (
     CHANGE_REOPENED,
     CHANGE_CLOSED,
     CHANGE_DEADLINE,
+    CHANGE_APPLICATION_OPENED,
+    CHANGE_APPLICATION_CLOSED,
+    CHANGE_REQUIREMENTS,
+    CHANGE_DATES,
+    CHANGE_LOCATION,
     CHANGE_MATERIAL,
     CHANGE_CHECK_FAILED,
 )
@@ -31,6 +41,7 @@ HEALTH_DEGRADED = "degraded"
 HEALTH_CHECK_FAILED = "check-failed"
 HEALTH_RATE_LIMITED = "rate-limited"
 HEALTH_FORMAT_CHANGED = "format-changed"
+HEALTH_COVERAGE_WARNING = "coverage-warning"
 HEALTH_DISABLED = "disabled"
 HEALTH_QUARANTINED = "quarantined"
 ALL_HEALTH_STATES = (
@@ -40,8 +51,21 @@ ALL_HEALTH_STATES = (
     HEALTH_CHECK_FAILED,
     HEALTH_RATE_LIMITED,
     HEALTH_FORMAT_CHANGED,
+    HEALTH_COVERAGE_WARNING,
     HEALTH_DISABLED,
     HEALTH_QUARANTINED,
+)
+
+# Public-page application state (source-stated, never applicant-specific)
+APPLICATION_OPEN = "application-open"
+APPLICATION_NOTIFICATION_ONLY = "notification-only"
+APPLICATION_CLOSED = "closed"
+APPLICATION_UNKNOWN = UNKNOWN
+ALL_APPLICATION_STATES = (
+    APPLICATION_OPEN,
+    APPLICATION_NOTIFICATION_ONLY,
+    APPLICATION_CLOSED,
+    APPLICATION_UNKNOWN,
 )
 
 # Validation statuses for the source registry

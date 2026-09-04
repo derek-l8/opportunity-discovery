@@ -10,8 +10,8 @@ Every adapter must:
 
 1. **Distinguish valid empty from failure.** A 200 with zero records is
    `valid-empty`; an unparseable body is `format-changed`; transport failure is
-   `check-failed` / `rate-limited`. Never report a failed check as "0
-   opportunities".
+   `check-failed` / `rate-limited`; a coverage-canary mismatch is
+   `coverage-warning`. Never report a failed check as "0 opportunities".
 2. **Preserve prior success on failure.** The pipeline ignores results from
    failed checks; conditional requests (ETag/Last-Modified) and the raw cache
    allow `degraded` fallback.
@@ -34,7 +34,36 @@ Every adapter must:
 | `rss` | RSS/Atom via feedparser | |
 | `githublist` | GitHub-hosted markdown tables/bullets/HTML tables | Used for community list READMEs |
 | `htmllist` | explicit CSS selectors on one configured page | Selector must match ≥1 item else `format-changed` |
+| `program-page` | exact configured overview/application URLs | Up to 8 pages; one explicit record per cycle/session; CSS selectors or JSON-LD paths; coverage canaries |
 | `sitemap` | sitemap.xml with include/exclude regex | Titles inferred from slugs are flagged `inferred-signal`, bounded to 300 URLs |
+
+## Recurring program pages
+
+`program-page` addresses sites where a general overview may offer only a
+notification list while a separate official cycle/location application is
+open. It is deliberately not a crawler: every overview and application URL is
+configured exactly, redirects must stay within the set of configured hosts,
+and a source may fetch at most eight unique pages.
+
+Each `programs` entry represents one explicit cycle/session. Pair
+`program_family_id` with `cycle_id` (or the `session_id` alias) to create a
+stable strong identity such as `family:harbor-2027`; do not reuse the same pair
+for another location or cycle. When those fields are absent, identity falls
+back to the normalized exact official URL. Similar titles are never merged.
+
+Fields may be static configuration, CSS selector text, or a configured dot
+path in an `application/ld+json` object. Supported public-source fields are:
+title, location, application deadline, exact event start/end dates,
+requirements text, and application state (`application-open`,
+`notification-only`, `closed`, or `unknown`). State rules are explicit regexes;
+the presence of an application URL alone never implies that applications are
+open.
+
+Every source should configure `coverage.min_results` / `max_results` and
+expected URL/title regexes. A mismatch is `coverage-warning`, even if every
+request returned HTTP 200. Missing required parse structure is
+`format-changed`. Both states preserve prior successful opportunity state and
+are excluded from closure evidence.
 
 ## Adding an adapter
 

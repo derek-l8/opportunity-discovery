@@ -1,3 +1,5 @@
+import json
+
 from opportunity_discovery.adapters.base import run_source
 from opportunity_discovery.constants import HEALTH_FORMAT_CHANGED
 from tests.helpers import load_fixture, source
@@ -60,6 +62,33 @@ def test_smartrecruiters_success(mock_fetcher):
     assert rec.provider_req_id == "A94C7F2B"
     assert rec.location_text == "Boise, ID, US"
     assert "$25.00" in (rec.compensation_text or "")
+    assert result.pages_fetched == 1
+    assert result.reported_total == 2
+    assert result.truncated is False
+
+
+def test_smartrecruiters_reports_known_truncation(mock_fetcher, monkeypatch):
+    from opportunity_discovery.adapters import smartrecruiters
+    from tests.helpers import source as src
+
+    monkeypatch.setattr(smartrecruiters, "_MAX_PAGES", 1)
+    payload = json.loads(load_fixture("smartrecruiters_postings.json"))
+    payload["totalFound"] = 101
+    spec = src(
+        source_id="sr-truncated",
+        adapter="smartrecruiters",
+        endpoint_config={"company": "acmesemi"},
+    )
+    mock_fetcher.add(
+        "https://api.smartrecruiters.com/v1/companies/acmesemi/postings",
+        200,
+        json.dumps(payload),
+    )
+    result = run_source(spec, mock_fetcher)
+    assert result.ok
+    assert result.pages_fetched == 1
+    assert result.reported_total == 101
+    assert result.truncated is True
 
 
 def test_workday_success_uses_post(mock_fetcher):
@@ -81,6 +110,9 @@ def test_workday_success_uses_post(mock_fetcher):
     rec = result.records[0]
     assert rec.provider == "workday"
     assert rec.canonical_url.endswith("/job/Power-Electronics-Systems-Intern_Hillsboro/OR/1234567/")
+    assert result.pages_fetched == 1
+    assert result.reported_total == 2
+    assert result.truncated is False
 
 
 def test_jsonfeed_field_mapping(mock_fetcher):

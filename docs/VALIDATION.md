@@ -368,3 +368,71 @@ changes.
   execution by the expanded Windows CI matrix or a native Windows checkout.
 - GitHub Actions was not run because this worktree was neither committed nor
   pushed.
+
+## Package A collector/export correctness (2026-09-01, native Windows)
+
+Scope: per-source multi-provenance closure evidence, configured review-queue
+threshold enforcement, final-document delta pagination and stale-page cleanup,
+complete derived-score refresh after material changes, bounded per-source
+collection diagnostics, and a deterministic export generation manifest. No
+live collection or live source validation was run.
+
+Environment: Windows 10 (`10.0.26200`), PowerShell 7.6.4, bundled CPython
+3.12.13, repository-local `.venv`. Neither `python.exe` nor `py.exe` was on the
+shell PATH, so the bundled interpreter created the venv; declared `.[dev]`
+dependencies were then installed into it.
+
+| Gate | Command | Result |
+| --- | --- | --- |
+| Focused regressions | `.venv\Scripts\python.exe -m pytest -q tests\test_db_migrations.py tests\test_pipeline.py tests\test_export.py tests\test_adapters.py tests\test_schemas.py` | **45 passed** |
+| Full deterministic suite | `.venv\Scripts\python.exe -m pytest -q -m "not live" --cov=opportunity_discovery --cov-report=term` | **134 passed**, 84% total coverage |
+| Native PowerShell tests | `.venv\Scripts\python.exe -m pytest -q tests\test_windows_scripts.py -v` | **8 passed** |
+| Initialize/migrate | `.venv\Scripts\python.exe -m opportunity_discovery init` | migrations `[1, 2, 3]` applied; 272 sources synced |
+| Configuration | `.venv\Scripts\python.exe -m opportunity_discovery --json validate-config` | ok; 272 total, 248 enabled, 24 disabled |
+| Formatter | `.venv\Scripts\python.exe -m ruff format --check src tests` | 53 files already formatted |
+| Linter | `.venv\Scripts\python.exe -m ruff check src tests` | All checks passed |
+| Type checker | `.venv\Scripts\python.exe -m mypy` | Success: no issues in 33 source files |
+| Publication audit | temporary alternate Git index containing the complete uncommitted package, then `.venv\Scripts\python.exe -m opportunity_discovery audit .` | 99 files scanned, 0 errors, 0 warnings; real index remained clean |
+| Whitespace | `git diff --check` | passed; only Git LF→CRLF checkout notices |
+
+The focused closure regression proves that misses accumulate independently by
+source: repeated complete misses from one source do not close a multi-source
+record while another source is failed or unattempted; an observation resets
+only its own counter; closure occurs only after every enabled,
+non-quarantined provenance source reaches the configured threshold. The export
+regressions verify the configured queue threshold, final encoded page limits,
+bounded stale-page removal, exact manifest filenames/hashes, and schema-valid
+diagnostics. The tolerant exit-code contract was unchanged and remains covered
+by the full non-live suite.
+
+## Review Package C combined integration (2026-09-01, native Windows)
+
+Scope: integrate the independently validated collector/export correctness and
+generic recurring-program changes from baseline
+`bc0a45a2a1deea926dcc066eda0ac113e1d1ef83`. The additive migrations are ordered
+as `0003_source_closure_and_diagnostics.sql` then `0004_program_pages.sql`.
+Cross-package regressions cover coverage warnings as non-authoritative closure
+checks, program records across delta pages and the export manifest, baseline
+upgrades through both migrations, and combined optional-field schema validation.
+
+Environment: native Windows, PowerShell 7.6.4, CPython 3.12.13 in the
+repository-local `.venv`.
+
+| Gate | Command | Result |
+| --- | --- | --- |
+| Formatter | `.venv\Scripts\python.exe -m ruff format --check src tests` | 56 files already formatted |
+| Linter | `.venv\Scripts\python.exe -m ruff check src tests` | All checks passed |
+| Type checker | `.venv\Scripts\python.exe -m mypy` | No issues in 34 source files |
+| Non-live core + coverage | `.venv\Scripts\python.exe -m pytest -q -m "not live" --ignore=tests\test_windows_scripts.py --cov=opportunity_discovery --cov-report=term` | 141 passed; 84% coverage |
+| Native Windows tests | `.venv\Scripts\python.exe -m pytest -q tests\test_windows_scripts.py -v` | 8 passed |
+| Aggregate non-live suite | `.venv\Scripts\python.exe -m pytest -o addopts="" -q -m "not live"` | 149 passed |
+| Initialize/migrate | `.venv\Scripts\python.exe -m opportunity_discovery init` | migrations `[1, 2, 3, 4]`; 272 sources synced |
+| Configuration | `.venv\Scripts\python.exe -m opportunity_discovery --json validate-config` | ok; 272 total, 248 enabled, 0 errors |
+| Schema tests | `.venv\Scripts\python.exe -m pytest -q tests\test_schemas.py` | candidate, delta, run-summary, source-health, and manifest artifacts valid, including program fields |
+| PowerShell syntax | parser over `scripts/*.ps1` | 5 scripts parsed; 0 errors |
+| Publication audit | `.venv\Scripts\python.exe -m opportunity_discovery audit .` | 108 tracked/intent-to-add files; 0 errors, 0 warnings |
+| Whitespace | `git diff --check` | passed; line-ending advisories only |
+
+No live collection, `validate-sources`, `scripts/run.ps1`, Task Scheduler
+operation, GitHub Action, commit, push, PR, release, or repository setting
+change was performed.

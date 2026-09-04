@@ -83,11 +83,11 @@ def run_collect(
                 summary.sources_failed += 1
                 summary.detail.setdefault("failures", {})[spec.source_id] = str(exc)
             row = conn.execute(
-                "SELECT state FROM source_checks WHERE source_id=? AND run_id=?"
+                "SELECT state, truncated FROM source_checks WHERE source_id=? AND run_id=?"
                 " ORDER BY check_id DESC LIMIT 1",
                 (spec.source_id, run_id),
             ).fetchone()
-            if row and row["state"] in ("healthy", "valid-empty"):
+            if row and row["state"] in ("healthy", "valid-empty") and not int(row["truncated"] or 0):
                 successful.add(spec.source_id)
         pipeline.detect_closures(successful, expected)
     finally:

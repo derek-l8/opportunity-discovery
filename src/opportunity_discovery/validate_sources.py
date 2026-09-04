@@ -37,7 +37,7 @@ def validate_source(spec: SourceSpec, cfg, *, timeout_grace: bool = True) -> tup
     if result.ok:
         status = VALIDATION_PASSED if result.records else VALIDATION_EMPTY_OK
         return status, f"{len(result.records)} records (HTTP {result.http_status})"
-    if result.state == "format-changed":
+    if result.state in ("format-changed", "coverage-warning"):
         return VALIDATION_QUARANTINED, result.detail or "format changed"
     return VALIDATION_FAILED, result.detail or "check failed"
 

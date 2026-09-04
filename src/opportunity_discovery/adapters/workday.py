@@ -49,6 +49,9 @@ class WorkdayAdapter:
         records: list[RawOpportunity] = []
         offset = 0
         status: int | None = None
+        pages_fetched = 0
+        total: int | None = None
+        complete = False
         headers = {"Content-Type": "application/json"}
         backoff = max(ctx.fetcher.cfg.fetch.backoff_base_seconds, 1.0)
         for _page in range(_MAX_PAGES):
@@ -65,7 +68,12 @@ class WorkdayAdapter:
                     )
                 except Exception as exc:
                     return AdapterResult(
-                        ok=False, state="check-failed", detail=f"workday request failed: {exc}"
+                        ok=False,
+                        state="check-failed",
+                        detail=f"workday request failed: {exc}",
+                        pages_fetched=pages_fetched,
+                        reported_total=total,
+                        truncated=True,
                     )
                 status = resp.status_code
                 if status in _RETRY_STATUS and attempt <= ctx.fetcher.cfg.fetch.max_retries:
@@ -75,18 +83,37 @@ class WorkdayAdapter:
                 break
             if status == 429:
                 return AdapterResult(
-                    ok=False, state="rate-limited", http_status=status, detail="HTTP 429 from workday CXS"
+                    ok=False,
+                    state="rate-limited",
+                    http_status=status,
+                    detail="HTTP 429 from workday CXS",
+                    pages_fetched=pages_fetched,
+                    reported_total=total,
+                    truncated=True,
                 )
             if status != 200:
                 state = "format-changed" if status in (404, 410) else "check-failed"
                 return AdapterResult(
-                    ok=False, state=state, http_status=status, detail=f"HTTP {status} from {api}"
+                    ok=False,
+                    state=state,
+                    http_status=status,
+                    detail=f"HTTP {status} from {api}",
+                    pages_fetched=pages_fetched,
+                    reported_total=total,
+                    truncated=True,
                 )
+            pages_fetched += 1
             try:
                 data = json.loads(resp.text)
             except ValueError as exc:
                 return AdapterResult(
-                    ok=False, state="format-changed", detail=f"bad JSON: {exc}", http_status=status
+                    ok=False,
+                    state="format-changed",
+                    detail=f"bad JSON: {exc}",
+                    http_status=status,
+                    pages_fetched=pages_fetched,
+                    reported_total=total,
+                    truncated=True,
                 )
             total = int(data.get("total") or 0)
             postings = data.get("jobPostings") or []
@@ -94,8 +121,17 @@ class WorkdayAdapter:
                 records.append(self._record(posting, base, tenant, ctx.excerpt_chars))
             offset += _PAGE
             if offset >= total or not postings:
+                complete = True
                 break
-        return AdapterResult(ok=True, records=records, empty_ok=True, http_status=status)
+        return AdapterResult(
+            ok=True,
+            records=records,
+            empty_ok=True,
+            http_status=status,
+            pages_fetched=pages_fetched,
+            reported_total=total,
+            truncated=not complete,
+        )
 
     def _record(self, posting: dict, base: str, tenant: str, excerpt_chars: int) -> RawOpportunity:
         title = posting.get("title") or ""

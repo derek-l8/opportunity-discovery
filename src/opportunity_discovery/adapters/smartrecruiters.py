@@ -32,6 +32,8 @@ class SmartRecruitersAdapter:
         offset = 0
         total: int | None = None
         status: int | None = None
+        pages_fetched = 0
+        complete = False
         for _page in range(_MAX_PAGES):
             url = (
                 f"https://api.smartrecruiters.com/v1/companies/{company}/postings"
@@ -42,25 +44,51 @@ class SmartRecruitersAdapter:
             if not out.ok:
                 if out.not_modified and not out.text:
                     return AdapterResult(ok=True, empty_ok=True, http_status=304, detail="not modified")
-                return outcome_to_result(out)
+                failed = outcome_to_result(out)
+                failed.pages_fetched = pages_fetched
+                failed.reported_total = total
+                failed.truncated = True
+                return failed
+            pages_fetched += 1
             try:
                 data = parse_json_body(out.text)
             except (ValueError, json.JSONDecodeError) as exc:
                 return AdapterResult(
-                    ok=False, state="format-changed", detail=f"bad JSON: {exc}", http_status=out.status
+                    ok=False,
+                    state="format-changed",
+                    detail=f"bad JSON: {exc}",
+                    http_status=out.status,
+                    pages_fetched=pages_fetched,
+                    reported_total=total,
+                    truncated=True,
                 )
             postings = data.get("content")
             if postings is None:
                 return AdapterResult(
-                    ok=False, state="format-changed", detail="missing 'content' array", http_status=out.status
+                    ok=False,
+                    state="format-changed",
+                    detail="missing 'content' array",
+                    http_status=out.status,
+                    pages_fetched=pages_fetched,
+                    reported_total=total,
+                    truncated=True,
                 )
             for posting in postings:
                 records.append(self._record(posting, company, ctx.excerpt_chars))
             total = int(data.get("totalFound") or 0)
             offset += _PAGE_SIZE
             if offset >= total or not postings:
+                complete = True
                 break
-        return AdapterResult(ok=True, records=records, empty_ok=True, http_status=status)
+        return AdapterResult(
+            ok=True,
+            records=records,
+            empty_ok=True,
+            http_status=status,
+            pages_fetched=pages_fetched,
+            reported_total=total,
+            truncated=not complete,
+        )
 
     def _record(self, posting: dict[str, Any], company: str, excerpt_chars: int) -> RawOpportunity:
         location = posting.get("location") or {}

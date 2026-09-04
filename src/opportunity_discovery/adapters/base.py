@@ -115,4 +115,6 @@ def run_source(
         result.ok = False
         result.state = c.HEALTH_FORMAT_CHANGED
         result.detail = result.detail or "no recognizable records in response"
+    if result.pages_fetched is None and result.http_status is not None:
+        result.pages_fetched = 1
     return result

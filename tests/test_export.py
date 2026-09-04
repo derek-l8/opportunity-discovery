@@ -1,3 +1,4 @@
+import hashlib
 import json
 
 from opportunity_discovery.export import export_all, is_review_queue_member
@@ -102,7 +103,7 @@ def test_delta_packet_second_run_is_empty(engine_config, tmp_path):
 
 
 def test_packet_pagination_continuation(engine_config, tmp_path):
-    engine_config.export.packet_char_limit = 1500
+    engine_config.export.packet_char_limit = 4000
     jobs = [
         {
             "id": i,
@@ -122,10 +123,20 @@ def test_packet_pagination_continuation(engine_config, tmp_path):
     assert "opportunity_id" in seen_ids
     count_in_packets = len(page1["candidates"])
     for p in range(2, total + 1):
-        doc = json.loads((out_dir / f"delta_packet.p{p}.json").read_text(encoding="utf-8"))
+        page_path = out_dir / f"delta_packet.p{p}.json"
+        doc = json.loads(page_path.read_text(encoding="utf-8"))
         count_in_packets += len(doc["candidates"])
+        assert len(page_path.read_bytes()) <= engine_config.export.packet_char_limit
+        assert doc["estimated_chars"] == len(page_path.read_text(encoding="utf-8"))
     assert count_in_packets == 11, "pagination must never silently truncate"
     assert page1["counts"]["delta_after_filtering"] == 11
+    assert len((out_dir / "delta_packet.json").read_bytes()) <= engine_config.export.packet_char_limit
+
+    # The next empty generation publishes one base packet and removes old pages.
+    export_all(conn, engine_config, "run-y")
+    assert not list(out_dir.glob("delta_packet.p*.json"))
+    manifest = json.loads((out_dir / "export_manifest.json").read_text(encoding="utf-8"))
+    assert manifest["delta_packet_files"] == ["delta_packet.json"]
 
 
 def test_review_queue_membership_reasons(engine_config, tmp_path):
@@ -162,6 +173,70 @@ def test_review_queue_membership_reasons(engine_config, tmp_path):
     refreshed = conn.execute("SELECT * FROM opportunities WHERE title=?", ("Firmware Intern",)).fetchone()
     member_excluded, _ = is_review_queue_member(refreshed)
     assert not member_excluded
+    conn.close()
+
+
+def test_configured_review_queue_threshold_is_applied(engine_config, tmp_path):
+    conn = seed(
+        engine_config,
+        tmp_path,
+        json.dumps(
+            {
+                "jobs": [
+                    {
+                        "id": 1,
+                        "title": "Firmware Intern",
+                        "absolute_url": "https://boards.greenhouse.io/acme/jobs/1",
+                    }
+                ]
+            }
+        ),
+    )
+    score = float(conn.execute("SELECT generic_score FROM opportunities").fetchone()["generic_score"])
+    engine_config.scoring.review_queue_threshold = score + 0.001
+    info = export_all(conn, engine_config, "run-high-threshold")
+    assert info["review_queue"]["count"] == 0
+    engine_config.scoring.review_queue_threshold = score
+    info = export_all(conn, engine_config, "run-at-threshold")
+    assert info["review_queue"]["count"] == 1
+    conn.close()
+
+
+def test_manifest_generation_id_covers_exact_files_and_configuration(engine_config, tmp_path):
+    conn = seed(
+        engine_config,
+        tmp_path,
+        json.dumps(
+            {
+                "jobs": [
+                    {
+                        "id": 1,
+                        "title": "Firmware Intern",
+                        "absolute_url": "https://boards.greenhouse.io/acme/jobs/1",
+                    }
+                ]
+            }
+        ),
+    )
+    export_all(conn, engine_config, "run-manifest")
+    manifest = json.loads((tmp_path / "output" / "export_manifest.json").read_text(encoding="utf-8"))
+    basis = {
+        "schema_version": manifest["schema_version"],
+        "files": manifest["files"],
+        "config_sha256": manifest["configuration"]["config_sha256"],
+        "source_registry_sha256": manifest["configuration"]["source_registry_sha256"],
+    }
+    expected = hashlib.sha256(
+        json.dumps(basis, sort_keys=True, separators=(",", ":")).encode("utf-8")
+    ).hexdigest()
+    assert manifest["generation_id"] == expected
+    assert manifest["delta_packet_files"] == ["delta_packet.json"]
+    assert {item["filename"] for item in manifest["files"]} == {
+        "candidates.jsonl",
+        "review_queue.jsonl",
+        "delta_packet.json",
+        "source_health.json",
+    }
     conn.close()
 
 

@@ -68,6 +68,13 @@ def test_first_run_creates_new_records(env):
     # tracking params stripped / canonical url normalized on storage
     urls = {r["canonical_url"] for r in conn.execute("SELECT canonical_url FROM opportunities")}
     assert all(u.startswith("https://boards.greenhouse.io/acme/jobs/") for u in urls)
+    check = conn.execute("SELECT * FROM source_checks").fetchone()
+    assert check["records_seen"] == 2
+    assert check["new_records"] == 2
+    assert check["changed_records"] == 0
+    assert check["duration_ms"] >= 0
+    assert check["pages_fetched"] == 1
+    assert summary.detail["sources"][spec.source_id]["records_new"] == 2
 
 
 def test_second_identical_run_no_new_delta(env):
@@ -101,6 +108,13 @@ def test_material_change_detected_once_with_field_detail(env):
     p2, s2 = make_pipeline(cfg, conn)
     p2.process_source(spec, fetcher)
     assert s2.opportunities_changed == 1
+    scored = conn.execute(
+        "SELECT requested_components_json, effort_estimate, signals_json FROM opportunities "
+        "WHERE title='Firmware Intern'"
+    ).fetchone()
+    assert json.loads(scored["requested_components_json"]) == []
+    assert scored["effort_estimate"] == "unknown"
+    assert json.loads(scored["signals_json"])["effort_estimate"] == "unknown"
     row = conn.execute(
         "SELECT change_type, changed_fields_json FROM changes WHERE run_id=? AND change_type != 'new'",
         ("run-test",),
@@ -113,6 +127,39 @@ def test_material_change_detected_once_with_field_detail(env):
     p3, s3 = make_pipeline(cfg, conn)
     p3.process_source(spec, fetcher)
     assert s3.opportunities_changed == 0
+
+
+def test_material_change_refreshes_requested_components_and_effort(env):
+    cfg, conn, fetcher, spec = env
+    p1, _ = make_pipeline(cfg, conn)
+    p1.process_source(spec, fetcher)
+
+    fetcher.add(
+        "https://boards-api.greenhouse.io",
+        200,
+        gh_payload(
+            [
+                job(
+                    1,
+                    "Firmware Intern",
+                    "https://boards.greenhouse.io/acme/jobs/1",
+                    content="Upload a resume, cover letter, transcript, and essay.",
+                ),
+                job(2, "Software Engineer Intern", "https://boards.greenhouse.io/acme/jobs/2"),
+            ]
+        ),
+    )
+    p2, _ = make_pipeline(cfg, conn)
+    p2.process_source(spec, fetcher)
+    row = conn.execute(
+        "SELECT requested_components_json, effort_estimate, signals_json FROM opportunities "
+        "WHERE title='Firmware Intern'"
+    ).fetchone()
+    requested = json.loads(row["requested_components_json"])
+    signals = json.loads(row["signals_json"])
+    assert requested == ["resume", "cover-letter", "transcript", "essay"]
+    assert signals["requested_components"] == requested
+    assert row["effort_estimate"] == signals["effort_estimate"] == "substantial"
 
 
 def test_deadline_change_classified_separately(engine_config, tmp_path):
@@ -211,6 +258,98 @@ def test_conservative_closure_after_consecutive_successes(env):
     p.detect_closures({spec.source_id}, expected)
     reopened = conn.execute("SELECT change_type FROM changes WHERE change_type='reopened'").fetchall()
     assert reopened
+
+
+def test_multisource_closure_requires_threshold_misses_from_all_sources(tmp_path, engine_config):
+    conn = make_db(tmp_path)
+    engine_config.changes.closed_after_consecutive_successes = 2
+    url = "https://boards.greenhouse.io/hw/jobs/11"
+    official = source(
+        source_id="greenhouse-hw",
+        display_name="HW",
+        organization="HW",
+        endpoint_config={"board": "hw"},
+        official_source=True,
+    )
+    aggregate = source(
+        source_id="csv-hw",
+        display_name="HW aggregate",
+        organization="HW aggregate",
+        adapter="csvfeed",
+        endpoint_config={"url": "https://agg.example.org/list.csv"},
+        official_source=False,
+    )
+    sync_sources_to_db(conn, [official, aggregate])
+    official_fetcher = MockFetcher()
+    official_fetcher.add(
+        "https://boards-api.greenhouse.io",
+        200,
+        gh_payload([job(11, "Hardware Intern", url)]),
+    )
+    aggregate_fetcher = MockFetcher()
+    aggregate_fetcher.add(
+        "https://agg.example.org/list.csv",
+        200,
+        f"company,title,url\nHW,Hardware Intern,{url}\n",
+    )
+    initial, _ = make_pipeline(engine_config, conn)
+    initial.process_source(official, official_fetcher)
+    initial.process_source(aggregate, aggregate_fetcher)
+    assert conn.execute("SELECT COUNT(*) n FROM opportunities").fetchone()["n"] == 1
+
+    official_fetcher.add("https://boards-api.greenhouse.io", 200, gh_payload([]))
+    for _ in range(2):
+        pipeline, _ = make_pipeline(engine_config, conn)
+        pipeline.process_source(official, official_fetcher)
+        expected = expected_opportunities_from_sources(conn, [official.source_id])
+        pipeline.detect_closures({official.source_id}, expected)
+    assert conn.execute("SELECT active FROM opportunities").fetchone()["active"] == 1
+
+    # A miss followed by an observation through the duplicate identity resets
+    # the aggregate source without disturbing the official source's misses.
+    aggregate_fetcher.add("https://agg.example.org/list.csv", 200, "company,title,url\n")
+    missed, _ = make_pipeline(engine_config, conn)
+    missed.process_source(aggregate, aggregate_fetcher)
+    expected = expected_opportunities_from_sources(conn, [aggregate.source_id])
+    missed.detect_closures({aggregate.source_id}, expected)
+    aggregate_fetcher.add(
+        "https://agg.example.org/list.csv",
+        200,
+        f"company,title,url\nHW,Hardware Intern,{url}\n",
+    )
+    observed, _ = make_pipeline(engine_config, conn)
+    observed.process_source(aggregate, aggregate_fetcher)
+    expected = expected_opportunities_from_sources(conn, [aggregate.source_id])
+    observed.detect_closures({aggregate.source_id}, expected)
+    aggregate_misses = conn.execute(
+        "SELECT consecutive_successful_misses FROM opportunity_source_state WHERE source_id=?",
+        (aggregate.source_id,),
+    ).fetchone()["consecutive_successful_misses"]
+    assert aggregate_misses == 0
+
+    # A failed aggregate check preserves its counter and cannot close the record.
+    aggregate_fetcher.add("https://agg.example.org/list.csv", 503, "unavailable")
+    failed, _ = make_pipeline(engine_config, conn)
+    failed.process_source(aggregate, aggregate_fetcher)
+    expected = expected_opportunities_from_sources(conn, [aggregate.source_id])
+    failed.detect_closures(set(), expected)
+    assert conn.execute("SELECT active FROM opportunities").fetchone()["active"] == 1
+
+    aggregate_fetcher.add("https://agg.example.org/list.csv", 200, "company,title,url\n")
+    for _ in range(2):
+        pipeline, _ = make_pipeline(engine_config, conn)
+        pipeline.process_source(aggregate, aggregate_fetcher)
+        expected = expected_opportunities_from_sources(conn, [aggregate.source_id])
+        pipeline.detect_closures({aggregate.source_id}, expected)
+    assert conn.execute("SELECT active FROM opportunities").fetchone()["active"] == 0
+    states = conn.execute(
+        "SELECT source_id, consecutive_successful_misses FROM opportunity_source_state"
+    ).fetchall()
+    assert {row["source_id"]: row["consecutive_successful_misses"] for row in states} == {
+        official.source_id: 2,
+        aggregate.source_id: 2,
+    }
+    conn.close()
 
 
 def test_duplicate_reconciliation_by_normalized_url(tmp_path, engine_config):
