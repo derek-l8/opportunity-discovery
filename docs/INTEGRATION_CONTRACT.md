@@ -17,6 +17,10 @@
 - explicit class-year / graduation-window / major / work-authorization
   **language** quoted from the source (never an adjudicated status);
 - generic technical relevance signals with inspectable components;
+- normalized public engagement type, career stage, degree language, and stated
+  experience range;
+- deterministic career-profile routing and confidence in that public-text
+  classification (never applicant eligibility);
 - generic application-effort estimate (`quick`/`moderate`/`substantial`/`unknown`);
 - change detection over time;
 - nothing else.
@@ -71,9 +75,10 @@ standing, pipeline status/outcomes, dismissals, or application materials.
 ## Review queue semantics
 
 An active lead enters `review_queue.jsonl` only when it has at least one role
-family tag, has no `exclude:` reason code, and its `generic_score` is greater
-than or equal to `scoring.review_queue_threshold`. All leads remain in SQLite
-and `candidates.jsonl` regardless of review-queue membership.
+family tag, has an active-profile route of `included` or `research_needed`, has
+no `exclude:` reason code, and its `generic_score` is greater than or equal to
+`scoring.review_queue_threshold`. All leads remain in SQLite and
+`candidates.jsonl` regardless of review-queue membership.
 
 ## Compatibility rules
 
@@ -91,6 +96,8 @@ and `candidates.jsonl` regardless of review-queue membership.
 1. Read `export_manifest.json`, then read the exact files listed in
    `delta_packet_files` (or begin with `delta_packet.json` and follow pagination).
 2. For each lead: check `reason_codes`, restrictions language, deadline.
+   Treat `routing_state = research_needed` as unresolved public information, not
+   an eligibility judgment.
 3. Verify shortlisted leads on their canonical official pages (this engine
    does not verify).
 4. Persist your own decisions keyed by `opportunity_id`.

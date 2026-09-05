@@ -94,6 +94,18 @@ def test_program_changes_emit_granular_events_and_optional_export_fields(engine_
     assert candidate["event_start_date"] == "2027-04-01"
     assert candidate["stated_deadline"] == "2026-12-01"
     assert candidate["change_events"] == event_types
+    assert candidate["engagement_type"] == "program"
+    assert candidate["profile_routes"]["student-early-career"]["routing_state"] == "included"
+    assert candidate["profile_routes"]["new-grad"]["routing_state"] == "excluded"
+
+    engine_config.routing.active_profile = "new-grad"
+    export_all(conn, engine_config, second.run_id)
+    rerouted = json.loads(
+        (engine_config.paths.output_dir / "candidates.jsonl").read_text(encoding="utf-8").splitlines()[0]
+    )
+    assert rerouted["active_profile"] == "new-grad"
+    assert rerouted["routing_state"] == "excluded"
+    assert conn.execute("SELECT COUNT(*) FROM opportunities").fetchone()[0] == 1
     conn.close()
 
 

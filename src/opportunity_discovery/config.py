@@ -86,6 +86,13 @@ class ChangeDetectionConfig:
             "requirements_text",
             "compensation_text",
             "employment_type",
+            "engagement_type",
+            "career_stage",
+            "required_degree",
+            "preferred_degree",
+            "experience_requirement_text",
+            "experience_min_years",
+            "experience_max_years",
             "season",
             "description_hash",
         ]
@@ -100,6 +107,11 @@ class ExportConfig:
 
 
 @dataclass
+class RoutingConfig:
+    active_profile: str = "student-early-career"
+
+
+@dataclass
 class EngineConfig:
     paths: PathsConfig
     fetch: FetchConfig
@@ -107,6 +119,7 @@ class EngineConfig:
     scoring: ScoringConfig
     changes: ChangeDetectionConfig
     export: ExportConfig
+    routing: RoutingConfig
     sources_file: Path
     config_path: Path
     log_level: str = "INFO"
@@ -148,6 +161,7 @@ def load_config(
     scoring = ScoringConfig()
     changes = ChangeDetectionConfig()
     export_cfg = ExportConfig()
+    routing = RoutingConfig()
 
     errors += _apply(fetch, raw.get("fetch", {}), set(vars(FetchConfig())))
     errors += _apply(season, raw.get("season", {}), {"target_season", "season_aliases"})
@@ -159,6 +173,7 @@ def load_config(
         errors.append("scoring.families must be a table")
     errors += _apply(changes, raw.get("change_detection", {}), set(vars(ChangeDetectionConfig())))
     errors += _apply(export_cfg, raw.get("export", {}), set(vars(ExportConfig())))
+    errors += _apply(routing, raw.get("routing", {}), {"active_profile"})
 
     paths = PathsConfig.resolve(base, raw.get("paths", {}))
 
@@ -179,6 +194,10 @@ def load_config(
         errors.append("change_detection.closed_after_consecutive_successes must be >= 1")
     if not season.target_season:
         errors.append("season.target_season must be non-empty")
+    from .constants import ALL_PROFILES
+
+    if routing.active_profile not in ALL_PROFILES:
+        errors.append(f"routing.active_profile must be one of: {', '.join(ALL_PROFILES)}")
 
     sources_file = base / raw.get("sources_file", "config/sources.toml")
     if not sources_file.name.endswith(".toml"):
@@ -191,6 +210,7 @@ def load_config(
         scoring=scoring,
         changes=changes,
         export=export_cfg,
+        routing=routing,
         sources_file=sources_file,
         config_path=config_path,
         log_level=str(raw.get("log_level", "INFO")),

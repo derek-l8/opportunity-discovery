@@ -41,6 +41,10 @@ schema_version = "1.0"
 packet_char_limit = 120000               # compact packet budget; pagination beyond this
 excerpt_chars = 600                      # bounded excerpts, never full pages
 
+[routing]
+# Controls review/export routing only. Every valid candidate remains stored.
+active_profile = "student-early-career"
+
 [scoring]
 review_queue_threshold = 0.5
 bonus_paid = 2.0

@@ -1,0 +1,54 @@
+{
+  "jobs": [
+    {
+      "id": "intern-open",
+      "title": "Embedded Firmware Intern",
+      "url": "https://synthetic.example/opportunities/intern-open",
+      "type": "internship",
+      "description": "Open to bachelor's, master's, and doctoral candidates. Resume only.",
+      "deadline": "2027-03-15",
+      "compensation": "$30/hr paid"
+    },
+    {
+      "id": "experienced-full-time",
+      "title": "Senior Hardware Engineer — Full-Time",
+      "url": "https://synthetic.example/opportunities/experienced-full-time",
+      "type": "full-time",
+      "description": "Requires at least 7 years of relevant experience."
+    },
+    {
+      "id": "new-grad",
+      "title": "New Graduate Software Engineer — Full-Time",
+      "url": "https://synthetic.example/opportunities/new-grad",
+      "type": "full-time",
+      "description": "Candidates may have up to 4 years of relevant experience."
+    },
+    {
+      "id": "graduate-required",
+      "title": "Machine Learning Research Internship",
+      "url": "https://synthetic.example/opportunities/graduate-required",
+      "type": "internship",
+      "description": "Master's degree required. PhD preferred."
+    },
+    {
+      "id": "ambiguous",
+      "title": "Robotics Technical Opportunity",
+      "url": "https://synthetic.example/opportunities/ambiguous",
+      "description": "Join our robotics systems team; engagement and level are not stated."
+    },
+    {
+      "id": "expired-event",
+      "title": "Student Engineering Recruiting Event",
+      "url": "https://synthetic.example/opportunities/expired-event",
+      "type": "event",
+      "deadline": "2020-01-01",
+      "description": "A recruiting event for students."
+    },
+    {
+      "id": "duplicate-copy",
+      "title": "Embedded Firmware Internship",
+      "url": "https://synthetic.example/opportunities/intern-open?utm_source=duplicate",
+      "type": "internship"
+    }
+  ]
+}

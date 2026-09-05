@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import importlib.resources
+import json
 import sqlite3
 from pathlib import Path
 
@@ -59,7 +60,61 @@ def migrate(conn: sqlite3.Connection) -> list[int]:
             conn.executescript(sql)
             conn.execute("INSERT INTO schema_migrations (version, name) VALUES (?, ?)", (version, name))
         newly_applied.append(version)
+    _backfill_career_profiles(conn)
     return newly_applied
+
+
+def _backfill_career_profiles(conn: sqlite3.Connection) -> None:
+    """Normalize pre-0005 rows once without changing their stable identity."""
+    columns = {row[1] for row in conn.execute("PRAGMA table_info(opportunities)")}
+    if "profile_routes_json" not in columns:
+        return
+    rows = conn.execute(
+        "SELECT opportunity_id, title, canonical_url, description_excerpt, employment_type,"
+        " requirements_text"
+        " FROM opportunities WHERE profile_routes_json='{}' OR profile_routes_json IS NULL"
+    ).fetchall()
+    if not rows:
+        return
+
+    from . import constants as c
+    from .models import RawOpportunity
+    from .routing import normalize_routing_fields, route_profiles
+
+    for row in rows:
+        fields = normalize_routing_fields(
+            RawOpportunity(
+                title=row[1] or "",
+                canonical_url=row[2] or "",
+                description_excerpt=row[3],
+                employment_type=row[4],
+                requirements_text=row[5],
+            )
+        )
+        routes = route_profiles(fields)
+        active = routes[c.PROFILE_STUDENT]
+        conn.execute(
+            "UPDATE opportunities SET engagement_type=?, career_stage=?, required_degree=?,"
+            " preferred_degree=?, experience_requirement_text=?, experience_min_years=?,"
+            " experience_max_years=?, active_profile=?, routing_state=?, eligibility_confidence=?,"
+            " profile_routes_json=?, routing_reason_codes_json=? WHERE opportunity_id=?",
+            (
+                fields["engagement_type"],
+                fields["career_stage"],
+                fields["required_degree"],
+                fields["preferred_degree"],
+                fields["experience_requirement_text"],
+                fields["experience_min_years"],
+                fields["experience_max_years"],
+                c.PROFILE_STUDENT,
+                active.state,
+                active.confidence,
+                json.dumps({name: decision.to_dict() for name, decision in routes.items()}, sort_keys=True),
+                json.dumps(active.reason_codes),
+                row[0],
+            ),
+        )
+    conn.commit()
 
 
 def current_version(conn: sqlite3.Connection) -> int:

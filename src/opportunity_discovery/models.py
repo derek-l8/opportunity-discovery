@@ -82,6 +82,11 @@ class RawOpportunity:
     relocation_text: str | None = None
     description_excerpt: str | None = None  # bounded excerpt only
     employment_type: str | None = None  # internship / new-grad / program / event ...
+    engagement_type: str | None = None
+    career_stage: str | None = None
+    required_degree: str | None = None
+    preferred_degree: str | None = None
+    experience_requirement_text: str | None = None
     season: str | None = None  # e.g. summer-2027
     class_year_language: str | None = None
     graduation_window_language: str | None = None
