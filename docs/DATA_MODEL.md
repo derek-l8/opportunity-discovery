@@ -33,6 +33,9 @@ Key columns:
 - Content: title + aliases, category, location components, remote/hybrid signal, season,
   employment type, posted/deadline dates (+tz), compensation/funding text,
   relocation text, bounded description excerpt + `description_hash`.
+- Public career normalization: engagement type, career stage, required/preferred
+  degree, and stated experience text plus conservative minimum/maximum years.
+  Missing or ambiguous facts remain `unknown`/NULL.
 - Optional recurring-program content: overview/application URLs, explicit
   program-family and cycle/session identifiers, exact event start/end dates,
   source-stated application state, and bounded requirements text. Application
@@ -41,6 +44,9 @@ Key columns:
   work-authorization/sponsorship; requested application components.
 - Deterministic evaluation: role-family tags, signals JSON, score components JSON,
   generic score, reason codes, effort estimate.
+- Profile routing: decisions for all shipped profiles in `profile_routes_json`, plus
+  the profile and route active when the row was last observed. Exports select the
+  configured profile dynamically, so switching profiles does not require a refetch.
 - Lifecycle: `lead_state` (always `unverified-lead` here), `change_type`, `active`,
   first/last seen, last changed, last successful check.
 
@@ -51,6 +57,27 @@ are `application-opened`, `application-closed`, `deadline-changed`,
 (`active`) remains distinct from whether an application window is open.
 
 Missing information is stored as NULL and exported as `"unknown"` — never invented.
+
+## Career profiles
+
+`routing.active_profile` selects one of three deterministic public-lead routes.
+Routing changes review/export lanes only; it never deletes normalized history and
+never determines whether a particular applicant is eligible.
+
+- `student-early-career` includes internships, co-ops, student research,
+  fellowships, programs, events, and early-career contracts. It excludes full-time
+  and new-graduate roles, experienced roles, and postings that explicitly require
+  a master's or doctorate. A posting open to multiple degree levels is not treated
+  as graduate-degree-required.
+- `new-grad` includes entry-level/new-graduate full-time roles whose stated
+  experience ceiling is at most four years. It excludes internships, co-ops,
+  student programs/events, experienced roles, and requirements of five years or
+  more.
+- `all-opportunities` includes every active broadly relevant opportunity type.
+
+Ambiguous student/new-grad cases use `research_needed`, with low confidence,
+instead of being silently excluded. `eligibility_confidence` is confidence in this
+public-text routing classification—not applicant eligibility.
 
 ### `observations`
 Immutable per-run snapshots of each raw record (run, source, opportunity, record JSON).

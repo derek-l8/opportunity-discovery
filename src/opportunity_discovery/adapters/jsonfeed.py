@@ -14,6 +14,11 @@ endpoint_config:
         description_excerpt: blurb
         season: season
         employment_type: type
+        engagement_type: engagement_type
+        career_stage: career_stage
+        required_degree: required_degree
+        preferred_degree: preferred_degree
+        experience_requirement_text: experience_requirement
 """
 
 from __future__ import annotations
@@ -38,6 +43,11 @@ _DEFAULT_FIELDS = {
     "description_excerpt": "description",
     "season": "season",
     "employment_type": "type",
+    "engagement_type": "engagement_type",
+    "career_stage": "career_stage",
+    "required_degree": "required_degree",
+    "preferred_degree": "preferred_degree",
+    "experience_requirement_text": "experience_requirement",
 }
 
 
@@ -113,6 +123,11 @@ class JsonFeedAdapter:
                     ),
                     season=_dig(item, field_map["season"]),
                     employment_type=_dig(item, field_map["employment_type"]),
+                    engagement_type=_dig(item, field_map["engagement_type"]),
+                    career_stage=_dig(item, field_map["career_stage"]),
+                    required_degree=_dig(item, field_map["required_degree"]),
+                    preferred_degree=_dig(item, field_map["preferred_degree"]),
+                    experience_requirement_text=_dig(item, field_map["experience_requirement_text"]),
                 )
             )
         return AdapterResult(ok=True, records=records, empty_ok=True, http_status=out.status)

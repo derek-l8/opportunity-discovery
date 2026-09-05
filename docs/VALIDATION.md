@@ -436,3 +436,55 @@ repository-local `.venv`.
 No live collection, `validate-sources`, `scripts/run.ps1`, Task Scheduler
 operation, GitHub Action, commit, push, PR, release, or repository setting
 change was performed.
+
+## Phase 1 integrated career profiles (2026-09-05 UTC)
+
+Scope: integrate deterministic career normalization and the
+`student-early-career`, `new-grad`, and `all-opportunities` routing profiles on
+top of Phase 0 commit `3b9550bea380a9789b4d82c660d8834a0079c20c` without
+replacing its program-page, closure-evidence, diagnostics, change-ID,
+manifest, threshold, packet-limit, or HTTP-safety behavior. Phase 1 is migration
+`0005_career_profiles.sql`, after Phase 0 migrations 0003 and 0004.
+
+Environment: Debian Linux, CPython 3.12.14 from the existing development
+environment. The integration checkout is
+`/agent/scratch/opportunity-discovery-phase1-integration`.
+
+| Gate | Command | Result |
+| --- | --- | --- |
+| Formatter | `PYTHONPATH=src /workspace/.venv/bin/ruff format --check src tests` | 58 files already formatted |
+| Linter | `PYTHONPATH=src /workspace/.venv/bin/ruff check src tests` | All checks passed |
+| Type checker | `PYTHONPATH=src /workspace/.venv/bin/mypy` | Success: no issues in 35 source files |
+| Full deterministic suite | `PYTHONPATH=src /workspace/.venv/bin/python -m pytest -m 'not live' -ra` | 155 passed, 4 native-Windows tests skipped |
+| Full suite with coverage | `PYTHONPATH=src /workspace/.venv/bin/python -m pytest -q -m 'not live' --cov=opportunity_discovery --cov-report=term` | 155 passed, 4 skipped; 84% total coverage |
+| Migration/init | `PYTHONPATH=src /workspace/.venv/bin/opdisc init` | migrations through 0005 present; 272 sources synced; no pending migration in the validation DB |
+| Configuration | `PYTHONPATH=src /workspace/.venv/bin/opdisc --json validate-config` | ok; 272 sources, 248 enabled, no errors |
+| Package build | `PYTHONPATH=src /workspace/.venv/bin/python -m build` | sdist and wheel built; existing setuptools license-deprecation warnings only |
+| Publication audit | intent-to-add the four new paths, then `PYTHONPATH=src /workspace/.venv/bin/opdisc audit .` | 112 tracked/intent-to-add files scanned, 0 errors, 0 warnings; index restored afterward |
+| Whitespace | `git diff --check` | passed with no output |
+
+The combined count retains the complete Phase 0 Linux suite (141 passing plus
+4 Windows-only skips at the baseline) and adds 14 passing Phase 1 tests.
+Focused coverage verifies upgrades through migrations 0003, 0004, and 0005;
+stable-ID backfill; every profile decision; review threshold plus profile
+routing; final packet-size enforcement; manifest/change-ID behavior; ordinary
+job routing; and program-page routing with profile changes applied at export
+without recollection.
+
+### Live source validation result
+
+`PYTHONPATH=src /workspace/.venv/bin/opdisc validate-sources` ran against all
+272 registry entries. This host/proxy returned widespread decompression errors
+(`DecodingError: incorrect header check`): 35 validated, 2
+validated-empty-ok, 211 failed, and 24 remained configured quarantines. Two
+large sources were separately and correctly rejected by Phase 0's
+`max_response_bytes=5000000` control. The registry file remained unchanged.
+The deterministic HTTP, adapter, source-health, and failure-preservation tests
+all pass; no live-success claim is made from this run.
+
+### Not obtained on this host
+
+- Native Windows/PowerShell execution was unavailable. Four Windows-only test
+  functions were collected and skipped; the baseline's prior native-Windows
+  evidence remains recorded above.
+- GitHub Actions was not run because no commit or push was made.

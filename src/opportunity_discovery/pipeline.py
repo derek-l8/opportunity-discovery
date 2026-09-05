@@ -15,6 +15,7 @@ from .config import EngineConfig
 from .http_client import Fetcher
 from .identity import description_hash, identity_key
 from .models import AdapterResult, RawOpportunity, RunSummary, SourceSpec
+from .routing import normalize_routing_fields, route_profiles
 from .scoring import classify, extract_explicit_language, infer_season
 from .urlnorm import normalize_url
 
@@ -173,6 +174,8 @@ class Pipeline:
         now = _now()
         if existing is None:
             tags, components, signals, reasons = self._score(raw)
+            profile_routes = route_profiles(fields)
+            active_decision = profile_routes[self.cfg.routing.active_profile]
             fields["effort_estimate"] = signals.get("effort_estimate", c.EFFORT_UNKNOWN)
             fields["requested_components"] = signals.get("requested_components", [])
             record: dict[str, object] = {
@@ -192,6 +195,21 @@ class Pipeline:
                 "remote_signal": fields["remote_signal"],
                 "season": fields["season"],
                 "employment_type": fields["employment_type"],
+                "engagement_type": fields["engagement_type"],
+                "career_stage": fields["career_stage"],
+                "required_degree": fields["required_degree"],
+                "preferred_degree": fields["preferred_degree"],
+                "experience_requirement_text": fields["experience_requirement_text"],
+                "experience_min_years": fields["experience_min_years"],
+                "experience_max_years": fields["experience_max_years"],
+                "active_profile": self.cfg.routing.active_profile,
+                "routing_state": active_decision.state,
+                "eligibility_confidence": active_decision.confidence,
+                "profile_routes_json": json.dumps(
+                    {name: decision.to_dict() for name, decision in profile_routes.items()},
+                    sort_keys=True,
+                ),
+                "routing_reason_codes_json": json.dumps(active_decision.reason_codes),
                 "posted_date": fields["posted_date"],
                 "deadline": fields["deadline"],
                 "deadline_tz": fields["deadline_tz"],
@@ -345,7 +363,7 @@ class Pipeline:
                     updates["description_excerpt"] = fields["description_excerpt"]
                     _set_owner("description")
                 continue
-            if new_val not in (None, "") and new_val != old_val and _may_overwrite(col):
+            if new_val not in (None, "", c.UNKNOWN) and new_val != old_val and _may_overwrite(col):
                 changed[col] = {"old": old_val, "new": new_val}
                 updates[col] = new_val
                 _set_owner(col)
@@ -411,6 +429,11 @@ class Pipeline:
                 relocation_text=final_value("relocation_text"),
                 description_excerpt=final_value("description_excerpt"),
                 employment_type=final_value("employment_type"),
+                engagement_type=final_value("engagement_type"),
+                career_stage=final_value("career_stage"),
+                required_degree=final_value("required_degree"),
+                preferred_degree=final_value("preferred_degree"),
+                experience_requirement_text=final_value("experience_requirement_text"),
                 season=final_value("season"),
             )
             tags, components, signals, reasons = self._score(refreshed)
@@ -425,6 +448,31 @@ class Pipeline:
                     "reason_codes_json": json.dumps(reasons),
                 }
             )
+        effective_fields = dict(fields)
+        for key in (
+            "engagement_type",
+            "career_stage",
+            "required_degree",
+            "preferred_degree",
+            "experience_requirement_text",
+            "experience_min_years",
+            "experience_max_years",
+        ):
+            effective_fields[key] = updates.get(key, existing[key])
+        profile_routes = route_profiles(effective_fields)
+        active_decision = profile_routes[self.cfg.routing.active_profile]
+        updates.update(
+            {
+                "active_profile": self.cfg.routing.active_profile,
+                "routing_state": active_decision.state,
+                "eligibility_confidence": active_decision.confidence,
+                "profile_routes_json": json.dumps(
+                    {name: decision.to_dict() for name, decision in profile_routes.items()},
+                    sort_keys=True,
+                ),
+                "routing_reason_codes_json": json.dumps(active_decision.reason_codes),
+            }
+        )
         sets = ", ".join(f"{k} = ?" for k in updates)
         self.conn.execute(
             f"UPDATE opportunities SET {sets} WHERE opportunity_id = ?",
@@ -454,6 +502,22 @@ class Pipeline:
                 employment = "program"
             elif any(k in t for k in ("conference", "hackathon", "career fair", "expo")):
                 employment = "event"
+            elif "full-time" in t or "full time" in t:
+                employment = "full-time"
+        normalized = normalize_routing_fields(
+            RawOpportunity(
+                title=raw.title,
+                canonical_url=raw.canonical_url,
+                description_excerpt=raw.description_excerpt,
+                requirements_text=raw.requirements_text,
+                employment_type=employment,
+                engagement_type=raw.engagement_type,
+                career_stage=raw.career_stage,
+                required_degree=raw.required_degree,
+                preferred_degree=raw.preferred_degree,
+                experience_requirement_text=raw.experience_requirement_text,
+            )
+        )
         official = raw.canonical_url if source.official_source else None
         return {
             "organization": raw.organization or source.organization,
@@ -472,6 +536,7 @@ class Pipeline:
             "remote_signal": remote,
             "season": season,
             "employment_type": employment,
+            **normalized,
             "posted_date": raw.posted_date,
             "deadline": raw.deadline,
             "deadline_tz": raw.deadline_tz,

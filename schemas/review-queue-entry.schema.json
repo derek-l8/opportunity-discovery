@@ -121,6 +121,53 @@
         "null"
       ]
     },
+    "engagement_type": {
+      "enum": ["internship", "co-op", "contract", "research", "fellowship", "program", "event", "full-time", "unknown"]
+    },
+    "career_stage": {
+      "enum": ["student", "new-grad", "entry-level", "experienced", "unknown"]
+    },
+    "required_degree": {
+      "enum": ["high-school", "associate", "bachelors", "masters", "doctorate", "unknown"]
+    },
+    "preferred_degree": {
+      "enum": ["high-school", "associate", "bachelors", "masters", "doctorate", "unknown"]
+    },
+    "experience_requirement": {
+      "type": "object",
+      "required": ["text", "minimum_years", "maximum_years"],
+      "properties": {
+        "text": {"type": ["string", "null"]},
+        "minimum_years": {"type": ["integer", "null"], "minimum": 0},
+        "maximum_years": {"type": ["integer", "null"], "minimum": 0}
+      }
+    },
+    "active_profile": {
+      "enum": ["student-early-career", "new-grad", "all-opportunities"]
+    },
+    "routing_state": {
+      "enum": ["included", "excluded", "research_needed"]
+    },
+    "eligibility_confidence": {
+      "enum": ["high", "medium", "low"]
+    },
+    "profile_routes": {
+      "type": "object",
+      "required": ["student-early-career", "new-grad", "all-opportunities"],
+      "additionalProperties": {
+        "type": "object",
+        "required": ["routing_state", "eligibility_confidence", "reason_codes"],
+        "properties": {
+          "routing_state": {"enum": ["included", "excluded", "research_needed"]},
+          "eligibility_confidence": {"enum": ["high", "medium", "low"]},
+          "reason_codes": {"type": "array", "items": {"type": "string"}}
+        }
+      }
+    },
+    "routing_reason_codes": {
+      "type": "array",
+      "items": {"type": "string"}
+    },
     "posted_date": {
       "type": [
         "string",

@@ -6,6 +6,44 @@ EVIDENCE_SOURCE_STATED = "source-stated"
 EVIDENCE_INFERRED = "inferred-signal"
 UNKNOWN = "unknown"
 
+# Public-text normalization and deterministic profile routing. These values
+# describe what a posting says; they never express applicant-specific fitness.
+ENGAGEMENT_INTERNSHIP = "internship"
+ENGAGEMENT_COOP = "co-op"
+ENGAGEMENT_CONTRACT = "contract"
+ENGAGEMENT_RESEARCH = "research"
+ENGAGEMENT_FELLOWSHIP = "fellowship"
+ENGAGEMENT_PROGRAM = "program"
+ENGAGEMENT_EVENT = "event"
+ENGAGEMENT_FULL_TIME = "full-time"
+ENGAGEMENT_UNKNOWN = UNKNOWN
+
+CAREER_STUDENT = "student"
+CAREER_NEW_GRAD = "new-grad"
+CAREER_ENTRY_LEVEL = "entry-level"
+CAREER_EXPERIENCED = "experienced"
+CAREER_UNKNOWN = UNKNOWN
+
+DEGREE_HIGH_SCHOOL = "high-school"
+DEGREE_ASSOCIATE = "associate"
+DEGREE_BACHELORS = "bachelors"
+DEGREE_MASTERS = "masters"
+DEGREE_DOCTORATE = "doctorate"
+DEGREE_UNKNOWN = UNKNOWN
+
+CONFIDENCE_HIGH = "high"
+CONFIDENCE_MEDIUM = "medium"
+CONFIDENCE_LOW = "low"
+
+ROUTE_INCLUDED = "included"
+ROUTE_EXCLUDED = "excluded"
+ROUTE_RESEARCH = "research_needed"
+
+PROFILE_STUDENT = "student-early-career"
+PROFILE_NEW_GRAD = "new-grad"
+PROFILE_ALL = "all-opportunities"
+ALL_PROFILES = (PROFILE_STUDENT, PROFILE_NEW_GRAD, PROFILE_ALL)
+
 # Change types
 CHANGE_NEW = "new"
 CHANGE_NO_CHANGE = "no-change"

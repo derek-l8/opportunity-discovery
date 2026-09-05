@@ -4,7 +4,7 @@ A deterministic, local **opportunity-discovery engine** for technical students.
 It collects broad public internship / research / program / event leads from
 polite public sources, keeps every candidate in local SQLite storage,
 reconciles duplicates, detects changes over time, applies transparent generic
-relevance signals, and emits compact versioned packets for a later private
+relevance signals and configurable career-profile routing, and emits compact versioned packets for a later private
 review layer.
 
 **What it is not:** it is not an applicant tracker, not a dashboard, and never
@@ -25,6 +25,13 @@ After a normal run you get (in `output/`, regenerated atomically each run):
 | `source_health.json` | Per-source health, including coverage/format drift, seen/new/changed counts, elapsed time, and known pagination completeness |
 
 JSON Schemas for every external artifact are in `schemas/`.
+
+The default `student-early-career` profile routes internships, co-ops, research,
+fellowships, programs, events, and early-career contracts while excluding
+full-time/new-graduate roles and explicit graduate-degree requirements. Set
+`routing.active_profile` to `new-grad` or `all-opportunities` to change review
+lanes without deleting or recollecting candidates. Ambiguous public facts route to
+`research_needed`; this is not a decision about any applicant.
 
 ## Quick start
 

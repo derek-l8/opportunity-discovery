@@ -12,6 +12,7 @@ import os
 import re
 import sqlite3
 from collections.abc import Iterator
+from contextlib import suppress
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
@@ -47,7 +48,9 @@ def _atomic_write(path: Path, data: bytes) -> None:
     os.replace(tmp, path)  # atomic on POSIX and Windows
 
 
-def _row_to_candidate(row: sqlite3.Row, excerpt_chars: int) -> dict[str, Any]:
+def _row_to_candidate(
+    row: sqlite3.Row, excerpt_chars: int, active_profile: str | None = None
+) -> dict[str, Any]:
     def _j(key: str, default: Any) -> Any:
         try:
             return json.loads(row[key])
@@ -57,6 +60,9 @@ def _row_to_candidate(row: sqlite3.Row, excerpt_chars: int) -> dict[str, Any]:
     excerpt = row["description_excerpt"]
     if isinstance(excerpt, str) and len(excerpt) > excerpt_chars:
         excerpt = excerpt[:excerpt_chars]
+    profile_routes = _j("profile_routes_json", {})
+    selected_profile = active_profile or row["active_profile"]
+    selected_route = profile_routes.get(selected_profile, {})
     return {
         "opportunity_id": row["opportunity_id"],
         "lead_state": row["lead_state"],
@@ -77,6 +83,20 @@ def _row_to_candidate(row: sqlite3.Row, excerpt_chars: int) -> dict[str, Any]:
         "remote_signal": row["remote_signal"] or "unknown",
         "season": row["season"],
         "employment_type": row["employment_type"],
+        "engagement_type": row["engagement_type"],
+        "career_stage": row["career_stage"],
+        "required_degree": row["required_degree"],
+        "preferred_degree": row["preferred_degree"],
+        "experience_requirement": {
+            "text": row["experience_requirement_text"],
+            "minimum_years": row["experience_min_years"],
+            "maximum_years": row["experience_max_years"],
+        },
+        "active_profile": selected_profile,
+        "routing_state": selected_route.get("routing_state", row["routing_state"]),
+        "eligibility_confidence": selected_route.get("eligibility_confidence", row["eligibility_confidence"]),
+        "profile_routes": profile_routes,
+        "routing_reason_codes": selected_route.get("reason_codes", _j("routing_reason_codes_json", [])),
         "posted_date": row["posted_date"],
         "stated_deadline": row["deadline"],
         "deadline_timezone": row["deadline_tz"] or "unknown",
@@ -136,13 +156,24 @@ def _iter_candidates(conn: sqlite3.Connection) -> Iterator[sqlite3.Row]:
     yield from conn.execute("SELECT * FROM opportunities ORDER BY opportunity_id")  # deterministic ordering
 
 
-def is_review_queue_member(row: sqlite3.Row, threshold: float = 0.5) -> tuple[bool, list[str]]:
+def is_review_queue_member(
+    row: sqlite3.Row,
+    threshold: float = 0.5,
+    active_profile: str | None = None,
+) -> tuple[bool, list[str]]:
     """Deterministic review-queue membership from stored reason codes/score."""
     reasons = json.loads(row["reason_codes_json"] or "[]")
     score = float(row["generic_score"] or 0.0)
     excluded_codes = [r for r in reasons if r.startswith("exclude:")]
     tags = json.loads(row["role_family_tags_json"] or "[]")
-    include = bool(tags) and not excluded_codes and score >= threshold and int(row["active"] or 0) == 1
+    routing_state = row["routing_state"]
+    if active_profile:
+        with suppress(KeyError, TypeError, ValueError):
+            routing_state = json.loads(row["profile_routes_json"])[active_profile]["routing_state"]
+    route_ok = routing_state in ("included", "research_needed")
+    include = (
+        bool(tags) and route_ok and not excluded_codes and score >= threshold and int(row["active"] or 0) == 1
+    )
     return include, reasons
 
 
@@ -160,7 +191,9 @@ def export_all(
     total_count = 0
     lines: list[bytes] = []
     for row in _iter_candidates(conn):
-        cand = attach_provenance(conn, _row_to_candidate(row, cfg.export.excerpt_chars))
+        cand = attach_provenance(
+            conn, _row_to_candidate(row, cfg.export.excerpt_chars, cfg.routing.active_profile)
+        )
         lines.append(json.dumps(cand, sort_keys=True).encode("utf-8"))
         total_count += 1
     payload = b"".join(line + b"\n" for line in lines)
@@ -176,10 +209,14 @@ def export_all(
     review_count = 0
     rlines: list[bytes] = []
     for row in _iter_candidates(conn):
-        member, reasons = is_review_queue_member(row, cfg.scoring.review_queue_threshold)
+        member, reasons = is_review_queue_member(
+            row, cfg.scoring.review_queue_threshold, cfg.routing.active_profile
+        )
         if not member:
             continue
-        cand = attach_provenance(conn, _row_to_candidate(row, cfg.export.excerpt_chars))
+        cand = attach_provenance(
+            conn, _row_to_candidate(row, cfg.export.excerpt_chars, cfg.routing.active_profile)
+        )
         rlines.append(json.dumps(cand, sort_keys=True).encode("utf-8"))
         review_count += 1
     rpayload = b"".join(line + b"\n" for line in rlines)
@@ -367,7 +404,10 @@ def _paginate_delta(
 ) -> list[tuple[str, dict[str, Any], bytes]]:
     """Pack candidates so every final UTF-8 JSON document fits the limit."""
     limit = cfg.export.packet_char_limit
-    candidates = [attach_provenance(conn, _row_to_candidate(row, cfg.export.excerpt_chars)) for row in rows]
+    candidates = [
+        attach_provenance(conn, _row_to_candidate(row, cfg.export.excerpt_chars, cfg.routing.active_profile))
+        for row in rows
+    ]
     total_candidates = len(candidates)
     total_hint = 1
     packed: list[list[dict[str, Any]]]
@@ -451,7 +491,7 @@ def _build_delta_page(
         "candidates": candidates,
     }
     while True:
-        encoded = json.dumps(doc, sort_keys=True, indent=2).encode("utf-8")
+        encoded = json.dumps(doc, sort_keys=True, separators=(",", ":")).encode("utf-8")
         encoded_chars = len(encoded.decode("utf-8"))
         if doc["estimated_chars"] == encoded_chars:
             return doc, encoded
