@@ -488,3 +488,51 @@ all pass; no live-success claim is made from this run.
   functions were collected and skipped; the baseline's prior native-Windows
   evidence remains recorded above.
 - GitHub Actions was not run because no commit or push was made.
+
+## Phase 2 provider-neutral review contract (2026-09-06 UTC)
+
+Scope: retain Phase 1 routing and existing paginated delta exports while adding
+a bounded Markdown review view, non-merging possible-duplicate hints, and a
+provider-neutral source-backed review-response validator. The importer validates
+the current export generation, manifest-listed candidate hash, and membership of
+every decision ID before writing an atomic boundary artifact. Review Markdown
+escapes source-controlled structure and labels it untrusted. The importer does not
+mutate collector or private user state.
+
+Environment: Debian Linux, CPython 3.12.14 in the existing repository-local
+development environment. Base commit:
+`390da1760babd62e1da8eb070783bfd2ede8b0f3`.
+
+| Gate | Command | Result |
+| --- | --- | --- |
+| Formatter | `.venv/bin/ruff format --check src tests` | 60 files already formatted |
+| Linter | `.venv/bin/ruff check src tests` | All checks passed |
+| Type checker | `.venv/bin/mypy` | Success: no issues in 36 source files |
+| Full deterministic suite + coverage | `.venv/bin/python -m pytest -m 'not live' -ra --cov=opportunity_discovery --cov-report=term` | 167 passed, 4 native-Windows tests skipped; 84% coverage |
+| Configuration | `.venv/bin/opdisc --json validate-config` | ok; 272 sources, 248 enabled, no errors |
+| Package build | `.venv/bin/python -m build` | sdist and wheel built; existing setuptools license-deprecation warnings only |
+| Publication audit | temporary writable checkout with all product changes visible to `opdisc audit .` | 118 tracked/intent-to-add files scanned; 0 errors, 0 warnings |
+| Whitespace | `git diff --check` | passed with no output |
+
+### Live source validation result
+
+The first `.venv/bin/opdisc --json validate-sources` attempt stopped before any
+network validation because the pre-existing ignored `data/opdisc.sqlite3` has an
+inconsistent migration ledger: the Phase 1 columns exist but migration 0005 is
+not recorded. That user runtime database was not changed. The command was rerun
+with a fresh temporary database and the unchanged repository registry. It
+completed with 35 validated, 2 validated-empty-ok, 211 failed, and 24 configured
+quarantines. As in Phase 1, this host/proxy produced widespread decompression
+errors (`incorrect header check`), so no broad live-health claim is made and the
+registry remains unchanged.
+
+This correction pass did not repeat the live probe because the registry is
+unchanged and the same host/proxy limitation remains. The deterministic suite
+revalidated source-failure preservation and all revised Phase 2 behavior.
+
+### Not obtained on this host
+
+- Native Windows/PowerShell execution was unavailable; four Windows-only tests
+  were collected and skipped.
+- GitHub Actions and live AI-provider testing were not run. Phase 2 has no AI SDK,
+  API key, or live-provider dependency.

@@ -49,6 +49,18 @@
       "title": "Embedded Firmware Internship",
       "url": "https://synthetic.example/opportunities/intern-open?utm_source=duplicate",
       "type": "internship"
+    },
+    {
+      "id": "possible-duplicate-a",
+      "title": "Embedded Firmware Intern Summer 2027",
+      "url": "https://synthetic.example/opportunities/possible-duplicate-a",
+      "type": "internship"
+    },
+    {
+      "id": "possible-duplicate-b",
+      "title": "Embedded Firmware Intern Summer",
+      "url": "https://synthetic.example/opportunities/possible-duplicate-b",
+      "type": "internship"
     }
   ]
 }

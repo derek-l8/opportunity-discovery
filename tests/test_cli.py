@@ -1,6 +1,8 @@
 """CLI behavior and Windows-safe path handling."""
 
+import hashlib
 import json
+from pathlib import Path
 
 from opportunity_discovery.cli import main
 
@@ -142,3 +144,63 @@ def test_audit_cli_exit_codes(engine_config, tmp_path, capsys):
     (tmp_path / ".env").write_text("SECRET=x\n", encoding="utf-8")
     assert main(["audit", str(tmp_path)]) == 1
     capsys.readouterr()
+
+
+def test_import_review_requires_current_generation_and_preserves_response(engine_config, tmp_path, capsys):
+    engine_config.paths.output_dir.mkdir(parents=True)
+    fixture_path = Path(__file__).parent / "fixtures" / "demo" / "phase2-review-response.json"
+    fixture = json.loads(fixture_path.read_text(encoding="utf-8"))
+    identifiers = [decision["opportunity_id"] for decision in fixture["decisions"]]
+    identifiers.append(fixture["decisions"][-1]["duplicate_of"])
+    candidate_payload = b"".join(
+        json.dumps({"opportunity_id": identifier}).encode("utf-8") + b"\n" for identifier in identifiers
+    )
+    (engine_config.paths.output_dir / "candidates.jsonl").write_bytes(candidate_payload)
+    (engine_config.paths.output_dir / "export_manifest.json").write_text(
+        json.dumps(
+            {
+                "generation_id": fixture["packet_generation_id"],
+                "files": [
+                    {
+                        "filename": "candidates.jsonl",
+                        "sha256": hashlib.sha256(candidate_payload).hexdigest(),
+                    }
+                ],
+            }
+        ),
+        encoding="utf-8",
+    )
+    assert (
+        main(
+            [
+                "--config",
+                str(engine_config.config_path),
+                "--json",
+                "import-review",
+                str(fixture_path),
+            ]
+        )
+        == 0
+    )
+    result = json.loads(capsys.readouterr().out)
+    assert result["decision_count"] == 4
+    imported = json.loads(
+        (engine_config.paths.output_dir / "review_response.json").read_text(encoding="utf-8")
+    )
+    assert imported["custom"] == fixture["custom"]
+    valid_output = (engine_config.paths.output_dir / "review_response.json").read_bytes()
+    fixture["decisions"][0]["opportunity_id"] = "opp_ffffffffffffffffffffffffffffffff"
+    invented_path = tmp_path / "invented-review-response.json"
+    invented_path.write_text(json.dumps(fixture), encoding="utf-8")
+    assert (
+        main(
+            [
+                "--config",
+                str(engine_config.config_path),
+                "import-review",
+                str(invented_path),
+            ]
+        )
+        == 2
+    )
+    assert (engine_config.paths.output_dir / "review_response.json").read_bytes() == valid_output

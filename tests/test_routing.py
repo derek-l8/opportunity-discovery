@@ -103,6 +103,8 @@ def test_active_profile_configuration_is_validated(tmp_path):
                 "Machine Learning Research Internship": c.ROUTE_EXCLUDED,
                 "Robotics Technical Opportunity": c.ROUTE_RESEARCH,
                 "Student Engineering Recruiting Event": c.ROUTE_INCLUDED,
+                "Embedded Firmware Intern Summer 2027": c.ROUTE_INCLUDED,
+                "Embedded Firmware Intern Summer": c.ROUTE_INCLUDED,
             },
         ),
         (
@@ -114,6 +116,8 @@ def test_active_profile_configuration_is_validated(tmp_path):
                 "Machine Learning Research Internship": c.ROUTE_EXCLUDED,
                 "Robotics Technical Opportunity": c.ROUTE_RESEARCH,
                 "Student Engineering Recruiting Event": c.ROUTE_EXCLUDED,
+                "Embedded Firmware Intern Summer 2027": c.ROUTE_EXCLUDED,
+                "Embedded Firmware Intern Summer": c.ROUTE_EXCLUDED,
             },
         ),
         (
@@ -125,6 +129,8 @@ def test_active_profile_configuration_is_validated(tmp_path):
                 "Machine Learning Research Internship": c.ROUTE_INCLUDED,
                 "Robotics Technical Opportunity": c.ROUTE_INCLUDED,
                 "Student Engineering Recruiting Event": c.ROUTE_INCLUDED,
+                "Embedded Firmware Intern Summer 2027": c.ROUTE_INCLUDED,
+                "Embedded Firmware Intern Summer": c.ROUTE_INCLUDED,
             },
         ),
     ],
@@ -148,20 +154,23 @@ def test_synthetic_demo_routes_every_profile_and_retains_all_records(
     Pipeline(conn, engine_config, summary.run_id, summary).process_source(spec, fetcher)
 
     rows = {row["title"]: row for row in conn.execute("SELECT * FROM opportunities")}
-    assert len(rows) == 6  # the same-source normalized-URL duplicate was collapsed
+    assert len(rows) == 8  # exact URL duplicate collapsed; possible duplicates remain separate
     assert {title: row["routing_state"] for title, row in rows.items()} == expected_routes
     assert all(row["active_profile"] == profile for row in rows.values())
     assert all(set(json.loads(row["profile_routes_json"])) == set(c.ALL_PROFILES) for row in rows.values())
     check = conn.execute("SELECT records_seen, new_records FROM source_checks").fetchone()
-    assert (check["records_seen"], check["new_records"]) == (7, 6)
+    assert (check["records_seen"], check["new_records"]) == (9, 8)
 
     export_all(conn, engine_config, summary.run_id)
     exported = [
         json.loads(line)
         for line in (engine_config.paths.output_dir / "candidates.jsonl").read_text().splitlines()
     ]
-    assert len(exported) == 6
+    assert len(exported) == 8
     assert all(item["active_profile"] == profile for item in exported)
+    possible = [item for item in exported if item["duplicate_state"] == "possible_duplicate"]
+    assert len(possible) == 2
+    assert all(len(item["possible_duplicate_ids"]) == 1 for item in possible)
     review_titles = {
         json.loads(line)["title"]
         for line in (engine_config.paths.output_dir / "review_queue.jsonl").read_text().splitlines()
@@ -180,5 +189,5 @@ def test_synthetic_demo_routes_every_profile_and_retains_all_records(
         for line in (engine_config.paths.output_dir / "candidates.jsonl").read_text().splitlines()
     ]
     assert all(item["active_profile"] == switched for item in switched_export)
-    assert len(switched_export) == 6
+    assert len(switched_export) == 8
     conn.close()

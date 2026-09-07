@@ -34,6 +34,7 @@ source health. It never owns personal eligibility or priority.
 | `pipeline.py` | Fetch → observe → reconcile → detect changes → score |
 | `scoring.py` | Deterministic keyword families, signals, effort estimate, season inference |
 | `export.py` | Atomic versioned artifacts incl. paginated delta packets |
+| `review_contract.py` | Provider-neutral review-response validation and atomic boundary import |
 | `runner.py` | The normal workflow behind `opdisc run` |
 | `validate_sources.py` | Live probes that record validation status |
 | `audit.py` | Repository publication-safety audit |

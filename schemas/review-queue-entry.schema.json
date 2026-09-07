@@ -13,6 +13,8 @@
     "change_type",
     "first_seen",
     "last_seen",
+    "duplicate_state",
+    "possible_duplicate_ids",
     "provenance"
   ],
   "properties": {
@@ -166,6 +168,14 @@
     },
     "routing_reason_codes": {
       "type": "array",
+      "items": {"type": "string"}
+    },
+    "duplicate_state": {
+      "enum": ["unique", "possible_duplicate"]
+    },
+    "possible_duplicate_ids": {
+      "type": "array",
+      "uniqueItems": true,
       "items": {"type": "string"}
     },
     "posted_date": {

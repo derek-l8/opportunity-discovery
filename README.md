@@ -19,6 +19,7 @@ After a normal run you get (in `output/`, regenerated atomically each run):
 | --- | --- |
 | `candidates.jsonl` | Complete normalized export of every retained lead |
 | `review_queue.jsonl` | Active, non-excluded broadly relevant leads meeting `scoring.review_queue_threshold` |
+| `review_packet.md` | Score-ordered, bounded human-readable subset of the review queue; never the complete state |
 | `delta_packet.json` (+ `.pN.json` pages) | Compact packet of new and granularly changed leads since the last successful export — designed for token-efficient downstream review |
 | `export_manifest.json` | Deterministic generation ID, exact current delta page names, artifact hashes, and config/registry hashes |
 | `run_summary.json` | Counts, exit code, artifact hashes |
@@ -32,6 +33,8 @@ full-time/new-graduate roles and explicit graduate-degree requirements. Set
 `routing.active_profile` to `new-grad` or `all-opportunities` to change review
 lanes without deleting or recollecting candidates. Ambiguous public facts route to
 `research_needed`; this is not a decision about any applicant.
+Similar same-organization titles with distinct identities are exported as
+`possible_duplicate` hints and are never merged without strong identity evidence.
 
 ## Quick start
 
@@ -81,6 +84,7 @@ opdisc validate-sources   live-probe enabled sources and record health
 opdisc collect            one collection pass (no exports)
 opdisc run                full deterministic workflow
 opdisc export             rewrite export artifacts from stored state
+opdisc import-review FILE validate a source-backed review response against the current export
 opdisc source-health      per-source health states
 opdisc status             concise engine status
 opdisc audit              repository publication-safety audit
@@ -97,6 +101,14 @@ succeeded (a partial run is tolerated; failed checks remain visible in
 `source-health` and prior successful state is preserved);
 `1` sources were attempted but all failed; `2` fatal/config error;
 `3` another run already active (lock).
+
+`opdisc import-review` is a provider-neutral file-boundary validator. It requires
+the response's generation ID to match the current `export_manifest.json`, preserves
+unknown metadata only inside `custom`, and atomically writes
+`output/review_response.json`. It does not call an AI provider or mutate collector,
+board, applicant, or application state. The command verifies the manifest-recorded
+candidate artifact hash and decision IDs, but does not fetch evidence URLs,
+authenticate sources, or independently prove factual claims.
 
 ## Source registry
 
