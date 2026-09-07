@@ -48,10 +48,12 @@ standing, pipeline status/outcomes, dismissals, or application materials.
 | --- | --- |
 | `output/candidates.jsonl` | `schemas/candidate.schema.json` (one JSON object per line) |
 | `output/review_queue.jsonl` | `schemas/review-queue-entry.schema.json` |
+| `output/review_packet.md` | compact, bounded view; intentionally not a complete-state artifact |
 | `output/delta_packet.json` + `.pN.json` pages | `schemas/delta-packet.schema.json` |
 | `output/export_manifest.json` | `schemas/export-manifest.schema.json` |
 | `output/run_summary.json` | `schemas/run-summary.schema.json` |
 | `output/source_health.json` | `schemas/source-health.schema.json` |
+| review response input / `output/review_response.json` | `schemas/review-response.schema.json` |
 
 ## Delta packet semantics
 
@@ -80,6 +82,47 @@ no `exclude:` reason code, and its `generic_score` is greater than or equal to
 `scoring.review_queue_threshold`. All leads remain in SQLite and
 `candidates.jsonl` regardless of review-queue membership.
 
+`review_packet.md` orders this queue by generic score and stable ID, includes
+bounded excerpts and provenance links, and stops at `export.packet_char_limit`.
+Its footer states how many records were omitted. It is a convenience view, not a
+pagination mechanism or a replacement for the JSON artifacts. A prominent warning
+marks all source-controlled fields as untrusted data. Markdown-significant source
+text is escaped so titles and excerpts cannot create packet structure; normalized
+HTTP(S) links remain directly usable.
+
+## Duplicate review hints
+
+Exact normalized-URL duplicates continue to merge under the stable identity
+rules. Distinct records from the same organization whose normalized title-token
+sets overlap by at least 80% are instead exported with
+`duplicate_state = possible_duplicate` and reciprocal stable IDs. This is a
+review hint only: it creates no `duplicate_decisions` row and never merges data.
+
+## Provider-neutral review response
+
+`schemas/review-response.schema.json` defines advisory `promote`, `defer`,
+`dismiss`, and `duplicate` dispositions backed by a current official URL and
+check timestamp. A `duplicate` response additionally requires one of the stable
+identity evidence classes; title similarity is not accepted as merge evidence.
+
+`opdisc import-review RESPONSE.json` checks the contract and the current export
+generation ID. It locates `candidates.jsonl` through the manifest, verifies the
+recorded SHA-256, rejects malformed or duplicate candidate IDs, and requires every
+decision ID (including `duplicate_of`) to belong to that generation. Only after all
+checks pass does it atomically write `output/review_response.json`; a rejected
+response cannot replace a prior valid file. It does not update SQLite or any private
+board. The dispositions describe proposed handling by the later private workflow
+and are not applicant decisions owned by this repository. Unknown extension
+metadata is accepted and preserved only under a top-level or per-decision `custom`
+object; unexpected sibling fields fail validation.
+
+The importer validates structure, generation membership, artifact integrity, and
+the syntax of claimed evidence fields. It does **not** fetch an evidence URL,
+authenticate its publisher, compare page contents with the response, or
+independently prove any factual claim. `reviewed_at` and evidence `checked_at` use
+ISO-8601 timestamps with an offset or `Z`; an exact deadline uses an ISO-8601 date
+or timestamp.
+
 ## Compatibility rules
 
 - `schema_version = "1.0"` today. Future minor versions may add optional
@@ -101,3 +144,6 @@ no `exclude:` reason code, and its `generic_score` is greater than or equal to
 3. Verify shortlisted leads on their canonical official pages (this engine
    does not verify).
 4. Persist your own decisions keyed by `opportunity_id`.
+5. If returning structured review, copy the current manifest `generation_id` to
+   `packet_generation_id`, validate with `opdisc import-review`, and consume the
+   resulting file in private tooling.

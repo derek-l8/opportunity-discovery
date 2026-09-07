@@ -63,12 +63,28 @@ def test_candidates_validate(exported):
     for line in (exported / "candidates.jsonl").read_text().splitlines():
         jsonschema.Draft202012Validator(schema, registry=registry).validate(json.loads(line))
 
+    review_schema = json.loads((SCHEMA_DIR / "review-queue-entry.schema.json").read_text(encoding="utf-8"))
+    for line in (exported / "review_queue.jsonl").read_text().splitlines():
+        jsonschema.Draft202012Validator(review_schema, registry=registry).validate(json.loads(line))
+
 
 def test_delta_packet_validates(exported):
     schema = json.loads((SCHEMA_DIR / "delta-packet.schema.json").read_text(encoding="utf-8"))
     registry = load_registry()
     doc = json.loads((exported / "delta_packet.json").read_text(encoding="utf-8"))
     jsonschema.Draft202012Validator(schema, registry=registry).validate(doc)
+
+
+def test_synthetic_review_response_validates():
+    schema = json.loads((SCHEMA_DIR / "review-response.schema.json").read_text(encoding="utf-8"))
+    fixture = json.loads(
+        (Path(__file__).parent / "fixtures" / "demo" / "phase2-review-response.json").read_text(
+            encoding="utf-8"
+        )
+    )
+    jsonschema.Draft202012Validator(
+        schema, registry=load_registry(), format_checker=jsonschema.FormatChecker()
+    ).validate(fixture)
 
 
 def test_run_summary_and_health_validate(exported):

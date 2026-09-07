@@ -18,6 +18,7 @@ from .lock import RunLock
 from .models import SourceSpec
 from .prune import apply_prune, plan_prune
 from .registry import load_sources, sync_sources_to_db
+from .review_contract import ReviewContractError, import_review_response
 from .runner import ensure_ready, run_full_workflow
 from .validate_sources import validate_all
 
@@ -199,6 +200,29 @@ def cmd_source_health(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_import_review(args: argparse.Namespace) -> int:
+    cfg, errors = _load(args.config)
+    if errors:
+        for error in errors:
+            print(f"ERROR {error}", file=sys.stderr)
+        return 2
+    manifest_path = cfg.paths.output_dir / "export_manifest.json"
+    try:
+        result = import_review_response(
+            Path(args.response),
+            cfg.paths.output_dir / "review_response.json",
+            manifest_path=manifest_path,
+        )
+    except ReviewContractError as exc:
+        print(f"ERROR review response not imported: {exc}", file=sys.stderr)
+        return 2
+    if args.json_output:
+        print(json.dumps(result, indent=2))
+    elif not args.quiet:
+        print(f"validated {result['decision_count']} decisions -> {result['path']}")
+    return 0
+
+
 def cmd_status(args: argparse.Namespace) -> int:
     cfg, _errors = _load(args.config)
     conn = ensure_ready(cfg)
@@ -369,6 +393,8 @@ def build_parser() -> argparse.ArgumentParser:
     p = add("run", cmd_run, "full workflow: collect, reconcile, score, export, summarize")
     p.add_argument("--force", action="store_true", help="ignore cadence windows")
     add("export", cmd_export, "write export artifacts atomically")
+    p = add("import-review", cmd_import_review, "validate a source-backed review response")
+    p.add_argument("response", help="path to provider-neutral review-response JSON")
     add("source-health", cmd_source_health, "show per-source health states")
     add("status", cmd_status, "concise engine status")
     p = add("audit", cmd_audit, "repository publication safety audit")

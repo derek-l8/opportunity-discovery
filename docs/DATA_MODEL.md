@@ -101,6 +101,10 @@ Audit log of reconciliations: kept id, merged id, basis
 (`normalized-url-equal` today), detail, timestamp. Kept/merged ids are logical
 references because a differently-keyed candidate may reconcile before insertion.
 
+Possible duplicates are not stored in this table. Export computes a conservative,
+deterministic same-organization title-overlap hint, keeps both stable records, and
+emits reciprocal `possible_duplicate_ids` for external review.
+
 ### `changes`
 Field-level change log: opportunity, run, change type, changed-fields JSON
 (old/new pairs), detected time.

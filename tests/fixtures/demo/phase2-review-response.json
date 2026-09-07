@@ -1,0 +1,56 @@
+{
+  "schema_version": "1.0",
+  "packet_generation_id": "0000000000000000000000000000000000000000000000000000000000000000",
+  "reviewed_at": "2026-09-06T12:00:00Z",
+  "custom": {
+    "synthetic_run_label": "phase-2-demo"
+  },
+  "decisions": [
+    {
+      "opportunity_id": "opp_239f53013db5046110ffb26dfb5c5188",
+      "disposition": "promote",
+      "reason_codes": ["official-page-current", "profile-relevant"],
+      "official_evidence": {
+        "url": "https://synthetic.example/official/intern-open",
+        "checked_at": "2026-09-06T12:00:00Z",
+        "availability": "open",
+        "exact_deadline": "2027-03-15",
+        "notes_excerpt": "Applications open for the synthetic 2027 cycle."
+      },
+      "custom": {"review_lane": "demo"}
+    },
+    {
+      "opportunity_id": "opp_62275629da8a983b921695cc4ce53996",
+      "disposition": "defer",
+      "reason_codes": ["engagement-type-unresolved"],
+      "official_evidence": {
+        "url": "https://synthetic.example/official/ambiguous",
+        "checked_at": "2026-09-06T12:01:00Z",
+        "availability": "unknown"
+      }
+    },
+    {
+      "opportunity_id": "opp_5f0b35733254ca79f838f299b22d48c5",
+      "disposition": "dismiss",
+      "reason_codes": ["official-page-closed", "verified-deadline-expired"],
+      "official_evidence": {
+        "url": "https://synthetic.example/official/expired-event",
+        "checked_at": "2026-09-06T12:02:00Z",
+        "availability": "closed",
+        "exact_deadline": "2020-01-01"
+      }
+    },
+    {
+      "opportunity_id": "opp_dadec78eb76bb2e6078c9f729d396c50",
+      "disposition": "duplicate",
+      "reason_codes": ["same-provider-requisition-id"],
+      "official_evidence": {
+        "url": "https://synthetic.example/official/intern-open",
+        "checked_at": "2026-09-06T12:03:00Z",
+        "availability": "open"
+      },
+      "duplicate_of": "opp_3cf744c778c9ceccceb50d064383d337",
+      "identity_evidence": "normalized-official-url"
+    }
+  ]
+}
