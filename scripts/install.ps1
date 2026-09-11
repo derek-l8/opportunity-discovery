@@ -1,5 +1,7 @@
 param(
     [string]$VenvPath = ".venv",
+    [string]$WorkspacePath = "",
+    [switch]$SkipWorkspaceSetup,
     [switch]$ProbeOnly
 )
 
@@ -83,8 +85,23 @@ if ($LASTEXITCODE -ne 0) { throw "opdisc init failed with exit code $LASTEXITCOD
 & $venvOpdisc validate-config
 if ($LASTEXITCODE -ne 0) { throw "opdisc validate-config failed with exit code $LASTEXITCODE" }
 
+if (-not $SkipWorkspaceSetup) {
+    $documents = [Environment]::GetFolderPath("MyDocuments")
+    $defaultWorkspace = Join-Path $documents "Opportunity-Workspace"
+    if ([string]::IsNullOrWhiteSpace($WorkspacePath)) {
+        $answer = Read-Host "Private workspace location [$defaultWorkspace]"
+        $WorkspacePath = if ([string]::IsNullOrWhiteSpace($answer)) { $defaultWorkspace } else { $answer }
+    }
+    Write-Host "Initializing private workspace..."
+    & $venvOpdisc init-workspace $WorkspacePath --engine-path $repoRoot
+    if ($LASTEXITCODE -ne 0) { throw "opdisc init-workspace failed with exit code $LASTEXITCODE" }
+}
+
 Write-Host ""
 Write-Host "Install complete. Next steps:"
 Write-Host "  .\.venv\Scripts\opdisc.exe validate-sources   # one-time live validation"
 Write-Host "  .\scripts\run.ps1                             # normal run"
+if (-not $SkipWorkspaceSetup) {
+    Write-Host "  Private workspace: $WorkspacePath"
+}
 exit $LASTEXITCODE

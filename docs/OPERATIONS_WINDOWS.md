@@ -11,17 +11,43 @@ package only, which is all scheduled runs need). For a **development
 installation** (tests, Ruff, Mypy) use the dev extra shown at the end.
 
 ```powershell
-cd path\to\opportunity-discovery
+# Recommended canonical layout: create the private parent, then place the
+# actual public Git checkout at engine\opportunity-discovery.
+$documents = [Environment]::GetFolderPath("MyDocuments")
+$workspace = Join-Path $documents "Opportunity-Workspace"
+New-Item -ItemType Directory -Force (Join-Path $workspace "engine")
+git clone https://github.com/derek-l8/opportunity-discovery.git `
+    (Join-Path $workspace "engine\opportunity-discovery")
+Set-Location (Join-Path $workspace "engine\opportunity-discovery")
 
 # Option A: installer (selects the newest compatible installed Python via the
 #           py launcher or python.exe, then performs the same steps as Option B)
-.\scripts\install.ps1
+.\scripts\install.ps1 -WorkspacePath $workspace
 
 # Option B: manual
 py -3.14 -m venv .venv                       # recommended for new installs
 .\.venv\Scripts\python -m pip install --upgrade pip
 .\.venv\Scripts\pip install -e .             # normal installation
 ```
+
+During Option A, setup prompts for a private workspace location and offers
+`Documents\Opportunity-Workspace`. For a noninteractive run, pass an explicit
+path; for an engine-only installation, opt out:
+
+```powershell
+.\scripts\install.ps1 -WorkspacePath "D:\Opportunity-Workspace"
+.\scripts\install.ps1 -SkipWorkspaceSetup
+```
+
+The installer operates on its active checkout in place. It never moves, copies,
+reclones, or duplicates that checkout. The initializer preserves all existing
+workspace files. If the chosen workspace is
+inside a Git checkout it emits a privacy warning, but does not override the
+user's choice. `.opdisc\workspace.json` records the resolved checkout path and
+is authoritative. Existing installations may keep their engine elsewhere, but
+setup warns that an agent opened only at the workspace root may not be able to
+access an external checkout. External mode does not create an empty or
+misleading `engine\opportunity-discovery` directory.
 
 Python 3.14 is the current recommended/default version. Python 3.11, 3.12,
 3.13, and 3.14 remain supported, and the installer tries them newest-first.

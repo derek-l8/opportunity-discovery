@@ -92,6 +92,19 @@ def test_installer_keeps_venv_creation_failure_fatal(tmp_path):
     assert "Virtual environment creation failed with exit code 23" in (result.stdout + result.stderr)
 
 
+def test_installer_prompts_with_documents_workspace_default_and_supports_opt_out():
+    script = _script("install.ps1")
+
+    assert '[Environment]::GetFolderPath("MyDocuments")' in script
+    assert 'Join-Path $documents "Opportunity-Workspace"' in script
+    assert 'Read-Host "Private workspace location [$defaultWorkspace]"' in script
+    assert "[switch]$SkipWorkspaceSetup" in script
+    assert "& $venvOpdisc init-workspace $WorkspacePath --engine-path $repoRoot" in script
+    assert "git clone" not in script
+    assert "Copy-Item" not in script
+    assert "Move-Item" not in script
+
+
 def test_scheduled_run_places_global_options_before_subcommand():
     script = _script("run.ps1")
 

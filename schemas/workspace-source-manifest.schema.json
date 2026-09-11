@@ -1,0 +1,30 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "workspace-source-manifest.schema.json",
+  "title": "Private workspace source import manifest",
+  "type": "object",
+  "required": ["schema_version", "imports", "custom"],
+  "properties": {
+    "schema_version": {"const": "1.0"},
+    "imports": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["sha256", "original_name", "stored_path", "imported_at"],
+        "properties": {
+          "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+          "original_name": {"type": "string", "minLength": 1},
+          "stored_path": {
+            "type": "string",
+            "pattern": "^(?!.*(?:^|/)\\.{1,2}(?:/|$))sources/(?:[^/\\\\]+/)*[^/\\\\]+$"
+          },
+          "imported_at": {"type": "string", "format": "date-time"},
+          "custom": {"type": "object"}
+        },
+        "additionalProperties": false
+      }
+    },
+    "custom": {"type": "object"}
+  },
+  "additionalProperties": false
+}
