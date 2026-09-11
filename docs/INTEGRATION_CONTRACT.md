@@ -54,6 +54,7 @@ standing, pipeline status/outcomes, dismissals, or application materials.
 | `output/run_summary.json` | `schemas/run-summary.schema.json` |
 | `output/source_health.json` | `schemas/source-health.schema.json` |
 | review response input / `output/review_response.json` | `schemas/review-response.schema.json` |
+| private workspace `.opdisc/source-manifest.json` | `schemas/workspace-source-manifest.schema.json` |
 
 ## Delta packet semantics
 

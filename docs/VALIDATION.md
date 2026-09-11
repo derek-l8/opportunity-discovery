@@ -460,6 +460,8 @@ environment. The integration checkout is
 | Migration/init | `PYTHONPATH=src /workspace/.venv/bin/opdisc init` | migrations through 0005 present; 272 sources synced; no pending migration in the validation DB |
 | Configuration | `PYTHONPATH=src /workspace/.venv/bin/opdisc --json validate-config` | ok; 272 sources, 248 enabled, no errors |
 | Package build | `PYTHONPATH=src /workspace/.venv/bin/python -m build` | sdist and wheel built; existing setuptools license-deprecation warnings only |
+| Publication audit | audit of a clean `origin/main` archive overlaid with all 14 proposed product files | 123 files scanned; 0 errors, 0 warnings |
+| Whitespace | `git diff --check` | passed with no output |
 | Publication audit | intent-to-add the four new paths, then `PYTHONPATH=src /workspace/.venv/bin/opdisc audit .` | 112 tracked/intent-to-add files scanned, 0 errors, 0 warnings; index restored afterward |
 | Whitespace | `git diff --check` | passed with no output |
 
@@ -536,3 +538,39 @@ revalidated source-failure preservation and all revised Phase 2 behavior.
   were collected and skipped.
 - GitHub Actions and live AI-provider testing were not run. Phase 2 has no AI SDK,
   API key, or live-provider dependency.
+
+## Phase 3 Windows workspace initialization (2026-09-08 UTC)
+
+Scope: reintegrate external private-workspace scaffolding directly onto merged
+Phase 2, correct canonical/external engine-path handling, retain the Windows
+Documents-based location prompt and non-overwriting user instructions, and
+tighten portable source-manifest paths. The engine does not inspect inbox
+contents, mutate knowledge or board state, call an AI provider, or implement
+Phase 4 behavior. Authoritative base commit:
+`80a9b3c8b31f0e60b12fe53e15c831082162f020`.
+
+Environment: Linux integration checkout at
+`/agent/scratch/opportunity-discovery-phase3-integration`, using the existing
+development environment from `/workspace/.venv` with `PYTHONPATH=src`.
+
+| Gate | Command | Result |
+| --- | --- | --- |
+| Targeted Phase 3 suite | `PYTHONPATH=src /workspace/.venv/bin/python -m pytest -ra tests/test_workspace.py tests/test_windows_scripts.py tests/test_cli.py tests/test_schemas.py` | 32 passed, 4 native-Windows tests skipped |
+| Full deterministic suite | `PYTHONPATH=src /workspace/.venv/bin/python -m pytest -ra` | 183 passed, 4 native-Windows tests skipped |
+| Formatter | `PYTHONPATH=src /workspace/.venv/bin/ruff format --check src tests` | 62 files already formatted |
+| Linter | `PYTHONPATH=src /workspace/.venv/bin/ruff check src tests` | All checks passed |
+| Type checker | `PYTHONPATH=src /workspace/.venv/bin/mypy` | Success: no issues in 37 source files |
+| Configuration | `PYTHONPATH=src /workspace/.venv/bin/opdisc validate-config` | ok; 272 sources, 248 enabled, no errors |
+| Package build | `PYTHONPATH=src /workspace/.venv/bin/python -m build` | sdist and wheel built; existing setuptools license-deprecation warnings only |
+
+Live source validation was not repeated: `config/sources.toml` is unchanged and
+the same host/proxy decompression condition is already documented in the Phase
+1 and Phase 2 results above.
+
+### Not obtained on this host
+
+- Native Windows execution of the updated location prompt was unavailable.
+  Source-level installer assertions passed, but they are not native execution;
+  four native-Windows tests were skipped.
+- GitHub Actions was not run because no commit or push was made.
+- Phase 3 has no AI provider integration; no provider smoke test applies.

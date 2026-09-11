@@ -21,6 +21,7 @@ from .registry import load_sources, sync_sources_to_db
 from .review_contract import ReviewContractError, import_review_response
 from .runner import ensure_ready, run_full_workflow
 from .validate_sources import validate_all
+from .workspace import WorkspaceInitError, initialize_workspace
 
 
 def _setup_logging(quiet: bool) -> None:
@@ -83,6 +84,30 @@ def cmd_validate_config(args: argparse.Namespace) -> int:
         else:
             print(f"OK config={payload['config']} sources={payload['source_count']}")
     return 0 if not all_errors else 2
+
+
+def cmd_init_workspace(args: argparse.Namespace) -> int:
+    try:
+        result = initialize_workspace(
+            Path(args.workspace),
+            engine_path=Path(args.engine_path) if args.engine_path else None,
+        )
+    except (OSError, WorkspaceInitError) as exc:
+        print(f"ERROR workspace not initialized: {exc}", file=sys.stderr)
+        return 2
+    payload = result.to_dict()
+    if args.json_output:
+        print(json.dumps(payload, indent=2))
+    elif not args.quiet:
+        print(f"workspace ready at {result.root}")
+        print(
+            f"created {len(result.created_files)} starter files; "
+            f"updated {len(result.updated_files)} machine files; "
+            f"preserved {len(result.preserved_files)}"
+        )
+        for warning in result.warnings:
+            print(f"WARNING {warning}", file=sys.stderr)
+    return 0
 
 
 def cmd_validate_sources(args: argparse.Namespace) -> int:
@@ -384,6 +409,9 @@ def build_parser() -> argparse.ArgumentParser:
         return p
 
     add("init", cmd_init, "initialize/migrate local storage and sync the registry")
+    p = add("init-workspace", cmd_init_workspace, "initialize an external private workspace")
+    p.add_argument("workspace", help="private workspace root")
+    p.add_argument("--engine-path", help="path to the public engine checkout")
     add("validate-config", cmd_validate_config, "validate configuration and registry files")
     p = add("validate-sources", cmd_validate_sources, "live-probe enabled sources and record health")
     p.add_argument("--source-id", help="validate a single source")

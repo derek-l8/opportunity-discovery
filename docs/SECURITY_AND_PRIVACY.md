@@ -8,6 +8,9 @@
 - **No AI/model dependencies** and no telemetry.
 - **No submissions**: the engine never applies, messages, uploads, or saves
   anything to any service.
+- **External workspace only**: `opdisc init-workspace` writes private starter
+  files only to the path explicitly selected by the user. It does not read
+  inbox contents or copy private data into the engine checkout.
 - **Bounded public HTTP**: remote URLs must use HTTP(S), may not embed
   credentials, resolve only to public addresses, and are revalidated at each
   redirect. Redirect count and response body size are capped. Program-page

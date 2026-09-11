@@ -52,11 +52,29 @@ Native Windows (PowerShell) — the installer and the manual commands are
 alternatives; either produces the same repository-local `.venv`:
 
 ```powershell
+# Recommended: put the actual Git checkout inside the private workspace.
+$documents = [Environment]::GetFolderPath("MyDocuments")
+$workspace = Join-Path $documents "Opportunity-Workspace"
+New-Item -ItemType Directory -Force (Join-Path $workspace "engine")
+git clone https://github.com/derek-l8/opportunity-discovery.git `
+  (Join-Path $workspace "engine\opportunity-discovery")
+Set-Location (Join-Path $workspace "engine\opportunity-discovery")
+.\scripts\install.ps1 -WorkspacePath $workspace
+
+# Existing checkout / engine-only alternatives:
 .\scripts\install.ps1                 # normal install with checks, or manually:
 py -3.14 -m venv .venv
 .\.venv\Scripts\pip install -e .      # normal installation (runtime only)
 .\scripts\run.ps1                     # normal scheduled run (logs + exit codes)
 ```
+
+The installer also asks where to create the separate private workspace and
+offers `Documents\Opportunity-Workspace` by default. Pass `-WorkspacePath`
+for unattended setup or `-SkipWorkspaceSetup` for an engine-only install.
+Existing workspace instruction and manifest files are always preserved.
+The installer never moves, copies, reclones, or duplicates its active checkout.
+An existing checkout outside the workspace is supported and recorded, with a
+warning that a local agent opened only at the workspace root may not reach it.
 
 A **normal installation** (`pip install -e .`) is all scheduled runs need.
 A **development installation** adds test/lint/type tooling:
@@ -79,6 +97,7 @@ Task Scheduler setup/removal (does not run automatically; you invoke these):
 
 ```
 opdisc init               initialize/migrate storage, sync registry
+opdisc init-workspace DIR initialize an external private workspace without overwriting user files
 opdisc validate-config    validate configuration and registry files
 opdisc validate-sources   live-probe enabled sources and record health
 opdisc collect            one collection pass (no exports)
@@ -109,6 +128,12 @@ unknown metadata only inside `custom`, and atomically writes
 board, applicant, or application state. The command verifies the manifest-recorded
 candidate artifact hash and decision IDs, but does not fetch evidence URLs,
 authenticate sources, or independently prove factual claims.
+
+`opdisc init-workspace` creates the fixed external folder layout, short
+provider entry files, canonical `WORKSPACE.md`, empty knowledge entry points,
+and a versioned source manifest. It does not inspect inbox contents, derive
+knowledge, call an AI provider, or mutate private decisions. See
+`docs/WORKSPACE_INITIALIZATION.md`.
 
 ## Source registry
 
