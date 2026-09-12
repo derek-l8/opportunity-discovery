@@ -21,6 +21,11 @@
   "custom_manifest_example": {
     "synthetic_scenario": "phase-3-demo"
   },
+  "external_reference_example": {
+    "path": "Z:/synthetic-project",
+    "label": "Synthetic read-only project",
+    "custom": {"access": "read-only"}
+  },
   "custom_workspace_example": {
     "preferred_agent": "synthetic-local-agent"
   }

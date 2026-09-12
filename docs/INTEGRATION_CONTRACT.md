@@ -55,6 +55,8 @@ standing, pipeline status/outcomes, dismissals, or application materials.
 | `output/source_health.json` | `schemas/source-health.schema.json` |
 | review response input / `output/review_response.json` | `schemas/review-response.schema.json` |
 | private workspace `.opdisc/source-manifest.json` | `schemas/workspace-source-manifest.schema.json` |
+| private workspace review input | `schemas/workspace-review.schema.json` |
+| reasoned private feedback input | `schemas/workspace-feedback.schema.json` |
 
 ## Delta packet semantics
 
@@ -123,6 +125,34 @@ authenticate its publisher, compare page contents with the response, or
 independently prove any factual claim. `reviewed_at` and evidence `checked_at` use
 ISO-8601 timestamps with an offset or `Z`; an exact deadline uses an ISO-8601 date
 or timestamp.
+
+## Private workspace application
+
+`opdisc workspace-apply-review WORKSPACE RESPONSE --manifest MANIFEST` is a
+separate external-workspace operation. Its response includes the public review
+fields plus an official-source classification, a private eligibility
+conclusion, source-backed knowledge updates, and protected-change proposals.
+The command validates the common fields through the same Phase 2 production
+validator and verifies the candidate generation before writing private state.
+It preflights every existing structured state file it will touch. Per
+opportunity, `reviewed_at` cannot move backward; equal timestamps require the
+same recorded input SHA-256 and are treated as exact replays.
+
+A `promote` becomes an active private board item only when the official source
+supports the current opportunity or upcoming cycle, availability is `open` or
+`future-cycle`, no known hard eligibility failure remains, the response marks
+the lead profile-relevant, and the public candidate has no deterministic hard
+exclusion. Otherwise it stays `research_needed`. This threshold consumes a
+private reviewer assertion; it does not fetch or authenticate the evidence
+page itself. Defer, dismiss, and duplicate remain separate board states, and a
+duplicate response does not rewrite public identity.
+
+Verified availability, exact deadline, and private eligibility facts may
+change. Existing `user_state`, proposal status and metadata, and nested
+`custom` objects are preserved or merged. Response-level `custom` is retained
+in the operation report. Engine code, source rules, schemas, hard filters, and
+standing instructions are never changed: requested changes are stored as
+non-binding proposals.
 
 ## Compatibility rules
 

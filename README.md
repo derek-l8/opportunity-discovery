@@ -7,9 +7,11 @@ reconciles duplicates, detects changes over time, applies transparent generic
 relevance signals and configurable career-profile routing, and emits compact versioned packets for a later private
 review layer.
 
-**What it is not:** it is not an applicant tracker, not a dashboard, and never
-makes applicant-specific eligibility or priority decisions. It produces
-`unverified-lead` records only — see `docs/INTEGRATION_CONTRACT.md`.
+**What the collector is not:** it is not an applicant tracker or dashboard and
+never makes applicant-specific eligibility or priority decisions. It produces
+`unverified-lead` records only. Optional provider-neutral commands can apply a
+separately produced review to the external private workspace; they are not part
+of collection and do not call an AI provider. See `docs/INTEGRATION_CONTRACT.md`.
 
 ## Outcome
 
@@ -104,6 +106,14 @@ opdisc collect            one collection pass (no exports)
 opdisc run                full deterministic workflow
 opdisc export             rewrite export artifacts from stored state
 opdisc import-review FILE validate a source-backed review response against the current export
+opdisc workspace-apply-review DIR FILE apply a validated review to external private state
+opdisc workspace-apply-feedback DIR FILE record reasoned Done/Delete feedback and soft signals
+opdisc knowledge-snapshots DIR list bounded private knowledge history
+opdisc compare-knowledge DIR ID compare current knowledge with a snapshot
+opdisc restore-knowledge DIR ID restore after creating a pre-restore snapshot
+opdisc backup-workspace DIR ZIP create a full or state-only unencrypted backup
+opdisc restore-workspace DIR ZIP verify, pre-backup, and restore named files
+opdisc workspace-audit DIR audit private Git exposure and reference integrity
 opdisc source-health      per-source health states
 opdisc status             concise engine status
 opdisc audit              repository publication-safety audit
@@ -134,6 +144,8 @@ provider entry files, canonical `WORKSPACE.md`, empty knowledge entry points,
 and a versioned source manifest. It does not inspect inbox contents, derive
 knowledge, call an AI provider, or mutate private decisions. See
 `docs/WORKSPACE_INITIALIZATION.md`.
+Structured private review, adaptive feedback, backup, and recovery are described
+literally in `docs/PRIVATE_WORKSPACE_OPERATIONS.md`.
 
 ## Source registry
 
@@ -150,9 +162,12 @@ all exported leads are `unverified-lead`.
 
 ## Privacy & scope
 
-- Local-only. No accounts, no API keys, no model inference, no submissions.
-- No personal data is stored or exported; generated runtime data (`data/`,
-  `output/`, `logs/`) is git-ignored and must stay untracked.
+- Local-only. No accounts, no API keys, no built-in model inference, no submissions.
+- The public collector stores or exports no personal data. Explicit workspace
+  commands can read and write private state only under the selected external
+  workspace. That workspace and its unencrypted backups must stay untracked.
+- Generated collector runtime data (`data/`, `output/`, `logs/`) is git-ignored
+  and must stay untracked.
 - `opdisc audit` scans the tree for credentials, `.env` files, private keys,
   machine paths, databases/logs/live payloads before anything is published.
 - See `docs/SECURITY_AND_PRIVACY.md`.

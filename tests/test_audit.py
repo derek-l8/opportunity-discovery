@@ -1,3 +1,5 @@
+import subprocess
+
 from opportunity_discovery.audit import audit_repository
 
 
@@ -97,3 +99,14 @@ def test_tracked_test_source_contains_no_scan_matching_literals():
         return
     report = audit_repository(root)
     assert report.errors == [], "\n".join(f"{f.rule} {f.path}:{f.line}" for f in report.errors)
+
+
+def test_untracked_nonignored_file_is_scanned_in_git_checkout(tmp_path):
+    subprocess.run(["git", "init", "-q"], cwd=tmp_path, check=True)
+    write(tmp_path, "safe.txt", "tracked baseline\n")
+    subprocess.run(["git", "add", "safe.txt"], cwd=tmp_path, check=True)
+    write(tmp_path, ".env", "synthetic placeholder\n")
+
+    report = audit_repository(tmp_path)
+
+    assert ".env" in {finding.path for finding in report.errors}

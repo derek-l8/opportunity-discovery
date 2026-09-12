@@ -177,6 +177,7 @@ def initialize_workspace(root: Path, *, engine_path: Path | None = None) -> Work
     source_manifest = {
         "schema_version": WORKSPACE_SCHEMA_VERSION,
         "imports": [],
+        "external_references": [],
         "custom": {},
     }
     starters = {

@@ -1,6 +1,6 @@
 """Repository publication audit.
 
-Scans tracked files (or working tree) for material that must never be
+Scans tracked and non-ignored untracked files (or a filesystem preview) for material that must never be
 published: credentials, .env files, private keys, machine-specific absolute
 paths, databases/logs/caches, live payloads, and obvious personal
 application data.
@@ -122,9 +122,15 @@ class AuditReport:
 
 def _tracked_files(root: Path) -> list[Path]:
     try:
-        out = subprocess.run(["git", "ls-files"], cwd=str(root), capture_output=True, text=True, check=True)
+        out = subprocess.run(
+            ["git", "ls-files", "--cached", "--others", "--exclude-standard"],
+            cwd=str(root),
+            capture_output=True,
+            text=True,
+            check=True,
+        )
         if out.stdout.strip():
-            return sorted(root / line for line in out.stdout.splitlines() if line.strip())
+            return sorted({root / line for line in out.stdout.splitlines() if line.strip()})
         # Nothing tracked yet: fall through to a working-tree preview so the
         # audit remains useful before the first commit.
     except (subprocess.CalledProcessError, FileNotFoundError):

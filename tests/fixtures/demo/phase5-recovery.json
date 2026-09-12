@@ -1,0 +1,12 @@
+{
+  "schema_version": "1.0",
+  "synthetic_files": {
+    "sources/phase5-evidence.txt": "Preserved synthetic evidence.",
+    "inbox/phase5-new.txt": "Unprocessed synthetic inbox material.",
+    "knowledge/AUTOMATED.md": "# Synthetic automated knowledge",
+    "applications/phase5-notes.txt": "Synthetic private state used only in temporary tests."
+  },
+  "expected_full_only_prefixes": ["sources/", "inbox/"],
+  "always_excluded_prefixes": ["engine/", ".opdisc/cache/", ".opdisc/backups/"],
+  "custom": {"synthetic_scenario": "phase-5-recovery-demo"}
+}

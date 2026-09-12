@@ -35,6 +35,9 @@ source health. It never owns personal eligibility or priority.
 | `scoring.py` | Deterministic keyword families, signals, effort estimate, season inference |
 | `export.py` | Atomic versioned artifacts incl. paginated delta packets |
 | `review_contract.py` | Provider-neutral review-response validation and atomic boundary import |
+| `workspace.py` | External private-workspace initialization; user-owned starters are preserved |
+| `workspace_state.py` | Validated private review/feedback application below an external workspace root |
+| `workspace_recovery.py` | Private knowledge snapshots, ZIP backup/restore, and workspace audit |
 | `runner.py` | The normal workflow behind `opdisc run` |
 | `validate_sources.py` | Live probes that record validation status |
 | `audit.py` | Repository publication-safety audit |
@@ -74,3 +77,7 @@ adapter becomes a `check-failed` health row, never an aborted run and never a
   identical exports (byte-for-byte) — verified by tests.
 - Ordering is always by `opportunity_id`; packet pagination splits on a
   character budget with continuation metadata, never truncation.
+
+The workspace modules are not part of the scheduled public collection path.
+They require an explicit workspace path and never write applicant-specific
+state to the collector database or public output directory.

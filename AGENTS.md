@@ -11,12 +11,19 @@ this repo) consumes the export packets and owns all applicant-specific work:
 verification on official pages, eligibility analysis, ranking, the "Do now" /
 "Prepare next" action view, application management, and drafting.
 
+The repository may ship provider-neutral commands and schemas that operate on
+an explicitly selected external private workspace. Runtime private state must
+remain below that workspace root; it never belongs in collector SQLite,
+collector exports, fixtures, or this Git checkout.
+
 ## Hard rules
 
-1. **Personal data and AI-based decisions are out of scope.** Never add
-   applicant profiles, eligibility rules, dismissal histories, resumes,
-   essays, or any model/LLM/API dependency to this engine. Never store or
-   export anything about a specific person.
+1. **Keep applicant state private.** Applicant data and personal eligibility
+   decisions are forbidden in this public repository, collector SQLite,
+   fixtures, and public exports. Generic provider-neutral tools may read and
+   write those values only within an explicitly selected external private
+   workspace. No personal data may be committed, and this engine must not add
+   a model/LLM/API dependency.
 2. **Generated live data must remain untracked.** `data/`, `output/`, `logs/`,
    SQLite files, fetched payloads, caches — never commit them. Run
    `opdisc audit` before publishing anything.

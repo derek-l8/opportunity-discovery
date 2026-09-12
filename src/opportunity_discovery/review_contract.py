@@ -184,7 +184,8 @@ def validate_review_response(document: Any) -> dict[str, Any]:
     return {**root, "custom": custom, "decisions": normalized}
 
 
-def _generation_candidate_ids(manifest_path: Path) -> tuple[str, set[str]]:
+def load_generation_candidates(manifest_path: Path) -> tuple[str, dict[str, dict[str, Any]]]:
+    """Load and integrity-check the candidate generation named by a manifest."""
     try:
         manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
     except (OSError, json.JSONDecodeError) as exc:
@@ -212,7 +213,7 @@ def _generation_candidate_ids(manifest_path: Path) -> tuple[str, set[str]]:
         raise ReviewContractError(f"could not read candidates artifact: {exc}") from exc
     if hashlib.sha256(payload).hexdigest() != expected_hash:
         raise ReviewContractError("candidates artifact SHA-256 does not match export manifest")
-    identifiers: set[str] = set()
+    candidates: dict[str, dict[str, Any]] = {}
     for line_number, line in enumerate(payload.splitlines(), start=1):
         if not line.strip():
             raise ReviewContractError(f"candidates artifact line {line_number} is empty")
@@ -225,32 +226,40 @@ def _generation_candidate_ids(manifest_path: Path) -> tuple[str, set[str]]:
         identifier = _opportunity_id(
             candidate.get("opportunity_id"), f"candidates line {line_number} opportunity_id"
         )
-        if identifier in identifiers:
+        if identifier in candidates:
             raise ReviewContractError(f"candidates artifact contains duplicate opportunity_id {identifier!r}")
-        identifiers.add(identifier)
-    return generation_id, identifiers
+        candidates[identifier] = candidate
+    return generation_id, candidates
 
 
-def import_review_response(input_path: Path, output_path: Path, *, manifest_path: Path) -> dict[str, Any]:
-    """Validate a response and atomically copy its normalized form to the boundary output."""
+def load_review_response_for_generation(
+    input_path: Path, manifest_path: Path
+) -> tuple[dict[str, Any], dict[str, dict[str, Any]]]:
+    """Validate one response against an integrity-checked export generation."""
     try:
         document = json.loads(input_path.read_text(encoding="utf-8"))
     except (OSError, json.JSONDecodeError) as exc:
         raise ReviewContractError(f"could not read review response: {exc}") from exc
-    generation_id, allowed_ids = _generation_candidate_ids(manifest_path)
+    generation_id, candidates = load_generation_candidates(manifest_path)
     normalized = validate_review_response(document)
     if normalized["packet_generation_id"] != generation_id:
         raise ReviewContractError("packet_generation_id does not match the current export manifest")
     for index, decision in enumerate(normalized["decisions"]):
         opportunity_id = decision["opportunity_id"]
-        if opportunity_id not in allowed_ids:
+        if opportunity_id not in candidates:
             raise ReviewContractError(
                 f"decisions[{index}].opportunity_id is not in the current candidates artifact"
             )
-        if decision["disposition"] == "duplicate" and decision["duplicate_of"] not in allowed_ids:
+        if decision["disposition"] == "duplicate" and decision["duplicate_of"] not in candidates:
             raise ReviewContractError(
                 f"decisions[{index}].duplicate_of is not in the current candidates artifact"
             )
+    return normalized, candidates
+
+
+def import_review_response(input_path: Path, output_path: Path, *, manifest_path: Path) -> dict[str, Any]:
+    """Validate a response and atomically copy its normalized form to the boundary output."""
+    normalized, _candidates = load_review_response_for_generation(input_path, manifest_path)
     payload = (json.dumps(normalized, sort_keys=True, indent=2) + "\n").encode("utf-8")
     output_path.parent.mkdir(parents=True, exist_ok=True)
     temporary = output_path.with_suffix(output_path.suffix + ".tmp")
