@@ -19,6 +19,7 @@ from opportunity_discovery.workspace_state import (
 DEMO_DIR = Path(__file__).parent / "fixtures" / "demo"
 REVIEW_FIXTURE = DEMO_DIR / "phase4-workspace-review.json"
 FEEDBACK_FIXTURE = DEMO_DIR / "phase4-feedback.json"
+LATER_FEEDBACK_FIXTURE = DEMO_DIR / "phase4-later-feedback.json"
 GENERATION_ID = "a" * 64
 
 
@@ -36,6 +37,9 @@ def candidate(identifier: str, title: str, *, routing_state: str = "included") -
         "lead_state": "unverified-lead",
         "title": title,
         "canonical_url": f"https://synthetic.example/leads/{identifier}",
+        "provenance": [
+            {"source_id": "synthetic-demo", "source_url": f"https://synthetic.example/leads/{identifier}"}
+        ],
         "routing_state": routing_state,
         "reason_codes": [],
         "custom": {"collector-extension": "preserved-snapshot"},
@@ -208,6 +212,74 @@ def test_reasoned_feedback_updates_only_soft_preferences_and_is_idempotent(tmp_p
     assert len(preferences["signals"]["embedded-firmware"]["evidence"]) == 1
     report = json.loads(first.report_path.read_text(encoding="utf-8"))
     assert report["hard_configuration_changed"] is False
+
+
+def test_older_feedback_replay_cannot_reverse_newer_user_decision(tmp_path):
+    root = make_workspace(tmp_path)
+    manifest = make_generation(tmp_path)
+    apply_workspace_review(root, materialize_review(tmp_path), manifest_path=manifest)
+    first = tmp_path / "first-feedback.json"
+    first.write_bytes(FEEDBACK_FIXTURE.read_bytes())
+    apply_workspace_feedback(root, first)
+
+    later = json.loads(LATER_FEEDBACK_FIXTURE.read_text(encoding="utf-8"))
+    later_path = tmp_path / "later-feedback.json"
+    later_path.write_bytes(LATER_FEEDBACK_FIXTURE.read_bytes())
+    apply_workspace_feedback(root, later_path)
+
+    board_path = root / ".opdisc" / "board.json"
+    preferences_path = root / "knowledge" / "PREFERENCES.json"
+    checkpoint_path = root / ".opdisc" / "checkpoint.json"
+    before = (board_path.read_bytes(), preferences_path.read_bytes(), checkpoint_path.read_bytes())
+    with pytest.raises(WorkspaceStateError, match="older than the stored user decision"):
+        apply_workspace_feedback(root, first)
+    assert (board_path.read_bytes(), preferences_path.read_bytes(), checkpoint_path.read_bytes()) == before
+    opportunities = json.loads(board_path.read_text(encoding="utf-8"))["opportunities"]
+    record = opportunities[later["feedback"][0]["opportunity_id"]]
+    assert record["user_state"]["status"] == "delete"
+
+
+def test_feedback_for_another_record_does_not_regress_global_timestamps(tmp_path):
+    root = make_workspace(tmp_path)
+    manifest = make_generation(tmp_path)
+    apply_workspace_review(root, materialize_review(tmp_path), manifest_path=manifest)
+    later_path = tmp_path / "later-feedback.json"
+    later_path.write_bytes(LATER_FEEDBACK_FIXTURE.read_bytes())
+    apply_workspace_feedback(root, later_path)
+
+    other = json.loads(FEEDBACK_FIXTURE.read_text(encoding="utf-8"))
+    other["feedback"] = [other["feedback"][1]]
+    other_path = tmp_path / "other-feedback.json"
+    other_path.write_text(json.dumps(other), encoding="utf-8")
+    apply_workspace_feedback(root, other_path)
+
+    board = json.loads((root / ".opdisc" / "board.json").read_text(encoding="utf-8"))
+    preferences = json.loads((root / "knowledge" / "PREFERENCES.json").read_text(encoding="utf-8"))
+    assert board["updated_at"] == "2026-09-12T09:00:00Z"
+    assert preferences["updated_at"] == "2026-09-12T09:00:00Z"
+
+
+def test_equal_time_feedback_conflict_and_duplicate_target_are_rejected(tmp_path):
+    root = make_workspace(tmp_path)
+    manifest = make_generation(tmp_path)
+    apply_workspace_review(root, materialize_review(tmp_path), manifest_path=manifest)
+    first = tmp_path / "feedback.json"
+    first.write_bytes(FEEDBACK_FIXTURE.read_bytes())
+    apply_workspace_feedback(root, first)
+    board_path = root / ".opdisc" / "board.json"
+    before = board_path.read_bytes()
+
+    changed = json.loads(first.read_text(encoding="utf-8"))
+    changed["feedback"][0]["reason_code"] = "different-reason"
+    changed_path = tmp_path / "changed-feedback.json"
+    changed_path.write_text(json.dumps(changed), encoding="utf-8")
+    with pytest.raises(WorkspaceStateError, match="conflicts at the stored recorded_at"):
+        apply_workspace_feedback(root, changed_path)
+    assert board_path.read_bytes() == before
+
+    changed["feedback"][1]["opportunity_id"] = changed["feedback"][0]["opportunity_id"]
+    with pytest.raises(WorkspaceStateError, match="appears more than once"):
+        validate_workspace_feedback(changed)
 
 
 def test_feedback_without_reason_is_rejected():

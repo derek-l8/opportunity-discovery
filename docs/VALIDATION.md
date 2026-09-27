@@ -629,3 +629,86 @@ the same host/proxy decompression condition is already documented in the Phase
   four native-Windows tests were skipped.
 - GitHub Actions was not run because no commit or push was made.
 - Phase 3 has no AI provider integration; no provider smoke test applies.
+
+## Phase 6 prerequisite feedback integrity correction (2026-09-27 UTC)
+
+The Phase 4/5 production CLI was exercised in three isolated synthetic
+workspaces under `/data/phase6-review/`. An older feedback replay after a newer
+Delete silently restored Done and moved the board timestamp backward. The
+feedback importer now rejects stale or conflicting decisions before mutation,
+and keeps board and preference timestamps monotonic. The existing demo has a
+later synthetic feedback file for this regression. Per the Phase 6 instruction,
+no dashboard backend was layered onto the faulty contract.
+
+| Gate | Command | Result |
+| --- | --- | --- |
+| Focused review/recovery tests | `/data/venv/bin/python -m pytest -q tests/test_workspace_state.py tests/test_workspace_recovery.py` | Passed before the final global-timestamp regression was added; that regression passed in the full suite |
+| Full deterministic suite | `/data/venv/bin/python -m pytest -q -m 'not live'` | Passed; four Windows-only tests skipped |
+| Formatter | `/data/venv/bin/ruff format --check src tests` | 66 files already formatted |
+| Linter | `/data/venv/bin/ruff check src tests` | All checks passed |
+| Type checker | `/data/venv/bin/mypy` | No issues in 39 source files |
+| Publication audit | `/data/venv/bin/opdisc audit .` | 134 publication-candidate files; 0 errors, 0 warnings |
+| Diff whitespace | `git diff --check` | Passed |
+| Production CLI replay | `opdisc workspace-apply-feedback` in rehearsal 2, after newer Delete | Stale replay rejected with exit 2; newer Delete retained |
+
+Rehearsals also covered review, feedback, state/full backup, knowledge snapshot
+listing/comparison/restore, full restore, and workspace audit. A full restore
+recovered deliberately changed synthetic source and knowledge files. No live
+collection, live source validation, AI provider, or personal data was used.
+`validate-sources` was not run because the requested rehearsal and validation
+scope was offline and source adapters were unchanged.
+
+## Phase 6 dashboard-ready backend (2026-09-27 UTC)
+
+After the prerequisite fix was reviewed, the user authorized Phase 6 to resume
+on the same uncommitted checkout. The backend now reads a versioned private
+board page, applies explicit user commands, and reads private history. The
+collector and public export contracts were not changed. The Phase 6 synthetic
+scenario extends the existing review/feedback demo; no visual dashboard or
+AI-provider integration was added.
+
+| Gate | Command | Result |
+| --- | --- | --- |
+| Focused board/state/recovery tests | `/data/venv/bin/python -m pytest -q tests/test_workspace_board.py tests/test_workspace_state.py tests/test_workspace_recovery.py` | Passed |
+| Full deterministic suite | `/data/venv/bin/python -m pytest -q -m 'not live'` | Passed; four Windows-only tests skipped |
+| Formatter | `/data/venv/bin/ruff format --check src tests` | 69 files already formatted |
+| Linter | `/data/venv/bin/ruff check src tests` | All checks passed |
+| Type checker | `/data/venv/bin/mypy` | No issues in 41 source files |
+| Publication audit | `/data/venv/bin/opdisc audit .` | 140 publication-candidate files; 0 errors, 0 warnings |
+| Configuration | `/data/venv/bin/opdisc --json validate-config` | 272 sources, 248 enabled, 0 errors |
+| Diff whitespace | `git diff --check` | Passed |
+| Production CLI rehearsal | `/data/venv/bin/python /data/phase6-review/rehearse_phase6.py` | 19 CLI calls passed in a fourth isolated synthetic workspace, including board lanes, actions, history, purge, state backup, and workspace audit |
+
+The same 19-call rehearsal passed again in a fresh fifth synthetic workspace
+after the final monotonic timestamp and history-read changes. A regression test
+also applied a newer research response after a user action and verified that
+the board and record update times, and user status, stayed intact.
+
+No live collection, live source probe, AI provider, or personal applicant data
+was used. Source adapters and scoring were unchanged, so `validate-sources`
+was not applicable to this offline private-workspace increment. Native Windows
+execution remains a platform check outside this Linux run.
+
+## Phase 6 review corrections (2026-09-27 UTC)
+
+Feedback preflight now compares incoming feedback against the latest direct
+Done/Delete action and restore time as well as prior feedback. A synthetic
+regression applies reasoned Done at 09:00, direct Delete at 10:00, and imported
+feedback at 09:30; the import is rejected before the board, preferences, or
+checkpoint changes. Done now goes to History even when the factual pipeline
+state is submitted or an explicit waiting flag is active. Restore exposes the
+underlying waiting state again.
+
+| Gate | Command | Result |
+| --- | --- | --- |
+| Focused board/state/recovery tests | `/data/venv/bin/python -m pytest -q tests/test_workspace_board.py tests/test_workspace_state.py tests/test_workspace_recovery.py` | Passed, 48 tests |
+| Full deterministic suite | `/data/venv/bin/python -m pytest -q -m 'not live'` | Passed; four Windows-only tests skipped |
+| Formatter and linter | `/data/venv/bin/ruff format --check src tests` and `/data/venv/bin/ruff check src tests` | Passed, 69 files formatted |
+| Type checker | `/data/venv/bin/mypy` | Passed, 41 source files |
+| Publication audit | `/data/venv/bin/opdisc audit .` | 140 files, 0 errors, 0 warnings |
+| Configuration | `/data/venv/bin/opdisc --json validate-config` | 272 sources, 248 enabled, 0 errors |
+| Production CLI rehearsal | `/data/venv/bin/python /data/phase6-review/rehearse_phase6.py rehearsal-6` | 20 calls passed in a fresh synthetic workspace, including Done in History |
+
+Native Windows execution and the four Windows-only tests still require CI or a
+Windows checkout. No live source probe was run; source adapters and scoring did
+not change.

@@ -1,0 +1,35 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "workspace-history-page.schema.json",
+  "title": "Private workspace history page",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "workspace", "opportunity_id", "total", "offset", "limit", "next_offset", "events"],
+  "properties": {
+    "schema_version": {"const": "1.0"},
+    "workspace": {"type": "string"},
+    "opportunity_id": {"type": ["string", "null"]},
+    "total": {"type": "integer", "minimum": 0},
+    "offset": {"type": "integer", "minimum": 0},
+    "limit": {"type": "integer", "minimum": 1, "maximum": 200},
+    "next_offset": {"type": ["integer", "null"], "minimum": 0},
+    "events": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["kind", "event_id", "at", "action"],
+        "properties": {
+          "kind": {"enum": ["board-action", "operation-report"]},
+          "event_id": {"type": "string"},
+          "at": {"type": "string", "format": "date-time"},
+          "action": {"type": "string"},
+          "opportunity_id": {"type": "string"},
+          "before": {"type": "object"},
+          "after": {"type": "object"},
+          "details": {"type": "object"},
+          "report": {"type": "object"}
+        }
+      }
+    }
+  }
+}

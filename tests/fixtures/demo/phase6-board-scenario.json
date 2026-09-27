@@ -1,0 +1,19 @@
+{
+  "schema_version": "1.0",
+  "synthetic_scenario": "phase-6-private-board-demo",
+  "opportunity_ids": {
+    "promoted": "opp_239f53013db5046110ffb26dfb5c5188",
+    "research": "opp_62275629da8a983b921695cc4ce53996"
+  },
+  "after_phase4_feedback": {
+    "all": 4,
+    "active": 0,
+    "waiting": 0,
+    "dismissed": 3,
+    "history": 1
+  },
+  "waiting_example": {
+    "reason": "Synthetic response pending",
+    "until": "2027-01-10"
+  }
+}

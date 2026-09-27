@@ -26,6 +26,15 @@ ELIGIBILITY_CONCLUSIONS = {"no-known-hard-failure", "hard-failure", "unknown"}
 MATERIAL_EFFECTS = {"none", "eligibility", "ranking", "contradiction", "application"}
 PROTECTED_TARGETS = {"engine-code", "source-registry", "schema", "hard-filter", "workspace-instructions"}
 USER_ACTIONS = {"done", "delete"}
+LEGACY_PIPELINE_STATUSES = {
+    "not-started",
+    "preparing",
+    "submitted",
+    "interviewing",
+    "offer",
+    "rejected",
+    "withdrawn",
+}
 PREFERENCE_DIRECTIONS = {"prefer", "avoid"}
 SAFE_ID = re.compile(r"^[a-zA-Z0-9][a-zA-Z0-9._:-]{0,127}$")
 OPPORTUNITY_ID = re.compile(r"^opp_[0-9a-f]{32}$")
@@ -754,7 +763,13 @@ def apply_workspace_review(
                 "duplicate_of": decision.get("duplicate_of"),
                 "identity_evidence": decision.get("identity_evidence"),
                 "user_state": previous.get("user_state", {"status": "unreviewed", "custom": {}}),
-                "updated_at": normalized["reviewed_at"],
+                "updated_at": (
+                    previous["updated_at"]
+                    if previous.get("updated_at") is not None
+                    and _parsed_timestamp(previous["updated_at"], "record.updated_at")
+                    > _parsed_timestamp(normalized["reviewed_at"], "reviewed_at")
+                    else normalized["reviewed_at"]
+                ),
                 "custom": _merge_custom(previous.get("custom", {}), {}, "board record.custom"),
             }
             _object(record["user_state"], f"board.{opportunity_id}.user_state")
@@ -782,7 +797,11 @@ def apply_workspace_review(
                     material_changes.append(change)
             opportunities[opportunity_id] = record
             counts[state] += 1
-        board["updated_at"] = normalized["reviewed_at"]
+        board_updated_at = board.get("updated_at")
+        if board_updated_at is None or _parsed_timestamp(
+            normalized["reviewed_at"], "reviewed_at"
+        ) > _parsed_timestamp(board_updated_at, "board.updated_at"):
+            board["updated_at"] = normalized["reviewed_at"]
         _atomic_json(board_path, board)
         completed.append("updated-board")
         _checkpoint(
@@ -913,6 +932,7 @@ def validate_workspace_feedback(document: Any) -> dict[str, Any]:
     if not isinstance(feedback, list) or not feedback:
         raise WorkspaceStateError("feedback must be a non-empty array")
     seen: set[str] = set()
+    seen_opportunities: set[str] = set()
     for index, raw in enumerate(feedback):
         path = f"feedback[{index}]"
         entry = _object(raw, path)
@@ -933,6 +953,9 @@ def validate_workspace_feedback(document: Any) -> dict[str, Any]:
         opportunity_id = _string(entry.get("opportunity_id"), f"{path}.opportunity_id")
         if not OPPORTUNITY_ID.fullmatch(opportunity_id):
             raise WorkspaceStateError(f"{path}.opportunity_id must be a stable opportunity ID")
+        if opportunity_id in seen_opportunities:
+            raise WorkspaceStateError(f"{path}.opportunity_id appears more than once in this feedback input")
+        seen_opportunities.add(opportunity_id)
         if entry.get("action") not in USER_ACTIONS:
             raise WorkspaceStateError(f"{path}.action must be one of {sorted(USER_ACTIONS)}")
         reason_code = entry.get("reason_code")
@@ -990,12 +1013,20 @@ def _validated_preferences(path: Path) -> dict[str, Any]:
 
 def apply_workspace_feedback(root: Path, feedback_path: Path) -> WorkspaceFeedbackResult:
     """Apply explicit reasoned Done/Delete feedback and learn only soft signals."""
-    root, _metadata = require_workspace(root)
     try:
         raw = feedback_path.read_bytes()
-        normalized = validate_workspace_feedback(json.loads(raw))
-    except (OSError, json.JSONDecodeError) as exc:
+    except OSError as exc:
         raise WorkspaceStateError(f"could not read workspace feedback: {exc}") from exc
+    return apply_workspace_feedback_bytes(root, raw)
+
+
+def apply_workspace_feedback_bytes(root: Path, raw: bytes) -> WorkspaceFeedbackResult:
+    """Apply the same feedback contract from a direct user command."""
+    root, _metadata = require_workspace(root)
+    try:
+        normalized = validate_workspace_feedback(json.loads(raw))
+    except json.JSONDecodeError as exc:
+        raise WorkspaceStateError(f"could not parse workspace feedback: {exc}") from exc
     input_sha256 = hashlib.sha256(raw).hexdigest()
     operation_id = _operation_id("feedback", normalized["recorded_at"], input_sha256)
 
@@ -1016,6 +1047,52 @@ def apply_workspace_feedback(root: Path, feedback_path: Path) -> WorkspaceFeedba
     for index, entry in enumerate(normalized["feedback"]):
         if entry["opportunity_id"] not in opportunities:
             raise WorkspaceStateError(f"feedback[{index}].opportunity_id is not on the private board")
+        record = _object(opportunities[entry["opportunity_id"]], f"board.{entry['opportunity_id']}")
+        user_state = _object(record.get("user_state", {}), "user_state")
+        prior = _object(user_state.get("feedback", {}), "user_state.feedback")
+        last_action = _object(user_state.get("last_action", {}), "user_state.last_action")
+        incoming_at = _parsed_timestamp(normalized["recorded_at"], "recorded_at")
+        previous_at = (
+            _parsed_timestamp(prior["recorded_at"], "user_state.feedback.recorded_at")
+            if "recorded_at" in prior
+            else None
+        )
+        for field, value in (
+            ("user_state.last_action.at", last_action.get("at")),
+            ("user_state.restored_at", user_state.get("restored_at")),
+        ):
+            if value is None:
+                continue
+            decision_at = _parsed_timestamp(value, field)
+            if incoming_at < decision_at:
+                raise WorkspaceStateError(
+                    f"feedback[{index}] is older than the stored user decision; "
+                    "the complete input was rejected"
+                )
+            if incoming_at == decision_at and (
+                field == "user_state.restored_at" or previous_at != incoming_at
+            ):
+                raise WorkspaceStateError(
+                    f"feedback[{index}] conflicts at the stored user decision time; "
+                    "only an exact input replay is allowed"
+                )
+        if previous_at is not None:
+            if incoming_at < previous_at:
+                raise WorkspaceStateError(
+                    f"feedback[{index}] is older than the stored user decision; "
+                    "the complete input was rejected"
+                )
+            if incoming_at == previous_at and (
+                prior.get("feedback_id") != entry["feedback_id"]
+                or user_state.get("status") != entry["action"]
+                or prior.get("reason_code") != entry.get("reason_code")
+                or prior.get("reason_text") != entry.get("reason_text")
+                or ("input_sha256" in prior and prior["input_sha256"] != input_sha256)
+            ):
+                raise WorkspaceStateError(
+                    f"feedback[{index}] conflicts at the stored recorded_at; "
+                    "only an exact input replay is allowed"
+                )
     preferences = _validated_preferences(preferences_path)
     existing_report = _read_json(report_path, {})
     report_custom = _object(existing_report.get("custom", {}), f"{report_path}.custom")
@@ -1041,12 +1118,31 @@ def apply_workspace_feedback(root: Path, feedback_path: Path) -> WorkspaceFeedba
             record = _object(opportunities[entry["opportunity_id"]], "board opportunity")
             prior_user_state = _object(record.get("user_state", {}), "user_state")
             prior_feedback = _object(prior_user_state.get("feedback", {}), "user_state.feedback")
+            prior_action = _object(prior_user_state.get("last_action", {}), "user_state.last_action")
+            current_status = prior_user_state.get("status", "unreviewed")
+            previous_status = current_status
+            if previous_status in USER_ACTIONS:
+                previous_status = prior_action.get(
+                    "prior_status", prior_feedback.get("prior_status", "unreviewed")
+                )
+            pipeline_state = prior_user_state.get("pipeline_state")
+            if pipeline_state is None and current_status in LEGACY_PIPELINE_STATUSES:
+                pipeline_state = current_status
             record["user_state"] = {
                 **prior_user_state,
+                **({"pipeline_state": pipeline_state} if pipeline_state is not None else {}),
                 "status": entry["action"],
+                "last_action": {
+                    **prior_action,
+                    "action": entry["action"],
+                    "at": normalized["recorded_at"],
+                    "prior_status": previous_status,
+                },
                 "feedback": {
                     **prior_feedback,
                     "feedback_id": entry["feedback_id"],
+                    "prior_status": previous_status,
+                    "input_sha256": input_sha256,
                     "reason_code": entry.get("reason_code"),
                     "reason_text": entry.get("reason_text"),
                     "recorded_at": normalized["recorded_at"],
@@ -1055,6 +1151,11 @@ def apply_workspace_feedback(root: Path, feedback_path: Path) -> WorkspaceFeedba
                     ),
                 },
             }
+            record_updated_at = record.get("updated_at")
+            if record_updated_at is None or _parsed_timestamp(
+                normalized["recorded_at"], "recorded_at"
+            ) > _parsed_timestamp(record_updated_at, "record.updated_at"):
+                record["updated_at"] = normalized["recorded_at"]
             for observation in entry.get("preference_signals", []):
                 name = observation["name"]
                 signal = _object(signals.get(name, {}), f"preferences.signals.{name}")
@@ -1090,8 +1191,15 @@ def apply_workspace_feedback(root: Path, feedback_path: Path) -> WorkspaceFeedba
                 }
                 signals[name] = signal
                 updated_signals.add(name)
-        board["updated_at"] = normalized["recorded_at"]
-        preferences["updated_at"] = normalized["recorded_at"]
+        board_updated_at = board.get("updated_at")
+        recorded_at = _parsed_timestamp(normalized["recorded_at"], "recorded_at")
+        if board_updated_at is None or recorded_at > _parsed_timestamp(board_updated_at, "board.updated_at"):
+            board["updated_at"] = normalized["recorded_at"]
+        preferences_updated_at = preferences.get("updated_at")
+        if preferences_updated_at is None or recorded_at > _parsed_timestamp(
+            preferences_updated_at, "preferences.updated_at"
+        ):
+            preferences["updated_at"] = normalized["recorded_at"]
         _atomic_json(board_path, board)
         completed.append("updated-user-state")
         _atomic_json(preferences_path, preferences)
