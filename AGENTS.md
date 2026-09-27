@@ -62,6 +62,10 @@ collector exports, fixtures, or this Git checkout.
   ordering, stable hashes for identical state).
 - Everything must work natively on Windows (pathlib only, no POSIX-only APIs,
   atomic replace via `os.replace`).
+- Keep filesystem paths as `Path` objects; serialize paths in JSON with forward
+  slashes using `Path.as_posix()`.
+- Treat WSL as Linux validation. For Windows fixes, report native Windows tests
+  separately and wait for updated Windows CI after a push before calling a PR ready.
 
 ## Routine audit checklist for future agents
 

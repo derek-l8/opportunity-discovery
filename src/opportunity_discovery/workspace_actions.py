@@ -146,10 +146,14 @@ def mark_workspace_opportunity(
         details={
             "reason_code": reason_code,
             "reason_text": reason_text,
-            "report_path": str(result.report_path),
+            "report_path": result.report_path.as_posix(),
         },
     )
-    return {"schema_version": STATE_SCHEMA_VERSION, "event": event, "report_path": str(result.report_path)}
+    return {
+        "schema_version": STATE_SCHEMA_VERSION,
+        "event": event,
+        "report_path": result.report_path.as_posix(),
+    }
 
 
 def change_workspace_opportunity(
@@ -291,7 +295,7 @@ def _purge(
         "schema_version": STATE_SCHEMA_VERSION,
         "action": "purge",
         "before": before,
-        "removed_artifacts": [str(path.relative_to(root)) for path in existing_artifacts],
+        "removed_artifacts": [path.relative_to(root).as_posix() for path in existing_artifacts],
         "removed_board_events": len(events),
     }
 
@@ -356,7 +360,7 @@ def list_workspace_history(
     total = len(events)
     return {
         "schema_version": STATE_SCHEMA_VERSION,
-        "workspace": str(root),
+        "workspace": root.as_posix(),
         "opportunity_id": opportunity_id,
         "total": total,
         "offset": offset,

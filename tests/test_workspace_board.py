@@ -100,6 +100,8 @@ def test_direct_done_preserves_submitted_pipeline_and_can_restore(tmp_path):
     assert item["user_state"]["custom"] == {"private-extension": "keep"}
     assert item["custom"] == {"board-extension": "keep"}
     assert result["event"]["before"]["pipeline_state"] == "submitted"
+    assert result["report_path"] == result["event"]["details"]["report_path"]
+    assert "\\" not in result["report_path"]
     preferences = json.loads((root / "knowledge" / "PREFERENCES.json").read_text(encoding="utf-8"))
     assert preferences["signals"]["firmware"]["prefer_count"] == 1
 
@@ -111,6 +113,7 @@ def test_direct_done_preserves_submitted_pipeline_and_can_restore(tmp_path):
 
     history = list_workspace_history(root, opportunity_id=PROMOTED_ID, limit=1)
     jsonschema.validate(history, json.loads(HISTORY_SCHEMA.read_text(encoding="utf-8")))
+    assert history["workspace"] == root.as_posix()
     assert history["total"] == 2
     assert history["next_offset"] == 1
     assert history["events"][0]["action"] == "restore"
