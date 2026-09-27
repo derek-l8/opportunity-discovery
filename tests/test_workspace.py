@@ -27,7 +27,12 @@ def test_initializer_builds_synthetic_fixed_layout(tmp_path):
     assert metadata["custom"] == {}
     assert result.warnings == ()
     manifest = json.loads((root / ".opdisc" / "source-manifest.json").read_text(encoding="utf-8"))
-    assert manifest == {"schema_version": "1.0", "imports": [], "custom": {}}
+    assert manifest == {
+        "schema_version": "1.0",
+        "imports": [],
+        "external_references": [],
+        "custom": {},
+    }
     assert "Read `WORKSPACE.md`" in (root / "AGENTS.md").read_text(encoding="utf-8")
     assert "explicitly designates" in (root / "AGENTS.md").read_text(encoding="utf-8")
     assert (root / "AGENTS.md").read_text(encoding="utf-8") == (root / "CLAUDE.md").read_text(

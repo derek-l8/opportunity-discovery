@@ -9,8 +9,9 @@
 - **No submissions**: the engine never applies, messages, uploads, or saves
   anything to any service.
 - **External workspace only**: `opdisc init-workspace` writes private starter
-  files only to the path explicitly selected by the user. It does not read
-  inbox contents or copy private data into the engine checkout.
+  files only to the path explicitly selected by the user. Review, feedback,
+  recovery, backup, and workspace-audit commands require that explicit root and
+  never copy private state into collector SQLite or public exports.
 - **Bounded public HTTP**: remote URLs must use HTTP(S), may not embed
   credentials, resolve only to public addresses, and are revalidated at each
   redirect. Redirect count and response body size are capped. Program-page
@@ -18,9 +19,20 @@
 
 ## What is never stored
 
-Personal data of any kind: applicant profiles, eligibility decisions,
-resumes/transcripts/essays, application history or outcomes, demographic
-data. The engine stores only what public sources state about opportunities.
+Collector SQLite and public outputs never store personal data: applicant
+profiles, eligibility decisions, resumes/transcripts/essays, application
+history or outcomes, or demographic data. The engine stores only what public
+sources state about opportunities. An external private workspace may contain
+private user material and decisions by design; it is outside the engine Git
+history and publication boundary.
+
+Private workspace backups are unencrypted ZIP files. Backup and restore reject
+engine paths, caches, traversal, unlisted content, and symlinks; restore also
+rejects Windows alternate-data-stream names and case-insensitive target
+collisions, verifies recorded hashes, and creates a full pre-restore backup.
+Knowledge history operations reject symlinks in every path component, and the
+workspace audit treats manifested symlinked or out-of-sources files as errors.
+These checks do not provide encryption or access control.
 
 ## Git hygiene
 
@@ -44,6 +56,11 @@ tracked files for:
   application-status language) as warnings.
 
 It exits non-zero on errors. Run it before every push/publish.
+
+`opdisc workspace-audit WORKSPACE` is separate. It checks whether the private
+workspace is inside Git, reports every tracked private file, verifies preserved
+source paths/hashes, checks external and knowledge references, and warns when
+the engine checkout is dirty.
 
 ### Limitations (documented honestly)
 

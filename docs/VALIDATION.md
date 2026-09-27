@@ -1,5 +1,60 @@
 # Validation record
 
+## Corrected Phase 4–5 private workspace state and recovery (2026-09-12 UTC)
+
+Environment: Linux, CPython 3.12.14, clean external integration checkout from
+fetched `origin/main` `2b341d644280219756604818ef9aba6dad2c9f8a` using the
+existing repository environment with `PYTHONPATH=src`. Requested scope was the
+provider-neutral external private reviewer/adaptive knowledge layer and
+recovery/backup/audit corrections. No live AI provider was added or invoked.
+
+| Gate | Command | Actual result |
+| --- | --- | --- |
+| Focused correction suite | `PYTHONPATH=src .venv/bin/python -m pytest -o addopts='' -q tests/test_workspace_state.py tests/test_workspace_recovery.py tests/test_schemas.py` | 59 passed |
+| Deterministic suite | `PYTHONPATH=src .venv/bin/python -m pytest -o addopts='' -q -m 'not live'` | 231 passed, 4 skipped |
+| Ruff format | `.venv/bin/ruff format --check src tests` | 66 files already formatted after formatting 5 changed files |
+| Ruff lint | `.venv/bin/ruff check src tests` | All checks passed |
+| Mypy | `.venv/bin/mypy` | Success; no issues in 39 source files |
+| Config/registry | `.venv/bin/opdisc --json validate-config` | OK; 272 sources, 248 enabled |
+| Publication audit | `.venv/bin/python -m opportunity_discovery.audit .` | 133 publication-candidate files, 0 errors, 0 warnings |
+| Diff whitespace | `git diff --check` | Passed |
+| Package build | `.venv/bin/python -m build` | sdist and wheel built; existing setuptools license deprecation warnings only |
+| Review patch | `git apply --check phases-4-and-5.patch` in a fresh clone at the fetched base | Passed against `2b341d644280219756604818ef9aba6dad2c9f8a` |
+
+The focused regressions cover knowledge and source symlink containment, review
+timestamp/input replay ordering, mutation preflight, proposal and nested custom
+preservation, feedback schema/runtime parity, restore and backup failure
+checkpoints and reruns, and Windows-unsafe archive names. The first formatter
+check found five changed files and `ruff format` corrected them; the final gate
+above is the post-format result.
+
+The following live-source observations are retained from the earlier Phase 4–5
+implementation validation and were not rerun as part of this deterministic
+correction. The first `validate-sources` attempt used the existing ignored repository
+database and stopped before probes: that database's historical migration
+ledger numbers no longer match the current migration filenames, and migration
+0005 attempted to add its already-present `engagement_type` column. The
+database was preserved unchanged.
+
+The required live check was then run against isolated temporary config and
+storage at `/tmp/opdisc-phase45-validation.8PM9NS`:
+
+```text
+.venv/bin/opdisc --config <isolated>/config/default.toml --json validate-sources
+```
+
+The command completed with 34 `validated`, 4 `validated-empty-ok`, 210
+`failed`, and 24 `quarantined`. Most failures were `httpx.DecodingError` with
+`Error -3 while decompressing data: incorrect header check` on HTTP 200
+responses across unrelated hosts. This is an unexpected live-environment or
+HTTP decoding failure, not a passing source-health result; no registry entries
+or source rules were rewritten in response. The Phase 4–5 deterministic paths
+do not perform HTTP requests.
+
+Native Windows and PowerShell were unavailable. CI still defines Windows
+Python 3.11–3.14 deterministic jobs, but the new commands have not yet been run
+on a native Windows host.
+
 Every architectural/scoring/adapter change must append its commands and
 actual results here. Results below were produced during the initial build on
 2026-08-23 (WSL Ubuntu, Python 3.12.3). Windows CI is configured; native

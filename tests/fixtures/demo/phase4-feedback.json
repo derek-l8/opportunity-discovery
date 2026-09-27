@@ -1,0 +1,26 @@
+{
+  "schema_version": "1.0",
+  "recorded_at": "2026-09-11T09:00:00Z",
+  "custom": {"synthetic_run_label": "phase-4-feedback-demo"},
+  "feedback": [
+    {
+      "feedback_id": "synthetic-feedback-1",
+      "opportunity_id": "opp_239f53013db5046110ffb26dfb5c5188",
+      "action": "done",
+      "reason_code": "future-cycle-monitored",
+      "preference_signals": [
+        {"name": "embedded-firmware", "direction": "prefer", "custom": {"demo": true}}
+      ],
+      "custom": {"demo": true}
+    },
+    {
+      "feedback_id": "synthetic-feedback-2",
+      "opportunity_id": "opp_62275629da8a983b921695cc4ce53996",
+      "action": "delete",
+      "reason_text": "The synthetic role is outside the desired work type.",
+      "preference_signals": [
+        {"name": "ambiguous-engagement", "direction": "avoid"}
+      ]
+    }
+  ]
+}

@@ -22,6 +22,19 @@ from .review_contract import ReviewContractError, import_review_response
 from .runner import ensure_ready, run_full_workflow
 from .validate_sources import validate_all
 from .workspace import WorkspaceInitError, initialize_workspace
+from .workspace_recovery import (
+    audit_workspace,
+    backup_workspace,
+    compare_knowledge_snapshot,
+    list_knowledge_snapshots,
+    restore_knowledge_snapshot,
+    restore_workspace_backup,
+)
+from .workspace_state import (
+    WorkspaceStateError,
+    apply_workspace_feedback,
+    apply_workspace_review,
+)
 
 
 def _setup_logging(quiet: bool) -> None:
@@ -108,6 +121,147 @@ def cmd_init_workspace(args: argparse.Namespace) -> int:
         for warning in result.warnings:
             print(f"WARNING {warning}", file=sys.stderr)
     return 0
+
+
+def cmd_workspace_apply_review(args: argparse.Namespace) -> int:
+    manifest = Path(args.manifest) if args.manifest else None
+    if manifest is None:
+        cfg, errors = _load(args.config)
+        if errors:
+            for error in errors:
+                print(f"ERROR {error}", file=sys.stderr)
+            return 2
+        manifest = cfg.paths.output_dir / "export_manifest.json"
+    try:
+        result = apply_workspace_review(
+            Path(args.workspace),
+            Path(args.response),
+            manifest_path=manifest,
+        )
+    except (OSError, WorkspaceStateError) as exc:
+        print(f"ERROR workspace review not applied: {exc}", file=sys.stderr)
+        return 2
+    payload = result.to_dict()
+    if args.json_output:
+        print(json.dumps(payload, indent=2))
+    elif not args.quiet:
+        print(
+            f"applied {result.decision_count} decisions: {result.promoted} active, "
+            f"{result.research_needed} research needed, {result.dismissed} dismissed, "
+            f"{result.duplicates} duplicates"
+        )
+        print(f"material changes: {len(result.material_changes)} -> {result.report_path}")
+    return 0
+
+
+def cmd_workspace_apply_feedback(args: argparse.Namespace) -> int:
+    try:
+        result = apply_workspace_feedback(Path(args.workspace), Path(args.feedback))
+    except (OSError, WorkspaceStateError) as exc:
+        print(f"ERROR workspace feedback not applied: {exc}", file=sys.stderr)
+        return 2
+    if args.json_output:
+        print(json.dumps(result.to_dict(), indent=2))
+    elif not args.quiet:
+        print(
+            f"applied {result.feedback_count} reasoned feedback entries; "
+            f"updated {result.preference_signals_updated} soft preference signals"
+        )
+    return 0
+
+
+def cmd_knowledge_snapshots(args: argparse.Namespace) -> int:
+    try:
+        snapshots = list_knowledge_snapshots(Path(args.workspace))
+    except (OSError, WorkspaceStateError) as exc:
+        print(f"ERROR knowledge snapshots unavailable: {exc}", file=sys.stderr)
+        return 2
+    payload = {"schema_version": "1.0", "snapshots": [item.to_dict() for item in snapshots]}
+    if args.json_output:
+        print(json.dumps(payload, indent=2))
+    elif not args.quiet:
+        for snapshot in snapshots:
+            print(f"{snapshot.snapshot_id}  {snapshot.created_at}  {len(snapshot.files)} files")
+    return 0
+
+
+def cmd_compare_knowledge(args: argparse.Namespace) -> int:
+    try:
+        result = compare_knowledge_snapshot(Path(args.workspace), args.snapshot_id)
+    except (OSError, WorkspaceStateError) as exc:
+        print(f"ERROR knowledge snapshot not compared: {exc}", file=sys.stderr)
+        return 2
+    if args.json_output:
+        print(json.dumps(result, indent=2))
+    elif not args.quiet:
+        print(f"snapshot {args.snapshot_id}: {len(result['changes'])} changed paths")
+        for change in result["changes"]:
+            print(f"  {change['change']}: {change['path']}")
+    return 0
+
+
+def cmd_restore_knowledge(args: argparse.Namespace) -> int:
+    try:
+        result = restore_knowledge_snapshot(Path(args.workspace), args.snapshot_id)
+    except (OSError, WorkspaceStateError) as exc:
+        print(f"ERROR knowledge snapshot not restored: {exc}", file=sys.stderr)
+        return 2
+    if args.json_output:
+        print(json.dumps(result, indent=2))
+    elif not args.quiet:
+        print(f"restored {len(result['restored_files'])} files from {args.snapshot_id}")
+        print(f"pre-restore snapshot: {result['pre_restore_snapshot_id']}")
+    return 0
+
+
+def cmd_backup_workspace(args: argparse.Namespace) -> int:
+    try:
+        result = backup_workspace(Path(args.workspace), Path(args.output), kind=args.kind)
+    except (OSError, WorkspaceStateError) as exc:
+        print(f"ERROR workspace not backed up: {exc}", file=sys.stderr)
+        return 2
+    if args.json_output:
+        print(json.dumps(result.to_dict(), indent=2))
+    elif not args.quiet:
+        print(f"created {result.kind} backup with {result.file_count} files -> {result.path}")
+        print(f"WARNING {result.warning}", file=sys.stderr)
+    return 0
+
+
+def cmd_restore_workspace(args: argparse.Namespace) -> int:
+    try:
+        result = restore_workspace_backup(
+            Path(args.workspace),
+            Path(args.archive),
+            pre_restore_path=Path(args.pre_restore_output) if args.pre_restore_output else None,
+        )
+    except (OSError, WorkspaceStateError) as exc:
+        print(f"ERROR workspace backup not restored: {exc}", file=sys.stderr)
+        return 2
+    if args.json_output:
+        print(json.dumps(result.to_dict(), indent=2))
+    elif not args.quiet:
+        print(f"restored {result.restored_files} files from {result.archive}")
+        print(f"pre-restore backup: {result.pre_restore_backup}")
+    return 0
+
+
+def cmd_audit_workspace(args: argparse.Namespace) -> int:
+    try:
+        report = audit_workspace(Path(args.workspace))
+    except (OSError, WorkspaceStateError) as exc:
+        print(f"ERROR workspace not audited: {exc}", file=sys.stderr)
+        return 2
+    if args.json_output:
+        print(json.dumps(report.to_dict(), indent=2))
+    elif not args.quiet:
+        print(
+            f"workspace audit: {len(report.errors)} errors, "
+            f"{len(report.findings) - len(report.errors)} warnings"
+        )
+        for finding in report.findings:
+            print(f"  [{finding.severity}] {finding.rule}: {finding.path} {finding.detail}")
+    return 1 if report.errors else 0
 
 
 def cmd_validate_sources(args: argparse.Namespace) -> int:
@@ -293,7 +447,7 @@ def cmd_audit(args: argparse.Namespace) -> int:
         print(json.dumps(report.to_dict(), indent=2))
     elif not args.quiet:
         print(
-            f"scanned {report.files_scanned} tracked files;"
+            f"scanned {report.files_scanned} publication-candidate files;"
             f" {len(report.errors)} errors, "
             f"{len(report.findings) - len(report.errors)} warnings"
         )
@@ -412,6 +566,39 @@ def build_parser() -> argparse.ArgumentParser:
     p = add("init-workspace", cmd_init_workspace, "initialize an external private workspace")
     p.add_argument("workspace", help="private workspace root")
     p.add_argument("--engine-path", help="path to the public engine checkout")
+    p = add(
+        "workspace-apply-review",
+        cmd_workspace_apply_review,
+        "apply validated agent review to an external private workspace",
+    )
+    p.add_argument("workspace", help="private workspace root")
+    p.add_argument("response", help="workspace-review JSON")
+    p.add_argument("--manifest", help="export_manifest.json (defaults to configured output)")
+    p = add(
+        "workspace-apply-feedback",
+        cmd_workspace_apply_feedback,
+        "apply explicit reasoned Done/Delete feedback to private workspace state",
+    )
+    p.add_argument("workspace", help="private workspace root")
+    p.add_argument("feedback", help="workspace-feedback JSON")
+    p = add("knowledge-snapshots", cmd_knowledge_snapshots, "list private knowledge snapshots")
+    p.add_argument("workspace", help="private workspace root")
+    p = add("compare-knowledge", cmd_compare_knowledge, "compare current knowledge with a snapshot")
+    p.add_argument("workspace", help="private workspace root")
+    p.add_argument("snapshot_id")
+    p = add("restore-knowledge", cmd_restore_knowledge, "restore a private knowledge snapshot")
+    p.add_argument("workspace", help="private workspace root")
+    p.add_argument("snapshot_id")
+    p = add("backup-workspace", cmd_backup_workspace, "create an unencrypted private workspace ZIP")
+    p.add_argument("workspace", help="private workspace root")
+    p.add_argument("output", help="backup ZIP destination")
+    p.add_argument("--kind", choices=("full", "state"), default="full")
+    p = add("restore-workspace", cmd_restore_workspace, "restore a verified private workspace ZIP")
+    p.add_argument("workspace", help="private workspace root")
+    p.add_argument("archive", help="backup ZIP to restore")
+    p.add_argument("--pre-restore-output", help="path for the automatic full pre-restore backup")
+    p = add("workspace-audit", cmd_audit_workspace, "audit private workspace exposure and references")
+    p.add_argument("workspace", help="private workspace root")
     add("validate-config", cmd_validate_config, "validate configuration and registry files")
     p = add("validate-sources", cmd_validate_sources, "live-probe enabled sources and record health")
     p.add_argument("--source-id", help="validate a single source")

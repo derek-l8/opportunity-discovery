@@ -55,11 +55,19 @@ The source manifest is versioned and has a `custom` object for user-defined
 metadata. Its schema is `schemas/workspace-source-manifest.schema.json`.
 Every `stored_path` uses forward slashes and is relative to the workspace below
 `sources/`; absolute paths, backslashes, and parent traversal are rejected.
+Optional `external_references` record a private path and label for read-only
+projects that are intentionally not copied. `workspace-audit` warns when such a
+path is unavailable. Older manifests without this optional array remain valid.
 Phase 3 only establishes the contract. A later private workflow may process
 `inbox/` by hashing each item, reusing an identical source, moving unchanged
 content into `sources/`, recording its original name, stored relative path,
 SHA-256, and import time, updating derived knowledge and `CATALOG.md`, and
 leaving the inbox empty. None of those mutations is implemented in Phase 3.
+
+Phases 4 and 5 add explicit commands that operate on this external workspace.
+They do not make `opdisc run` invoke an AI or change the public collector. See
+`docs/PRIVATE_WORKSPACE_OPERATIONS.md` for review application, feedback,
+snapshots, backups, restore, and workspace audit.
 
 Workspace content is private and may contain sensitive information. Keep the
 workspace outside Git when practical. The command warns, but does not refuse,

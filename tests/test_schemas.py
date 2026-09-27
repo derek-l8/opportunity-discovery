@@ -10,6 +10,7 @@ from opportunity_discovery.http_client import Fetcher
 from opportunity_discovery.models import RunSummary
 from opportunity_discovery.pipeline import Pipeline
 from opportunity_discovery.registry import sync_sources_to_db
+from opportunity_discovery.workspace_state import WorkspaceStateError, validate_workspace_feedback
 from tests.helpers import MockFetcher, load_fixture, make_db, source
 
 SCHEMA_DIR = Path(__file__).parent.parent / "schemas"
@@ -87,6 +88,57 @@ def test_synthetic_review_response_validates():
     ).validate(fixture)
 
 
+@pytest.mark.parametrize(
+    ("schema_name", "fixture_name"),
+    [
+        ("workspace-review.schema.json", "phase4-workspace-review.json"),
+        ("workspace-feedback.schema.json", "phase4-feedback.json"),
+    ],
+)
+def test_synthetic_private_workspace_inputs_validate(schema_name, fixture_name):
+    schema = json.loads((SCHEMA_DIR / schema_name).read_text(encoding="utf-8"))
+    fixture = json.loads(
+        (Path(__file__).parent / "fixtures" / "demo" / fixture_name).read_text(encoding="utf-8")
+    )
+    jsonschema.Draft202012Validator(
+        schema, registry=load_registry(), format_checker=jsonschema.FormatChecker()
+    ).validate(fixture)
+
+
+@pytest.mark.parametrize(
+    ("mutate", "expected_valid"),
+    [
+        (lambda entry: None, True),
+        (lambda entry: entry.__setitem__("preference_signals", []), True),
+        (lambda entry: entry.pop("preference_signals"), False),
+        (lambda entry: entry.__setitem__("preference_signals", {}), False),
+        (lambda entry: entry.__setitem__("reason_code", ""), False),
+        (lambda entry: entry.__setitem__("reason_code", "   "), False),
+        (lambda entry: entry.__setitem__("reason_code", 4), False),
+        (lambda entry: entry.__setitem__("reason_text", ""), False),
+        (lambda entry: (entry.pop("reason_code", None), entry.pop("reason_text", None)), False),
+    ],
+)
+def test_workspace_feedback_schema_and_runtime_validator_parity(mutate, expected_valid):
+    document = json.loads(
+        (Path(__file__).parent / "fixtures" / "demo" / "phase4-feedback.json").read_text(encoding="utf-8")
+    )
+    mutate(document["feedback"][0])
+    schema = json.loads((SCHEMA_DIR / "workspace-feedback.schema.json").read_text(encoding="utf-8"))
+    validator = jsonschema.Draft202012Validator(
+        schema, registry=load_registry(), format_checker=jsonschema.FormatChecker()
+    )
+    schema_valid = validator.is_valid(document)
+    try:
+        validate_workspace_feedback(document)
+    except WorkspaceStateError:
+        runtime_valid = False
+    else:
+        runtime_valid = True
+    assert schema_valid is expected_valid
+    assert runtime_valid == schema_valid
+
+
 def test_workspace_source_manifest_schema_accepts_custom_metadata():
     schema = json.loads((SCHEMA_DIR / "workspace-source-manifest.schema.json").read_text(encoding="utf-8"))
     manifest = {
@@ -98,6 +150,13 @@ def test_workspace_source_manifest_schema_accepts_custom_metadata():
                 "stored_path": "sources/2026-09-08-synthetic-notes.txt",
                 "imported_at": "2026-09-08T12:00:00Z",
                 "custom": {"synthetic_label": "demo"},
+            }
+        ],
+        "external_references": [
+            {
+                "path": "Z:/synthetic-project",
+                "label": "Synthetic read-only project",
+                "custom": {"access": "read-only"},
             }
         ],
         "custom": {"synthetic_scenario": "phase-3-demo"},

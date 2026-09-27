@@ -116,3 +116,25 @@ Normalized history is never deleted by pruning.
 ## Troubleshooting
 
 See `docs/TROUBLESHOOTING.md`.
+## Private workspace review and recovery
+
+These commands are manual file-boundary operations. They do not contact an AI
+provider or a public website:
+
+```powershell
+opdisc workspace-apply-review $workspace .\review.json --manifest .\output\export_manifest.json
+opdisc workspace-apply-feedback $workspace .\feedback.json
+opdisc knowledge-snapshots $workspace
+opdisc compare-knowledge $workspace SNAPSHOT_ID
+opdisc restore-knowledge $workspace SNAPSHOT_ID
+opdisc backup-workspace $workspace D:\PrivateBackups\opportunity-full.zip --kind full
+opdisc backup-workspace $workspace D:\PrivateBackups\opportunity-state.zip --kind state
+opdisc workspace-audit $workspace
+```
+
+`restore-knowledge` first records a pre-restore knowledge snapshot.
+`restore-workspace` verifies every archive path and content hash and creates a
+full pre-restore backup before changing files. Workspace ZIPs are unencrypted
+and contain private information; store them accordingly. A state-only backup
+omits `sources/`, `inbox/`, caches, and the engine checkout. A full backup adds
+`sources/` and `inbox/`; both omit the engine checkout and symlinks.
