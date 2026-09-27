@@ -108,6 +108,15 @@ opdisc export             rewrite export artifacts from stored state
 opdisc import-review FILE validate a source-backed review response against the current export
 opdisc workspace-apply-review DIR FILE apply a validated review to external private state
 opdisc workspace-apply-feedback DIR FILE record reasoned Done/Delete feedback and soft signals
+opdisc workspace-board DIR read filtered, paginated private board state
+opdisc workspace-done DIR ID mark Done (optional reason and soft signals)
+opdisc workspace-delete DIR ID hide as Delete (optional reason and soft signals)
+opdisc workspace-restore DIR ID restore a Done/Delete record
+opdisc workspace-purge DIR ID remove a board record and ID-named artifacts
+opdisc workspace-pipeline DIR ID STATE set private application pipeline state
+opdisc workspace-wait DIR ID --reason TEXT mark explicitly waiting
+opdisc workspace-resume DIR ID end explicit waiting
+opdisc workspace-history DIR read private operation and board-action history
 opdisc knowledge-snapshots DIR list bounded private knowledge history
 opdisc compare-knowledge DIR ID compare current knowledge with a snapshot
 opdisc restore-knowledge DIR ID restore after creating a pre-restore snapshot

@@ -1,0 +1,53 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "workspace-board-page.schema.json",
+  "title": "Private workspace board page",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "workspace", "view", "filters", "total", "offset", "limit", "next_offset", "items"],
+  "properties": {
+    "schema_version": {"const": "1.0"},
+    "workspace": {"type": "string"},
+    "view": {"enum": ["active", "waiting", "dismissed", "history", "all"]},
+    "filters": {
+      "type": "object",
+      "additionalProperties": {"type": ["string", "null"]}
+    },
+    "total": {"type": "integer", "minimum": 0},
+    "offset": {"type": "integer", "minimum": 0},
+    "limit": {"type": "integer", "minimum": 1, "maximum": 200},
+    "next_offset": {"type": ["integer", "null"], "minimum": 0},
+    "items": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["opportunity_id", "lane", "title", "organization", "canonical_url", "official_url", "board_state", "updated_at", "routing_state", "availability", "exact_deadline", "pipeline_state", "user_status", "waiting", "duplicate_of", "verified_facts", "eligibility", "review", "user_state", "provenance", "collector_custom", "custom"],
+        "properties": {
+          "opportunity_id": {"type": "string", "pattern": "^opp_[0-9a-f]{32}$"},
+          "lane": {"enum": ["active", "waiting", "dismissed", "history"]},
+          "title": {"type": ["string", "null"]},
+          "organization": {"type": ["string", "null"]},
+          "canonical_url": {"type": ["string", "null"]},
+          "official_url": {"type": ["string", "null"]},
+          "board_state": {"type": ["string", "null"]},
+          "updated_at": {"type": ["string", "null"], "format": "date-time"},
+          "routing_state": {"type": ["string", "null"]},
+          "availability": {"type": "string"},
+          "exact_deadline": {"type": ["string", "null"]},
+          "pipeline_state": {"type": "string"},
+          "user_status": {"type": "string"},
+          "waiting": {"type": "object"},
+          "duplicate_of": {"type": ["string", "null"]},
+          "verified_facts": {"type": "object"},
+          "eligibility": {"type": "object"},
+          "review": {"type": "object"},
+          "user_state": {"type": "object"},
+          "provenance": {"type": "array"},
+          "collector_custom": {"type": "object"},
+          "custom": {"type": "object"}
+        }
+      }
+    }
+  }
+}

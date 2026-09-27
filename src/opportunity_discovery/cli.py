@@ -22,6 +22,12 @@ from .review_contract import ReviewContractError, import_review_response
 from .runner import ensure_ready, run_full_workflow
 from .validate_sources import validate_all
 from .workspace import WorkspaceInitError, initialize_workspace
+from .workspace_actions import (
+    change_workspace_opportunity,
+    list_workspace_history,
+    mark_workspace_opportunity,
+)
+from .workspace_board import BOARD_VIEWS, PIPELINE_STATES, list_workspace_board
 from .workspace_recovery import (
     audit_workspace,
     backup_workspace,
@@ -167,6 +173,84 @@ def cmd_workspace_apply_feedback(args: argparse.Namespace) -> int:
             f"applied {result.feedback_count} reasoned feedback entries; "
             f"updated {result.preference_signals_updated} soft preference signals"
         )
+    return 0
+
+
+def cmd_workspace_board(args: argparse.Namespace) -> int:
+    try:
+        page = list_workspace_board(
+            Path(args.workspace),
+            view=args.view,
+            board_state=args.board_state,
+            user_status=args.user_status,
+            pipeline_state=args.pipeline_state,
+            availability=args.availability,
+            search=args.search,
+            offset=args.offset,
+            limit=args.limit,
+        )
+    except (OSError, WorkspaceStateError) as exc:
+        print(f"ERROR workspace board not read: {exc}", file=sys.stderr)
+        return 2
+    if args.json_output:
+        print(json.dumps(page, indent=2))
+    elif not args.quiet:
+        print(
+            f"{page['total']} records in {page['view']}; showing {len(page['items'])} from {page['offset']}"
+        )
+        for item in page["items"]:
+            print(f"{item['opportunity_id']}  {item['title'] or '(untitled)'}  [{item['lane']}]")
+    return 0
+
+
+def cmd_workspace_action(args: argparse.Namespace) -> int:
+    try:
+        if args.board_action in {"done", "delete"}:
+            result = mark_workspace_opportunity(
+                Path(args.workspace),
+                args.opportunity_id,
+                args.board_action,
+                reason_code=args.reason_code,
+                reason_text=args.reason_text,
+                prefer=tuple(args.prefer),
+                avoid=tuple(args.avoid),
+            )
+        else:
+            result = change_workspace_opportunity(
+                Path(args.workspace),
+                args.opportunity_id,
+                args.board_action,
+                pipeline_state=getattr(args, "pipeline_state", None),
+                wait_reason=getattr(args, "reason", None),
+                wait_until=getattr(args, "until", None),
+            )
+    except (OSError, WorkspaceStateError) as exc:
+        print(f"ERROR workspace action not applied: {exc}", file=sys.stderr)
+        return 2
+    if args.json_output:
+        print(json.dumps(result, indent=2))
+    elif not args.quiet:
+        print(f"{args.board_action}: {args.opportunity_id}")
+    return 0
+
+
+def cmd_workspace_history(args: argparse.Namespace) -> int:
+    try:
+        page = list_workspace_history(
+            Path(args.workspace),
+            opportunity_id=args.opportunity_id,
+            offset=args.offset,
+            limit=args.limit,
+        )
+    except (OSError, WorkspaceStateError) as exc:
+        print(f"ERROR workspace history not read: {exc}", file=sys.stderr)
+        return 2
+    if args.json_output:
+        print(json.dumps(page, indent=2))
+    elif not args.quiet:
+        print(f"{page['total']} history events; showing {len(page['events'])} from {page['offset']}")
+        for event in page["events"]:
+            print(f"{event['at']}  {event['action']}  {event.get('opportunity_id', '')}")
     return 0
 
 
@@ -581,6 +665,42 @@ def build_parser() -> argparse.ArgumentParser:
     )
     p.add_argument("workspace", help="private workspace root")
     p.add_argument("feedback", help="workspace-feedback JSON")
+    p = add("workspace-board", cmd_workspace_board, "read a filtered private board page")
+    p.add_argument("workspace", help="private workspace root")
+    p.add_argument("--view", choices=BOARD_VIEWS, default="active")
+    p.add_argument("--board-state")
+    p.add_argument("--user-status")
+    p.add_argument("--pipeline-state")
+    p.add_argument("--availability")
+    p.add_argument("--search")
+    p.add_argument("--offset", type=int, default=0)
+    p.add_argument("--limit", type=int, default=50)
+    for action in ("done", "delete", "restore", "purge", "resume"):
+        p = add(f"workspace-{action}", cmd_workspace_action, f"{action} a private board record")
+        p.set_defaults(board_action=action)
+        p.add_argument("workspace", help="private workspace root")
+        p.add_argument("opportunity_id", help="stable opportunity ID")
+        if action in {"done", "delete"}:
+            p.add_argument("--reason-code")
+            p.add_argument("--reason-text")
+            p.add_argument("--prefer", action="append", default=[], metavar="SIGNAL")
+            p.add_argument("--avoid", action="append", default=[], metavar="SIGNAL")
+    p = add("workspace-pipeline", cmd_workspace_action, "set a private application pipeline state")
+    p.set_defaults(board_action="pipeline")
+    p.add_argument("workspace", help="private workspace root")
+    p.add_argument("opportunity_id", help="stable opportunity ID")
+    p.add_argument("pipeline_state", choices=sorted(PIPELINE_STATES))
+    p = add("workspace-wait", cmd_workspace_action, "mark a private board record as waiting")
+    p.set_defaults(board_action="wait")
+    p.add_argument("workspace", help="private workspace root")
+    p.add_argument("opportunity_id", help="stable opportunity ID")
+    p.add_argument("--reason", required=True)
+    p.add_argument("--until", help="optional ISO date")
+    p = add("workspace-history", cmd_workspace_history, "read private board and operation history")
+    p.add_argument("workspace", help="private workspace root")
+    p.add_argument("--opportunity-id")
+    p.add_argument("--offset", type=int, default=0)
+    p.add_argument("--limit", type=int, default=50)
     p = add("knowledge-snapshots", cmd_knowledge_snapshots, "list private knowledge snapshots")
     p.add_argument("workspace", help="private workspace root")
     p = add("compare-knowledge", cmd_compare_knowledge, "compare current knowledge with a snapshot")

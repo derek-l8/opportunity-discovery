@@ -1,0 +1,14 @@
+{
+  "schema_version": "1.0",
+  "recorded_at": "2026-09-12T09:00:00Z",
+  "custom": {"synthetic_run_label": "phase-4-later-feedback-demo"},
+  "feedback": [
+    {
+      "feedback_id": "synthetic-later-1",
+      "opportunity_id": "opp_239f53013db5046110ffb26dfb5c5188",
+      "action": "delete",
+      "reason_code": "changed-mind",
+      "preference_signals": []
+    }
+  ]
+}
