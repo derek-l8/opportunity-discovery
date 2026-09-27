@@ -62,6 +62,12 @@ collector exports, fixtures, or this Git checkout.
   ordering, stable hashes for identical state).
 - Everything must work natively on Windows (pathlib only, no POSIX-only APIs,
   atomic replace via `os.replace`).
+- Use `Path` for filesystem operations. For relative paths written to JSON,
+  manifests, or command responses, use forward slashes
+  (`path.relative_to(root).as_posix()`), not `str(path.relative_to(root))`.
+- WSL/Linux tests do not verify native Windows behavior. Before calling a PR
+  ready to merge, inspect all CI jobs, including Windows; fix failing checks
+  or explicitly report that they remain unverified.
 
 ## Routine audit checklist for future agents
 
