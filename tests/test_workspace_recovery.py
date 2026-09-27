@@ -297,6 +297,7 @@ def test_restore_verifies_backup_and_creates_full_pre_restore_backup(tmp_path):
     archive = tmp_path / "original.zip"
     backup_workspace(root, archive, kind="full", created_at="2026-09-12T10:00:00Z")
     knowledge.write_text("# Changed synthetic profile\n", encoding="utf-8")
+    changed_bytes = knowledge.read_bytes()
     pre_restore = tmp_path / "pre-restore.zip"
 
     result = restore_workspace_backup(root, archive, pre_restore_path=pre_restore)
@@ -305,7 +306,7 @@ def test_restore_verifies_backup_and_creates_full_pre_restore_backup(tmp_path):
     assert result.pre_restore_backup == pre_restore.resolve()
     assert pre_restore.is_file()
     with zipfile.ZipFile(pre_restore) as saved:
-        assert saved.read("knowledge/PROFILE.md") == b"# Changed synthetic profile\n"
+        assert saved.read("knowledge/PROFILE.md") == changed_bytes
     metadata = json.loads((root / ".opdisc" / "workspace.json").read_text())
     assert metadata["engine_path"] == engine_path
     checkpoint = json.loads((root / ".opdisc" / "checkpoint.json").read_text())
