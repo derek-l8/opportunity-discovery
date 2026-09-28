@@ -115,6 +115,59 @@ is not secure erasure of archives. The user must manage those copies separately.
 Mutating commands should run serially in one workspace; board, report, event,
 and checkpoint files are individually atomic but do not form one transaction.
 
+## Local browser dashboard
+
+`opdisc workspace-dashboard WORKSPACE [--port 8765]` opens the private board at
+`http://127.0.0.1:8765/`. Stop it with Ctrl+C. The server binds only to IPv4
+loopback and reads the explicitly selected external workspace. It uses the
+same Phase 6 board read and action functions as the CLI. Active, waiting,
+dismissed, and history lanes have search and filters; selecting a record shows
+verified facts, uncertainty, official and collector links, provenance, and
+board actions. The history lane also shows recent operation activity.
+
+Done and Delete accept an optional reason. Restore, pipeline, wait, and resume
+use the existing state model. Forget Completely requires typing `FORGET` and
+removes the board record and ID-named artifacts as described above. Browser
+forms are protected by a per-server token and same-origin checks. Run one
+dashboard process per workspace while changing state; separate processes and
+CLI mutations are not transactionally coordinated.
+
+## Manual application requests
+
+Select an opportunity in the dashboard and use **Application preparation**, or
+run `opdisc workspace-request WORKSPACE ID TYPE "Request text"` with optional
+`--reference sources/name` or `--reference knowledge/name` arguments. Supported
+types are resume, cover-letter, essay, short-answer, application-notes,
+interview-prep, and other. The command creates a unique folder under
+`applications/ID/requests/` containing `request.json`, a snapshot of the
+current board item in `opportunity.json`, `references.json` with private paths
+and hashes, `HANDOFF.md`, and empty `drafts/` and `revisions/` folders. The
+profile and catalog are included as references when present. Paths supplied by
+the user must point to existing, non-symlinked files under `sources/` or
+`knowledge/`. Source content is not copied into the request.
+
+Open `HANDOFF.md` in that request folder with your chosen agent after making
+the request. The agent may write a new file in `drafts/`, use `revisions/` for
+later versions, and record the result in `response.json` according to
+`schemas/workspace-application-response.schema.json`. The engine does not
+invoke an agent, generate filler drafts, overwrite an edited draft, or submit
+an application. `AGENTS.md` and `CLAUDE.md` in the workspace remain thin
+pointers to the user-owned `WORKSPACE.md`.
+
+To click through a realistic board without private data, create a new external
+demo workspace from the engine checkout:
+
+```powershell
+.\.venv\Scripts\python.exe scripts\demo_workspace.py "$env:TEMP\Opportunity-Demo"
+.\.venv\Scripts\opdisc.exe workspace-dashboard "$env:TEMP\Opportunity-Demo"
+```
+
+The demo refuses an existing destination. Its five fictional records populate
+all four board lanes through the production review importer and board actions.
+It also includes a fake private profile, one source, a manual resume request,
+and a fake agent response and draft. The dashboard can create additional
+requests from any opportunity.
+
 ## Backup and restore
 
 `backup-workspace --kind full` includes instructions, inbox, sources,
@@ -148,7 +201,7 @@ reported failure.
 ## Current limitations
 
 There is no encryption, cloud transport, live-provider integration, scheduled
-AI review, automatic proposal approval, visual dashboard, or application
-drafting/submission in these phases. Native Windows PowerShell
+AI review, automatic proposal approval, engine-authored application drafting,
+or submission in these phases. Native Windows PowerShell
 validation remains a platform check; the implementation itself uses `pathlib`,
 `os.replace`, and Python's cross-platform ZIP support.

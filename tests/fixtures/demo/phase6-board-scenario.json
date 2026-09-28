@@ -15,5 +15,11 @@
   "waiting_example": {
     "reason": "Synthetic response pending",
     "until": "2027-01-10"
+  },
+  "dashboard_example": {
+    "search": "Firmware",
+    "done_reason_code": "timing",
+    "delete_reason_text": "Synthetic location mismatch",
+    "forget_confirmation": "FORGET"
   }
 }

@@ -1,0 +1,24 @@
+{
+  "schema_version": "1.0",
+  "candidates": [
+    {"opportunity_id": "opp_239f53013db5046110ffb26dfb5c5188", "title": "Embedded Firmware Intern", "organization": "Example Devices", "routing_state": "included"},
+    {"opportunity_id": "opp_62275629da8a983b921695cc4ce53996", "title": "Robotics Technical Opportunity", "organization": "Fictional Robotics Lab", "routing_state": "research_needed"},
+    {"opportunity_id": "opp_5f0b35733254ca79f838f299b22d48c5", "title": "Expired Student Event", "organization": "Example University", "routing_state": "included"},
+    {"opportunity_id": "opp_dadec78eb76bb2e6078c9f729d396c50", "title": "Firmware Internship Copy", "organization": "Example Devices", "routing_state": "included"},
+    {"opportunity_id": "opp_3cf744c778c9ceccceb50d064383d337", "title": "Systems Research Internship", "organization": "Fictional Systems Institute", "routing_state": "included"}
+  ],
+  "extra_decision": {
+    "opportunity_id": "opp_3cf744c778c9ceccceb50d064383d337",
+    "disposition": "promote",
+    "reason_codes": ["official-page-current", "profile-relevant"],
+    "official_evidence": {
+      "url": "https://synthetic.example/official/systems-research",
+      "checked_at": "2026-09-10T12:04:00Z",
+      "availability": "open",
+      "exact_deadline": "2027-04-01",
+      "notes_excerpt": "Fictional 2027 research internship applications are open."
+    },
+    "verification": {"source_kind": "organization", "supports_current_opportunity": true},
+    "eligibility": {"conclusion": "no-known-hard-failure", "basis_codes": ["synthetic-profile-match"]}
+  }
+}

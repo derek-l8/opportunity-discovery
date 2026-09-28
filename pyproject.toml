@@ -50,7 +50,7 @@ Homepage = "https://github.com/derek-l8/opportunity-discovery"
 where = ["src"]
 
 [tool.setuptools.package-data]
-opportunity_discovery = ["migrations/*.sql"]
+opportunity_discovery = ["migrations/*.sql", "dashboard.css"]
 
 [tool.ruff]
 line-length = 110

@@ -1,0 +1,28 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "workspace-application-response.schema.json",
+  "title": "Agent-authored manual application handoff response",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "request_id", "status", "artifacts", "source_refs", "notes", "custom"],
+  "properties": {
+    "schema_version": {"const": "1.0"},
+    "request_id": {"type": "string", "pattern": "^req_[0-9]{8}T[0-9]{6}Z_[0-9a-f]{12}$"},
+    "status": {"enum": ["drafted", "needs-input"]},
+    "artifacts": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["path", "kind"],
+        "properties": {
+          "path": {"type": "string", "pattern": "^(drafts|revisions)/[A-Za-z0-9][A-Za-z0-9._-]*$"},
+          "kind": {"enum": ["draft", "revision"]}
+        }
+      }
+    },
+    "source_refs": {"type": "array", "items": {"type": "string"}},
+    "notes": {"type": "string"},
+    "custom": {"type": "object"}
+  }
+}

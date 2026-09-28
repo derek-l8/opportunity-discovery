@@ -1,0 +1,19 @@
+{
+  "schema_version": "1.0",
+  "synthetic_scenario": "phase-8-manual-application-demo",
+  "opportunity_id": "opp_239f53013db5046110ffb26dfb5c5188",
+  "request": {
+    "artifact_type": "resume",
+    "request_text": "Prepare a one-page synthetic resume draft for the Embedded Firmware Intern opportunity. Use only the fake profile and source evidence; leave unsupported metrics as questions.",
+    "references": ["sources/synthetic-project.md"]
+  },
+  "fake_response": {
+    "schema_version": "1.0",
+    "request_id": "REQUEST_ID",
+    "status": "drafted",
+    "artifacts": [{"path": "drafts/synthetic-resume.md", "kind": "draft"}],
+    "source_refs": ["sources/synthetic-project.md", "knowledge/PROFILE.md"],
+    "notes": "Synthetic demonstration only. No application was submitted.",
+    "custom": {}
+  }
+}

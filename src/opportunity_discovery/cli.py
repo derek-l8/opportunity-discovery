@@ -27,7 +27,9 @@ from .workspace_actions import (
     list_workspace_history,
     mark_workspace_opportunity,
 )
+from .workspace_application import ARTIFACT_TYPES, create_application_request
 from .workspace_board import BOARD_VIEWS, PIPELINE_STATES, list_workspace_board
+from .workspace_dashboard import serve_workspace_dashboard
 from .workspace_recovery import (
     audit_workspace,
     backup_workspace,
@@ -251,6 +253,35 @@ def cmd_workspace_history(args: argparse.Namespace) -> int:
         print(f"{page['total']} history events; showing {len(page['events'])} from {page['offset']}")
         for event in page["events"]:
             print(f"{event['at']}  {event['action']}  {event.get('opportunity_id', '')}")
+    return 0
+
+
+def cmd_workspace_dashboard(args: argparse.Namespace) -> int:
+    try:
+        serve_workspace_dashboard(Path(args.workspace), port=args.port)
+    except (OSError, WorkspaceStateError, ValueError) as exc:
+        print(f"ERROR workspace dashboard not started: {exc}", file=sys.stderr)
+        return 2
+    return 0
+
+
+def cmd_workspace_request(args: argparse.Namespace) -> int:
+    try:
+        result = create_application_request(
+            Path(args.workspace),
+            args.opportunity_id,
+            args.artifact_type,
+            args.request_text,
+            references=tuple(args.reference),
+        )
+    except (OSError, WorkspaceStateError) as exc:
+        print(f"ERROR application request not created: {exc}", file=sys.stderr)
+        return 2
+    if args.json_output:
+        print(json.dumps(result, indent=2))
+    elif not args.quiet:
+        print(f"request created: {result['request_path']}")
+        print("Open HANDOFF.md in that folder with your chosen agent to prepare the artifact.")
     return 0
 
 
@@ -701,6 +732,17 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--opportunity-id")
     p.add_argument("--offset", type=int, default=0)
     p.add_argument("--limit", type=int, default=50)
+    p = add("workspace-dashboard", cmd_workspace_dashboard, "open the local private board in a browser")
+    p.add_argument("workspace", help="private workspace root")
+    p.add_argument("--port", type=int, default=8765, help="localhost port (default: 8765)")
+    p = add("workspace-request", cmd_workspace_request, "create a manual application handoff")
+    p.add_argument("workspace", help="private workspace root")
+    p.add_argument("opportunity_id", help="stable opportunity ID")
+    p.add_argument("artifact_type", choices=ARTIFACT_TYPES)
+    p.add_argument("request_text", help="what the chosen agent should prepare")
+    p.add_argument(
+        "--reference", action="append", default=[], metavar="PATH", help="sources/ or knowledge/ path"
+    )
     p = add("knowledge-snapshots", cmd_knowledge_snapshots, "list private knowledge snapshots")
     p.add_argument("workspace", help="private workspace root")
     p = add("compare-knowledge", cmd_compare_knowledge, "compare current knowledge with a snapshot")
