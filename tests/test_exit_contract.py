@@ -9,6 +9,7 @@ Contract (see runner.workflow_exit_code):
 
 from __future__ import annotations
 
+import json
 import os
 
 import pytest
@@ -90,6 +91,11 @@ def test_run_all_sources_failed_exits_one(engine_config, patched_fetcher, capsys
     patched_fetcher.add("https://bad.example/", 503, "upstream down")
     write_sources_toml(engine_config, [_validated_feed_source("feed-bad", "https://bad.example/feed.json")])
     assert _run(engine_config, "run", "--force") == 1
+    packet = (engine_config.paths.output_dir / "review_packet.md").read_text(encoding="utf-8")
+    assert "attempted 1; succeeded 0; failed 1" in packet
+    assert "Partial source coverage" in packet
+    summary = json.loads((engine_config.paths.output_dir / "run_summary.json").read_text(encoding="utf-8"))
+    assert summary["exit_code"] == 1
     capsys.readouterr()
 
 
@@ -107,6 +113,13 @@ def test_partial_failure_exits_zero(engine_config, patched_fetcher, capsys):
     )
     assert _run(engine_config, "collect", "--force") == 0
     assert _run(engine_config, "run", "--force") == 0
+    packet = (engine_config.paths.output_dir / "review_packet.md").read_text(encoding="utf-8")
+    assert "attempted 2; succeeded 1; failed 1" in packet
+    assert "Partial source coverage" in packet
+    assert _run(engine_config, "export") == 0
+    refreshed = (engine_config.paths.output_dir / "review_packet.md").read_text(encoding="utf-8")
+    assert "Source coverage unavailable" in refreshed
+    assert "attempted 2; succeeded 1; failed 1" not in refreshed
     capsys.readouterr()
 
 

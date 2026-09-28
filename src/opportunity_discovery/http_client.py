@@ -21,7 +21,7 @@ import httpx
 
 from . import USER_AGENT
 from .config import EngineConfig
-from .constants import HEALTH_RATE_LIMITED
+from .constants import HEALTH_RATE_LIMITED, MAX_SOURCE_RESPONSE_BYTES
 
 log = logging.getLogger(__name__)
 
@@ -104,6 +104,7 @@ class Fetcher:
         extra_headers: dict[str, str] | None = None,
         use_cache_fallback: bool = True,
         allowed_hosts: set[str] | None = None,
+        max_response_bytes: int | None = None,
     ) -> FetchOutcome:
         start_ms = time.monotonic_ns() // 1_000_000
         if url.startswith("file://"):
@@ -134,13 +135,22 @@ class Fetcher:
 
         attempt = 0
         backoff = self.cfg.fetch.backoff_base_seconds
+        if max_response_bytes is not None and (
+            type(max_response_bytes) is not int or not 0 < max_response_bytes <= MAX_SOURCE_RESPONSE_BYTES
+        ):
+            raise ValueError(f"max_response_bytes override must be between 1 and {MAX_SOURCE_RESPONSE_BYTES}")
+        response_limit = (
+            max_response_bytes if max_response_bytes is not None else self.cfg.fetch.max_response_bytes
+        )
         while True:
             attempt += 1
             self.throttle.wait(domain)
             resp = None
             try:
-                resp, final_url = self._get_with_safe_redirects(url, headers, allowed_hosts)
-            except (httpx.TimeoutException, httpx.TransportError) as exc:
+                resp, final_url = self._get_with_safe_redirects(
+                    url, headers, allowed_hosts, max_response_bytes=response_limit
+                )
+            except (httpx.TimeoutException, httpx.TransportError, httpx.DecodingError) as exc:
                 error = f"{type(exc).__name__}: {exc}"
                 status = None
             except ValueError as exc:
@@ -151,8 +161,8 @@ class Fetcher:
                 if status == 304:
                     return self._serve_304(url, final_url, resp, start_ms)
                 if status < 400:
-                    if len(resp.content) > self.cfg.fetch.max_response_bytes:
-                        error = f"response exceeded max_response_bytes={self.cfg.fetch.max_response_bytes}"
+                    if len(resp.content) > response_limit:
+                        error = f"response exceeded max_response_bytes={response_limit}"
                         status = 413
                     else:
                         self._store_cache(url, resp)
@@ -384,10 +394,18 @@ class Fetcher:
         return None
 
     def _get_with_safe_redirects(
-        self, url: str, headers: dict[str, str], allowed_hosts: set[str] | None
+        self,
+        url: str,
+        headers: dict[str, str],
+        allowed_hosts: set[str] | None,
+        *,
+        max_response_bytes: int | None = None,
     ) -> tuple[httpx.Response, str]:
         """Follow safe redirects and stream the final response within its byte budget."""
         current = url
+        response_limit = (
+            max_response_bytes if max_response_bytes is not None else self.cfg.fetch.max_response_bytes
+        )
         for redirect_count in range(self.cfg.fetch.max_redirects + 1):
             destination_error = self._destination_error(current, allowed_hosts)
             if destination_error:
@@ -409,20 +427,21 @@ class Fetcher:
                         declared_length = int(content_length)
                     except ValueError:
                         declared_length = 0
-                    if declared_length > self.cfg.fetch.max_response_bytes:
-                        raise ValueError(
-                            f"response exceeded max_response_bytes={self.cfg.fetch.max_response_bytes}"
-                        )
+                    if declared_length > response_limit:
+                        raise ValueError(f"response exceeded max_response_bytes={response_limit}")
                 body = bytearray()
                 for chunk in streamed.iter_bytes():
-                    if len(body) + len(chunk) > self.cfg.fetch.max_response_bytes:
-                        raise ValueError(
-                            f"response exceeded max_response_bytes={self.cfg.fetch.max_response_bytes}"
-                        )
+                    if len(body) + len(chunk) > response_limit:
+                        raise ValueError(f"response exceeded max_response_bytes={response_limit}")
                     body.extend(chunk)
+                # iter_bytes() has already decoded Content-Encoding. Rebuilding a
+                # response with that header would make httpx decode the body again.
+                decoded_headers = streamed.headers.copy()
+                decoded_headers.pop("content-encoding", None)
+                decoded_headers.pop("content-length", None)
                 response = httpx.Response(
                     streamed.status_code,
-                    headers=streamed.headers,
+                    headers=decoded_headers,
                     content=bytes(body),
                     request=streamed.request,
                 )

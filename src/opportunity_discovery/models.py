@@ -53,6 +53,13 @@ class SourceSpec:
             errors.append(f"{self.source_id}: endpoint_config must define 'url' (or adapter-specific keys)")
         if self.adapter == "program-page":
             errors.extend(_validate_program_page_config(self.source_id, cfg))
+        if self.adapter == "greenhouse" and "max_response_bytes" in cfg:
+            limit = cfg["max_response_bytes"]
+            if type(limit) is not int or not 1_024 <= limit <= c.MAX_SOURCE_RESPONSE_BYTES:
+                errors.append(
+                    f"{self.source_id}: greenhouse max_response_bytes must be an integer from 1024 "
+                    f"to {c.MAX_SOURCE_RESPONSE_BYTES}"
+                )
         return errors
 
 

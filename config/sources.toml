@@ -144,7 +144,7 @@ display_name = "Anduril"
 organization = "Anduril"
 adapter = "greenhouse"
 landing_url = "https://boards.greenhouse.io/andurilindustries"
-endpoint_config = { board = "andurilindustries" }
+endpoint_config = { board = "andurilindustries", max_response_bytes = 50000000 }
 categories = ["internship", "early-career"]
 tags = ["ats", "official-board"]
 cadence_hours = 24
@@ -159,7 +159,7 @@ display_name = "SpaceX"
 organization = "SpaceX"
 adapter = "greenhouse"
 landing_url = "https://boards.greenhouse.io/spacex"
-endpoint_config = { board = "spacex" }
+endpoint_config = { board = "spacex", max_response_bytes = 40000000 }
 categories = ["internship", "early-career"]
 tags = ["ats", "official-board"]
 cadence_hours = 24
@@ -174,7 +174,7 @@ display_name = "Alo Yoga"
 organization = "Alo Yoga"
 adapter = "greenhouse"
 landing_url = "https://boards.greenhouse.io/aloyoga"
-endpoint_config = { board = "aloyoga" }
+endpoint_config = { board = "aloyoga", max_response_bytes = 40000000 }
 categories = ["internship", "early-career"]
 tags = ["ats", "official-board"]
 cadence_hours = 24
@@ -189,7 +189,7 @@ display_name = "Accenture"
 organization = "Accenture"
 adapter = "greenhouse"
 landing_url = "https://boards.greenhouse.io/accenturefederalservices"
-endpoint_config = { board = "accenturefederalservices" }
+endpoint_config = { board = "accenturefederalservices", max_response_bytes = 16000000 }
 categories = ["internship", "early-career"]
 tags = ["ats", "official-board"]
 cadence_hours = 24
@@ -204,7 +204,7 @@ display_name = "Anthropic"
 organization = "Anthropic"
 adapter = "greenhouse"
 landing_url = "https://boards.greenhouse.io/anthropic"
-endpoint_config = { board = "anthropic" }
+endpoint_config = { board = "anthropic", max_response_bytes = 12000000 }
 categories = ["internship", "early-career"]
 tags = ["ats", "official-board"]
 cadence_hours = 24
@@ -219,7 +219,7 @@ display_name = "Datadog"
 organization = "Datadog"
 adapter = "greenhouse"
 landing_url = "https://boards.greenhouse.io/datadog"
-endpoint_config = { board = "datadog" }
+endpoint_config = { board = "datadog", max_response_bytes = 8000000 }
 categories = ["internship", "early-career"]
 tags = ["ats", "official-board"]
 cadence_hours = 24
@@ -234,7 +234,7 @@ display_name = "Cloudflare"
 organization = "Cloudflare"
 adapter = "greenhouse"
 landing_url = "https://boards.greenhouse.io/cloudflare"
-endpoint_config = { board = "cloudflare" }
+endpoint_config = { board = "cloudflare", max_response_bytes = 10000000 }
 categories = ["internship", "early-career"]
 tags = ["ats", "official-board"]
 cadence_hours = 24
@@ -279,7 +279,7 @@ display_name = "Agoda"
 organization = "Agoda"
 adapter = "greenhouse"
 landing_url = "https://boards.greenhouse.io/agoda"
-endpoint_config = { board = "agoda" }
+endpoint_config = { board = "agoda", max_response_bytes = 8000000 }
 categories = ["internship", "early-career"]
 tags = ["ats", "official-board"]
 cadence_hours = 24

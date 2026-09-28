@@ -44,7 +44,12 @@ class MockFetcher:
         from types import SimpleNamespace
 
         self.cfg = SimpleNamespace(
-            fetch=SimpleNamespace(max_retries=2, backoff_base_seconds=0.0, backoff_max_seconds=0.0)
+            fetch=SimpleNamespace(
+                max_retries=2,
+                backoff_base_seconds=0.0,
+                backoff_max_seconds=0.0,
+                max_response_bytes=5_000_000,
+            )
         )
         self.throttle = SimpleNamespace(wait=lambda domain: None)
         self.client = SimpleNamespace(post=self._post)
@@ -67,9 +72,18 @@ class MockFetcher:
         extra_headers: dict[str, str] | None = None,
         use_cache_fallback: bool = True,
         allowed_hosts: set[str] | None = None,
+        max_response_bytes: int | None = None,
     ) -> FetchOutcome:
         self.calls.append(url)
         status, body, headers = self._lookup(url)
+        limit = max_response_bytes if max_response_bytes is not None else self.cfg.fetch.max_response_bytes
+        if len(body.encode("utf-8")) > limit:
+            return FetchOutcome(
+                url=url,
+                status=400,
+                state="failed",
+                error=f"response exceeded max_response_bytes={limit}",
+            )
         return FetchOutcome(
             url=url,
             final_url=url,

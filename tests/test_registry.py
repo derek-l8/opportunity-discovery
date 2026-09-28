@@ -46,6 +46,38 @@ def test_load_validates_required_fields(tmp_path, engine_config):
     assert "duplicate source_id" in joined
 
 
+def test_greenhouse_response_budget_is_explicit_and_bounded(engine_config):
+    write(
+        engine_config,
+        [
+            {
+                "source_id": "valid-large-board",
+                "display_name": "Valid",
+                "organization": "Valid",
+                "adapter": "greenhouse",
+                "endpoint_config": {"board": "valid", "max_response_bytes": 50_000_000},
+            },
+            {
+                "source_id": "too-large-board",
+                "display_name": "Too large",
+                "organization": "Too large",
+                "adapter": "greenhouse",
+                "endpoint_config": {"board": "large", "max_response_bytes": 50_000_001},
+            },
+            {
+                "source_id": "boolean-budget",
+                "display_name": "Boolean",
+                "organization": "Boolean",
+                "adapter": "greenhouse",
+                "endpoint_config": {"board": "bool", "max_response_bytes": True},
+            },
+        ],
+    )
+    _, errors = load_sources(engine_config.sources_file)
+    assert len(errors) == 2
+    assert all("max_response_bytes" in error for error in errors)
+
+
 def test_sync_and_due_cadence(tmp_path, engine_config):
     write(
         engine_config,

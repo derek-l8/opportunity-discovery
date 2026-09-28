@@ -1,5 +1,89 @@
 # Validation record
 
+## Bounded large-board collection and review coverage (2026-09-28 UTC)
+
+Starting checkout: branch `decompression-fixes`, HEAD
+`9d68afcb0259cc9830007fc1a85e34305d86219d`, with the earlier
+double-decompression correction uncommitted. The global response limit remains
+5 MB. Greenhouse documents no list pagination; its compact list omits the
+descriptions and offices used by this adapter. Eight explicitly configured
+boards therefore retain their complete `content=true` responses behind
+measured, bounded per-board limits (8–50 MB). The adapter checks the returned
+count against `meta.total` and rejects missing/duplicate IDs. Lever now uses
+documented `skip`/`limit` pages of 100, with a 25-page cap. Any failed page,
+duplicate ID, or page-cap hit fails the whole source check. The review packet
+reports coverage only from the collection summary passed for the same run;
+export-only refreshes say that collection health is unavailable.
+
+| Source | Limit | Live validation |
+| --- | ---: | --- |
+| Accenture Federal Services (Greenhouse) | 16 MB | validated, 674 records |
+| Agoda (Greenhouse) | 8 MB | validated, 291 records |
+| Alo Yoga (Greenhouse) | 40 MB | validated, 941 records |
+| Anduril (Greenhouse) | 50 MB | validated, 2,375 records |
+| Anthropic (Greenhouse) | 12 MB | validated, 627 records |
+| Cloudflare (Greenhouse) | 10 MB | validated, 399 records |
+| Datadog (Greenhouse) | 8 MB | validated, 439 records |
+| SpaceX (Greenhouse) | 40 MB | validated, 2,596 records |
+| Palantir (Lever) | 5 MB per page | validated, 321 records |
+
+The table reports a final focused re-probe of the nine sources (plus Amplitude)
+against the finished code. Live record counts changed slightly between probes.
+Validation used `/data/opdisc-nine-validation-20260928` for its database,
+config, logs, and results; it read the registry from the checkout.
+The full `opdisc --json validate-sources --concurrency 2` pass returned 192
+validated, 1 valid-empty, 55 failed, and 24 quarantined. The nine sources above
+all validated in that pass. Of the 55 failures, 54 were transient local DNS
+resolution failures across Greenhouse, Ashby, and Lever hosts. A focused retry
+of those exact 54 sources returned 49 validated and 5 valid-empty, with no
+remaining DNS failure. These are two checks, not one coherent full-source
+snapshot. The final focused re-probe returned nine validated and Amplitude
+failed. Greenhouse Amplitude remains HTTP 404; its registry entry was neither
+changed nor disabled because a replacement has not been verified.
+
+| Gate | Command | Result |
+| --- | --- | --- |
+| Focused adapter, fetch, export, registry, pipeline, and exit tests | `/data/venv/bin/python -m pytest -q tests/test_adapters.py tests/test_http_client.py tests/test_export.py tests/test_exit_contract.py tests/test_pipeline.py tests/test_registry.py` | Passed |
+| Full non-live suite | `PYTHONPATH=src /data/venv/bin/python -m pytest -o addopts='' -q -m 'not live' -ra` | 266 passed; four native PowerShell tests skipped on Linux |
+| Ruff | `/data/venv/bin/ruff format --check src tests scripts/demo_workspace.py` and `/data/venv/bin/ruff check src tests scripts/demo_workspace.py` | Passed |
+| Mypy | `/data/venv/bin/mypy` | Passed, 43 source files |
+| Build | `uv build --out-dir /data/opdisc-nine-validation-20260928/build-final --quiet` | Wheel and sdist built; wheel contains both changed adapters |
+| Configuration | `PYTHONPATH=src /data/venv/bin/python -m opportunity_discovery --json validate-config` | 272 sources, 248 enabled, 0 errors |
+| Publication audit | `PYTHONPATH=src /data/venv/bin/python -m opportunity_discovery audit .` | Passed, 155 publication-candidate files, 0 errors, 0 warnings |
+| Diff whitespace | `git diff --check` | Passed |
+
+The live probe was validation only. It did not run collection, regenerate
+installed exports, or write to the Windows private workspace. Native Windows
+and PowerShell behavior remain unverified here.
+
+## HTTP response decoding correction (2026-09-28 UTC)
+
+The collector now removes `Content-Encoding` and the stale `Content-Length`
+when it rebuilds a response from bytes already decoded by `httpx.iter_bytes()`.
+Malformed compressed responses enter the normal failed-fetch/cache-fallback path.
+Synthetic regressions cover a gzip JSON response, the decoded-body size limit,
+and preservation of cached content after a decoding failure.
+
+| Gate | Command | Result |
+| --- | --- | --- |
+| Focused HTTP tests | `/data/venv/bin/python -m pytest -q tests/test_http_client.py` | Passed, 18 tests; the new gzip regression reproduced the prior double-decode error before the fix |
+| Full non-live suite | `/data/venv/bin/python -m pytest -q -m 'not live'` | Passed; four native PowerShell tests skipped on Linux |
+| Ruff lint and format | `/data/venv/bin/ruff check src tests` and `/data/venv/bin/ruff format --check src tests` | Passed |
+| Mypy | `/data/venv/bin/mypy` | Passed, 43 source files |
+| Configuration | `PYTHONPATH=src /data/venv/bin/python -m opportunity_discovery --config /data/opdisc-http-validation-20260928/config/default.toml --json validate-config` | 272 sources, 248 enabled, 0 errors |
+| Publication audit | `PYTHONPATH=src /data/venv/bin/python -m opportunity_discovery audit .` | 153 publication-candidate files, 0 errors, 0 warnings |
+| Live source validation | `PYTHONPATH=src /data/venv/bin/python -m opportunity_discovery --config /data/opdisc-http-validation-20260928/config/default.toml --json validate-sources` | 232 validated, 6 valid-empty, 10 failed, 24 quarantined |
+| Diff whitespace | `git diff --check` | Passed |
+
+Live validation used an isolated database and output paths under
+`/data/opdisc-http-validation-20260928`; its source registry was read from the
+checkout without modification. None of the 10 failed probes reported a
+decompression error. Nine Greenhouse/Lever feeds exceeded the configured
+`max_response_bytes=5000000` limit, and one Greenhouse feed returned HTTP 404.
+Those failures still limit source coverage; this validation did not rerun full
+collection or regenerate the installed workspace's exports. Native Windows and
+PowerShell remain unverified in this Linux environment.
+
 ## Corrected Phase 4–5 private workspace state and recovery (2026-09-12 UTC)
 
 Environment: Linux, CPython 3.12.14, clean external integration checkout from
