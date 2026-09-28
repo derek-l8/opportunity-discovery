@@ -7,11 +7,11 @@ reconciles duplicates, detects changes over time, applies transparent generic
 relevance signals and configurable career-profile routing, and emits compact versioned packets for a later private
 review layer.
 
-**What the collector is not:** it is not an applicant tracker or dashboard and
-never makes applicant-specific eligibility or priority decisions. It produces
+**What the collector is not:** it never makes applicant-specific eligibility or priority decisions. It produces
 `unverified-lead` records only. Optional provider-neutral commands can apply a
-separately produced review to the external private workspace; they are not part
-of collection and do not call an AI provider. See `docs/INTEGRATION_CONTRACT.md`.
+separately produced review and serve a local dashboard for an external private
+workspace; they are not part of collection and do not call an AI provider. See
+`docs/INTEGRATION_CONTRACT.md`.
 
 ## Outcome
 
@@ -109,6 +109,8 @@ opdisc import-review FILE validate a source-backed review response against the c
 opdisc workspace-apply-review DIR FILE apply a validated review to external private state
 opdisc workspace-apply-feedback DIR FILE record reasoned Done/Delete feedback and soft signals
 opdisc workspace-board DIR read filtered, paginated private board state
+opdisc workspace-dashboard DIR launch the local browser board on 127.0.0.1:8765
+opdisc workspace-request DIR ID TYPE TEXT create a manual application handoff
 opdisc workspace-done DIR ID mark Done (optional reason and soft signals)
 opdisc workspace-delete DIR ID hide as Delete (optional reason and soft signals)
 opdisc workspace-restore DIR ID restore a Done/Delete record

@@ -712,3 +712,22 @@ underlying waiting state again.
 Native Windows execution and the four Windows-only tests still require CI or a
 Windows checkout. No live source probe was run; source adapters and scoring did
 not change.
+
+## Phases 7 and 8 private dashboard and application handoff (2026-09-28 UTC)
+
+Starting base was `339ad000d09976ead966b38c390c1c5d2dcd4fdd` (`origin/main`, PR #11 merged). The mounted `/workspace` Git directory was read-only, so implementation and validation ran in `/data/opportunity-discovery-phase7-8`. The mounted checkout stayed unchanged. Phase 7 was targeted-tested and checkpointed before Phase 8 began; the separate review packages are under `/data/opdisc-review/phase7` and `/data/opdisc-review/phase8`.
+
+| Gate | Command | Result |
+| --- | --- | --- |
+| Phase 7 targeted | `PYTHONPATH=src /data/venv/bin/python -m pytest -q tests/test_workspace_dashboard.py tests/test_workspace_board.py tests/test_workspace_state.py` | Passed, 33 tests |
+| Phase 8 targeted | `PYTHONPATH=src /data/venv/bin/python -m pytest -q tests/test_workspace_application.py tests/test_workspace_dashboard.py tests/test_demo_workspace.py` | Passed, 6 tests |
+| Full non-live suite | `PYTHONPATH=src /data/venv/bin/python -m pytest -q -m 'not live' -ra` | Passed; 4 native PowerShell tests skipped on Linux |
+| Ruff | `/data/venv/bin/ruff check src tests scripts/demo_workspace.py` and `/data/venv/bin/ruff format --check src tests scripts/demo_workspace.py` | Passed, 76 Python files formatted |
+| Mypy | `/data/venv/bin/mypy` | Passed, 43 source files |
+| Build | `uv build --out-dir /data/opdisc-review/build-final --quiet` | Wheel and sdist built; wheel includes dashboard CSS and both new modules |
+| Configuration | `PYTHONPATH=src /data/venv/bin/python -m opportunity_discovery --json validate-config` | 272 sources, 248 enabled, 0 errors |
+| Publication audit | `PYTHONPATH=src /data/venv/bin/python -m opportunity_discovery audit .` | 153 publication-candidate files; 0 errors, 0 warnings before this documentation addition |
+| Diff integrity | `git diff --check` | Passed before this documentation addition |
+| Synthetic demo | `PYTHONPATH=src /data/venv/bin/python scripts/demo_workspace.py /data/opdisc-review/synthetic-demo` | Created 1 active, 1 waiting, 2 dismissed, 1 history record and a fake request/response |
+
+The end-to-end synthetic test additionally rendered all four HTTP lanes, changed pipeline state through the dashboard, created another manual application request, and checked the resulting files. The review importer processed fake structured decisions; no live AI call or real applicant data was used. No browser executable or native Windows host was available, so rendered visual inspection and native PowerShell validation remain unverified. CI defines Windows jobs for Python 3.11–3.14, but no new PR or CI run was started. `validate-sources` was not run because these changes do not alter source adapters, scoring, registry, or public collection behavior; the requested final verification was non-live.

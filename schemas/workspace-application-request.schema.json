@@ -1,0 +1,18 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "workspace-application-request.schema.json",
+  "title": "Private manual application request",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "request_id", "opportunity_id", "artifact_type", "request_text", "created_at", "status", "custom"],
+  "properties": {
+    "schema_version": {"const": "1.0"},
+    "request_id": {"type": "string", "pattern": "^req_[0-9]{8}T[0-9]{6}Z_[0-9a-f]{12}$"},
+    "opportunity_id": {"type": "string", "pattern": "^opp_[0-9a-f]{32}$"},
+    "artifact_type": {"enum": ["resume", "cover-letter", "essay", "short-answer", "application-notes", "interview-prep", "other"]},
+    "request_text": {"type": "string", "minLength": 1, "maxLength": 5000},
+    "created_at": {"type": "string", "format": "date-time"},
+    "status": {"const": "requested"},
+    "custom": {"type": "object"}
+  }
+}
