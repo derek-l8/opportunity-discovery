@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+MAX_SOURCE_RESPONSE_BYTES = 50_000_000  # explicit per-source cap; default fetch cap stays 5 MB
+
 # Lead verification vocabulary (public layer only -- never claims applicant-level verification)
 LEAD_UNVERIFIED = "unverified-lead"
 EVIDENCE_SOURCE_STATED = "source-stated"

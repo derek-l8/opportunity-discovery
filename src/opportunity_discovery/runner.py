@@ -98,7 +98,7 @@ def run_collect(
 
 def finalize_run(conn: sqlite3.Connection, cfg: EngineConfig, run_id: str, summary: RunSummary) -> None:
     """Write exports + run summary atomically; persist run row."""
-    artifacts = export_all(conn, cfg, run_id)
+    artifacts = export_all(conn, cfg, run_id, run_summary=summary)
     summary.review_queue_count = artifacts.get("review_queue", {}).get("count", 0)
     summary.finished_at = _now()
     existing = conn.execute("SELECT 1 FROM collection_runs WHERE run_id=?", (run_id,)).fetchone()
@@ -185,6 +185,7 @@ def run_full_workflow(
             return 2, summary
         run_collect(conn, cfg, run_id, summary, force=force, fetcher=fetcher)
         exit_code = workflow_exit_code(summary)
+        summary.exit_code = exit_code
         if do_export:
             finalize_run(conn, cfg, run_id, summary)
         else:

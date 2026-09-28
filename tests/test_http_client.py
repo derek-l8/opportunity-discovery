@@ -1,3 +1,4 @@
+import gzip
 import json
 import threading
 
@@ -276,6 +277,102 @@ def test_response_body_limit_fails_without_caching(engine_config):
         assert "max_response_bytes=4" in (out.error or "")
         cached = conn.execute("SELECT 1 FROM raw_cache").fetchone()
         assert cached is None
+    finally:
+        fetcher.close()
+        conn.close()
+
+
+def test_explicit_response_budget_does_not_change_default(engine_config):
+    engine_config.fetch.max_response_bytes = 4
+
+    def handler(request):
+        return httpx.Response(200, content=b"12345")
+
+    fetcher, conn = make_fetcher(engine_config, handler)
+    try:
+        url = "https://public.example.com/large-board"
+        assert not fetcher.fetch(url, use_cache_fallback=False).ok
+        full = fetcher.fetch(url, max_response_bytes=5)
+        assert full.ok and full.body == b"12345"
+        default = fetcher.fetch(url, use_cache_fallback=False)
+        assert not default.ok
+        assert "max_response_bytes=4" in (default.error or "")
+    finally:
+        fetcher.close()
+        conn.close()
+
+
+def test_gzip_response_is_decoded_once_and_cached(engine_config):
+    body = '{"title": "Café"}'.encode()
+    compressed = gzip.compress(body)
+
+    def handler(request):
+        return httpx.Response(
+            200,
+            content=compressed,
+            headers={
+                "Content-Encoding": "gzip",
+                "Content-Type": "application/json; charset=utf-8",
+                "ETag": '"gzip-v1"',
+            },
+        )
+
+    fetcher, conn = make_fetcher(engine_config, handler)
+    try:
+        out = fetcher.fetch("https://public.example.com/compressed")
+        assert out.ok
+        assert out.body == body
+        assert json.loads(out.text)["title"] == "Café"
+        assert out.etag == '"gzip-v1"'
+        assert conn.execute("SELECT content FROM raw_cache").fetchone()[0] == body
+    finally:
+        fetcher.close()
+        conn.close()
+
+
+def test_gzip_decoded_body_limit_preserves_prior_cache(engine_config):
+    engine_config.fetch.max_response_bytes = 50
+    current_body = b"cached response"
+    too_large_body = b"x" * 51
+    calls = {"n": 0}
+
+    def handler(request):
+        calls["n"] += 1
+        body = current_body if calls["n"] == 1 else too_large_body
+        return httpx.Response(200, content=gzip.compress(body), headers={"Content-Encoding": "gzip"})
+
+    fetcher, conn = make_fetcher(engine_config, handler)
+    try:
+        first = fetcher.fetch("https://public.example.com/compressed")
+        assert first.ok and first.body == current_body
+        second = fetcher.fetch("https://public.example.com/compressed")
+        assert second.from_cache and second.state == "degraded"
+        assert "max_response_bytes=50" in (second.error or "")
+        assert second.body == current_body
+        assert conn.execute("SELECT content FROM raw_cache").fetchone()[0] == current_body
+    finally:
+        fetcher.close()
+        conn.close()
+
+
+def test_invalid_gzip_preserves_prior_cache(engine_config):
+    engine_config.fetch.max_retries = 0
+    calls = {"n": 0}
+
+    def handler(request):
+        calls["n"] += 1
+        if calls["n"] == 1:
+            return httpx.Response(200, content=b"cached response")
+        return httpx.Response(200, stream=httpx.ByteStream(b"not gzip"), headers={"Content-Encoding": "gzip"})
+
+    fetcher, conn = make_fetcher(engine_config, handler)
+    try:
+        first = fetcher.fetch("https://public.example.com/data")
+        assert first.ok
+        second = fetcher.fetch("https://public.example.com/data")
+        assert second.from_cache and second.state == "degraded"
+        assert second.body == first.body
+        assert "DecodingError" in (second.error or "")
     finally:
         fetcher.close()
         conn.close()

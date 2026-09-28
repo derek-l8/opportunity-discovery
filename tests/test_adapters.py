@@ -22,6 +22,42 @@ def test_greenhouse_empty_is_valid_empty(mock_fetcher):
     assert result.ok and not result.records and result.empty_ok
 
 
+def test_greenhouse_board_budget_preserves_complete_content(mock_fetcher):
+    mock_fetcher.cfg.fetch.max_response_bytes = 1_024
+    payload = json.loads(load_fixture("greenhouse_jobs.json"))
+    payload["jobs"][0]["content"] = "RTL design " * 150
+    mock_fetcher.add("https://boards-api.greenhouse.io", 200, json.dumps(payload))
+
+    failed = run_source(source(), mock_fetcher)
+    assert not failed.ok and failed.truncated
+    assert "max_response_bytes=1024" in (failed.detail or "")
+
+    spec = source(endpoint_config={"board": "acmesilicon", "max_response_bytes": 4_096})
+    complete = run_source(spec, mock_fetcher)
+    assert complete.ok and len(complete.records) == 2
+    assert complete.reported_total == 2 and complete.truncated is False
+    assert complete.records[0].provider_req_id == "5001"
+    assert "RTL design" in (complete.records[0].description_excerpt or "")
+
+
+def test_greenhouse_reported_total_mismatch_is_not_healthy(mock_fetcher):
+    mock_fetcher.add("https://boards-api.greenhouse.io", 200, load_fixture("greenhouse_partial_jobs.json"))
+    result = run_source(source(), mock_fetcher)
+    assert not result.ok and not result.records
+    assert result.state == "coverage-warning" and result.truncated
+    assert result.reported_total == 2
+
+
+def test_large_greenhouse_board_requires_total_for_completeness(mock_fetcher):
+    payload = json.loads(load_fixture("greenhouse_jobs.json"))
+    del payload["meta"]
+    mock_fetcher.add("https://boards-api.greenhouse.io", 200, json.dumps(payload))
+    spec = source(endpoint_config={"board": "acmesilicon", "max_response_bytes": 4_096})
+    result = run_source(spec, mock_fetcher)
+    assert not result.ok and not result.records
+    assert result.state == "coverage-warning" and result.truncated
+
+
 def test_lever_success_and_remote_signal(mock_fetcher):
     from tests.helpers import source as src
 
@@ -32,6 +68,95 @@ def test_lever_success_and_remote_signal(mock_fetcher):
     remote = result.records[1]
     assert remote.remote_signal == "remote"
     assert result.records[0].posted_date == "2025-08-10"
+
+
+def test_lever_paginates_until_short_final_page(mock_fetcher):
+    from tests.helpers import source as src
+
+    first = [
+        {
+            "id": f"posting-{index}",
+            "text": f"Firmware Intern {index}",
+            "hostedUrl": f"https://jobs.lever.co/acmehw/posting-{index}",
+            "categories": {"location": "Boston, MA", "commitment": "Internship"},
+            "description": "Embedded systems",
+        }
+        for index in range(100)
+    ]
+    base = "https://api.lever.co/v0/postings/acmehw?mode=json&skip="
+    mock_fetcher.add(base + "0&limit=100", 200, json.dumps(first))
+    mock_fetcher.add(base + "100&limit=100", 200, load_fixture("lever_page_last.json"))
+    spec = src(source_id="lever-acmehw", adapter="lever", endpoint_config={"board": "acmehw"})
+
+    result = run_source(spec, mock_fetcher)
+    assert result.ok and len(result.records) == 101
+    assert result.pages_fetched == 2 and result.reported_total is None
+    assert result.truncated is False
+    assert result.records[-1].provider_req_id == "last-posting"
+    assert result.records[-1].canonical_url == "https://jobs.lever.co/acmehw/last-posting"
+    assert mock_fetcher.calls == [base + "0&limit=100", base + "100&limit=100"]
+
+
+def test_lever_page_failure_discards_partial_board(mock_fetcher):
+    from tests.helpers import source as src
+
+    first = [
+        {"id": str(index), "text": "Intern", "hostedUrl": f"https://jobs.lever.co/acmehw/{index}"}
+        for index in range(100)
+    ]
+    base = "https://api.lever.co/v0/postings/acmehw?mode=json&skip="
+    mock_fetcher.add(base + "0&limit=100", 200, json.dumps(first))
+    mock_fetcher.add(base + "100&limit=100", 503, "unavailable")
+    spec = src(source_id="lever-acmehw", adapter="lever", endpoint_config={"board": "acmehw"})
+
+    result = run_source(spec, mock_fetcher)
+    assert not result.ok and not result.records
+    assert result.truncated and result.pages_fetched == 1
+
+
+def test_lever_duplicate_page_boundary_is_coverage_warning(mock_fetcher):
+    from tests.helpers import source as src
+
+    first = [
+        {"id": str(index), "text": "Intern", "hostedUrl": f"https://jobs.lever.co/acmehw/{index}"}
+        for index in range(100)
+    ]
+    base = "https://api.lever.co/v0/postings/acmehw?mode=json&skip="
+    mock_fetcher.add(base + "0&limit=100", 200, json.dumps(first))
+    mock_fetcher.add(base + "100&limit=100", 200, json.dumps([first[-1]]))
+    spec = src(source_id="lever-acmehw", adapter="lever", endpoint_config={"board": "acmehw"})
+
+    result = run_source(spec, mock_fetcher)
+    assert not result.ok and not result.records
+    assert result.state == "coverage-warning" and result.truncated
+
+
+def test_lever_page_cap_is_failed_not_truncated_success(mock_fetcher, monkeypatch):
+    from opportunity_discovery.adapters import lever
+    from tests.helpers import source as src
+
+    monkeypatch.setattr(lever, "_MAX_PAGES", 1)
+    first = [
+        {"id": str(index), "text": "Intern", "hostedUrl": f"https://jobs.lever.co/acmehw/{index}"}
+        for index in range(100)
+    ]
+    mock_fetcher.add("https://api.lever.co/v0/postings/acmehw", 200, json.dumps(first))
+    spec = src(source_id="lever-acmehw", adapter="lever", endpoint_config={"board": "acmehw"})
+
+    result = run_source(spec, mock_fetcher)
+    assert not result.ok and not result.records
+    assert result.state == "coverage-warning" and result.truncated
+    assert result.pages_fetched == 1
+
+
+def test_lever_304_without_cached_page_is_failed(mock_fetcher):
+    from tests.helpers import source as src
+
+    mock_fetcher.add("https://api.lever.co/v0/postings/acmehw", 304, "")
+    spec = src(source_id="lever-acmehw", adapter="lever", endpoint_config={"board": "acmehw"})
+    result = run_source(spec, mock_fetcher)
+    assert not result.ok and result.truncated
+    assert result.pages_fetched == 0
 
 
 def test_ashby_success(mock_fetcher):
@@ -266,11 +391,12 @@ def test_adapter_failure_isolated_per_source(mock_fetcher):
     assert "unknown adapter" in (result.detail or "")
 
 
-def test_not_modified_304_is_healthy_not_drift(mock_fetcher):
+def test_not_modified_304_without_cache_is_failed_not_empty(mock_fetcher):
     mock_fetcher.routes["https://boards-api.greenhouse.io"] = lambda url: (304, "", {"etag": '"v1"'})
     result = run_source(source(), mock_fetcher)
-    assert result.ok
-    assert result.state == "healthy"
+    assert not result.ok
+    assert result.state == "check-failed"
+    assert result.truncated is True
     assert result.http_status == 304
 
 

@@ -93,6 +93,12 @@ marks all source-controlled fields as untrusted data. Markdown-significant sourc
 text is escaped so titles and excerpts cannot create packet structure; normalized
 HTTP(S) links remain directly usable.
 
+For a normal collection run, the packet header reports attempted, succeeded,
+and failed source counts from that exact run and warns when coverage is partial.
+An export-only refresh has no current collection health; its header says so
+and treats any existing `run_summary.json` as an earlier run. In both cases,
+read `source_health.json` for individual source checks.
+
 ## Duplicate review hints
 
 Exact normalized-URL duplicates continue to merge under the stable identity

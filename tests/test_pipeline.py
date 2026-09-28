@@ -77,6 +77,51 @@ def test_first_run_creates_new_records(env):
     assert summary.detail["sources"][spec.source_id]["records_new"] == 2
 
 
+def test_large_greenhouse_board_keeps_id_and_failed_refresh_preserves_state(tmp_path, engine_config):
+    conn = make_db(tmp_path)
+    fetcher = MockFetcher()
+    fetcher.cfg.fetch.max_response_bytes = 1_024
+    spec = source(endpoint_config={"board": "acmesilicon", "max_response_bytes": 4_096})
+    sync_sources_to_db(conn, [spec])
+    url = "https://boards.greenhouse.io/acmesilicon/jobs/77"
+
+    def payload(content: str, total: int = 1) -> str:
+        return json.dumps(
+            {"jobs": [job(77, "Firmware Intern", url, content=content)], "meta": {"total": total}}
+        )
+
+    try:
+        fetcher.add("https://boards-api.greenhouse.io", 200, payload("Firmware in C " * 120))
+        first = RunSummary(run_id="large-board-1", started_at=datetime.now(UTC).isoformat())
+        Pipeline(conn, engine_config, first.run_id, first).process_source(spec, fetcher)
+        initial = conn.execute("SELECT opportunity_id, description_hash FROM opportunities").fetchone()
+        assert first.sources_succeeded == 1 and first.opportunities_new == 1
+        assert initial is not None
+
+        fetcher.add("https://boards-api.greenhouse.io", 200, payload("Firmware in Rust " * 120))
+        second = RunSummary(run_id="large-board-2", started_at=datetime.now(UTC).isoformat())
+        Pipeline(conn, engine_config, second.run_id, second).process_source(spec, fetcher)
+        changed = conn.execute("SELECT opportunity_id, description_hash FROM opportunities").fetchone()
+        assert second.sources_succeeded == 1 and second.opportunities_new == 0
+        assert changed["opportunity_id"] == initial["opportunity_id"]
+        assert changed["description_hash"] != initial["description_hash"]
+        assert conn.execute("SELECT COUNT(*) FROM opportunities").fetchone()[0] == 1
+        assert conn.execute("SELECT source_id FROM provenance").fetchone()[0] == spec.source_id
+
+        fetcher.add("https://boards-api.greenhouse.io", 200, payload("Incomplete " * 120, total=2))
+        third = RunSummary(run_id="large-board-3", started_at=datetime.now(UTC).isoformat())
+        Pipeline(conn, engine_config, third.run_id, third).process_source(spec, fetcher)
+        after_failure = conn.execute("SELECT opportunity_id, description_hash FROM opportunities").fetchone()
+        assert third.sources_failed == 1 and third.opportunities_changed == 0
+        assert tuple(after_failure) == tuple(changed)
+        check = conn.execute(
+            "SELECT state, truncated FROM source_checks WHERE run_id=?", (third.run_id,)
+        ).fetchone()
+        assert check["state"] == "coverage-warning" and check["truncated"] == 1
+    finally:
+        conn.close()
+
+
 def test_second_identical_run_no_new_delta(env):
     cfg, conn, fetcher, spec = env
     p1, s1 = make_pipeline(cfg, conn)

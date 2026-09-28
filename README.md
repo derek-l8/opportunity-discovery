@@ -98,39 +98,14 @@ Task Scheduler setup/removal (does not run automatically; you invoke these):
 ## Useful commands
 
 ```
-opdisc init               initialize/migrate storage, sync registry
-opdisc init-workspace DIR initialize an external private workspace without overwriting user files
-opdisc validate-config    validate configuration and registry files
-opdisc validate-sources   live-probe enabled sources and record health
-opdisc collect            one collection pass (no exports)
-opdisc run                full deterministic workflow
-opdisc export             rewrite export artifacts from stored state
-opdisc import-review FILE validate a source-backed review response against the current export
-opdisc workspace-apply-review DIR FILE apply a validated review to external private state
-opdisc workspace-apply-feedback DIR FILE record reasoned Done/Delete feedback and soft signals
-opdisc workspace-board DIR read filtered, paginated private board state
-opdisc workspace-dashboard DIR launch the local browser board on 127.0.0.1:8765
-opdisc workspace-request DIR ID TYPE TEXT create a manual application handoff
-opdisc workspace-done DIR ID mark Done (optional reason and soft signals)
-opdisc workspace-delete DIR ID hide as Delete (optional reason and soft signals)
-opdisc workspace-restore DIR ID restore a Done/Delete record
-opdisc workspace-purge DIR ID remove a board record and ID-named artifacts
-opdisc workspace-pipeline DIR ID STATE set private application pipeline state
-opdisc workspace-wait DIR ID --reason TEXT mark explicitly waiting
-opdisc workspace-resume DIR ID end explicit waiting
-opdisc workspace-history DIR read private operation and board-action history
-opdisc knowledge-snapshots DIR list bounded private knowledge history
-opdisc compare-knowledge DIR ID compare current knowledge with a snapshot
-opdisc restore-knowledge DIR ID restore after creating a pre-restore snapshot
-opdisc backup-workspace DIR ZIP create a full or state-only unencrypted backup
-opdisc restore-workspace DIR ZIP verify, pre-backup, and restore named files
-opdisc workspace-audit DIR audit private Git exposure and reference integrity
-opdisc source-health      per-source health states
-opdisc status             concise engine status
-opdisc audit              repository publication-safety audit
-opdisc add-source ...     append a source to config/sources.toml
-opdisc prune              retention pruning (dry-run by default)
+opdisc run                      collect and export public leads
+opdisc source-health            inspect source failures and coverage
+opdisc workspace-dashboard DIR  open the separate private board
 ```
+
+Collection alone does not populate the private board or invoke an AI reviewer.
+Use `opdisc --help` for all commands. See [Windows operations](docs/OPERATIONS_WINDOWS.md)
+and [private workspace operations](docs/PRIVATE_WORKSPACE_OPERATIONS.md) for detailed workflows.
 
 All commands accept the global `--quiet`, `--json`, and `--config` options.
 Place global options before the subcommand, for example

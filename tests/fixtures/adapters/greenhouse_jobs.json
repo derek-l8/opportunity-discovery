@@ -16,5 +16,6 @@
       "offices": [{"name": "Remote, USA"}],
       "content": "<p>Firmware in C for microcontrollers.</p>"
     }
-  ]
+  ],
+  "meta": {"total": 2}
 }

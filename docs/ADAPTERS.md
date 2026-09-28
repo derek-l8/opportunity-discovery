@@ -24,8 +24,8 @@ Every adapter must:
 
 | Adapter | Public endpoint pattern | Notes |
 | --- | --- | --- |
-| `greenhouse` | `boards-api.greenhouse.io/v1/boards/{org}/jobs?content=true` | Bogus boards 404 → identity confirmable |
-| `lever` | `api.lever.co/v0/postings/{org}?mode=json` | |
+| `greenhouse` | `boards-api.greenhouse.io/v1/boards/{org}/jobs?content=true` | Complete board response; explicit per-board size caps for large boards; bogus boards 404 → identity confirmable |
+| `lever` | `api.lever.co/v0/postings/{org}?mode=json&skip=N&limit=100` | Pages until a short/empty page; page and duplicate-ID checks |
 | `ashby` | `api.ashbyhq.com/posting-api/job-board/{org}` | |
 | `smartrecruiters` | `api.smartrecruiters.com/v1/companies/{org}/postings` | Unknown company returns empty-200, so validation requires records>0 or documented identity |
 | `workday` | `POST {tenant}.wdN.myworkdayjobs.com/wday/cxs/{tenant}/{site}/jobs` | Only explicitly configured tenants/sites; no tenant discovery |
@@ -36,6 +36,20 @@ Every adapter must:
 | `htmllist` | explicit CSS selectors on one configured page | Selector must match ≥1 item else `format-changed` |
 | `program-page` | exact configured overview/application URLs | Up to 8 pages; one explicit record per cycle/session; CSS selectors or JSON-LD paths; coverage canaries |
 | `sitemap` | sitemap.xml with include/exclude regex | Titles inferred from slugs are flagged `inferred-signal`, bounded to 300 URLs |
+
+The [Greenhouse Job Board API](https://github.com/grnhse/greenhouse-api-docs/blob/master/source/includes/job-board/_jobs.md)
+does not document list pagination. Its smaller list omits descriptions and
+offices needed for routing and change detection. The eight measured large
+boards therefore retain `content=true` with explicit registry limits of
+8–50 MB; the default remains 5 MB. The decoded body must fit its configured
+limit and the reported `meta.total` must match the returned job count. A board
+that grows beyond its bound fails visibly and cannot close prior leads.
+
+The [Lever Postings API](https://github.com/lever/postings-api/blob/master/README.md)
+documents `skip` and `limit`. Its adapter fetches at most 25 pages of 100,
+retaining the normal 5 MB limit per page. A failed page, repeated posting ID,
+or full final page at the cap fails the source check; no partial page set is
+ingested.
 
 ## Recurring program pages
 
