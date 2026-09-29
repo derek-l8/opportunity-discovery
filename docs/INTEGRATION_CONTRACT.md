@@ -1,8 +1,14 @@
-# Integration contract — public discovery layer ⇄ private AI workflow
+# Integration contract — public discovery ⇄ private workspace
 
 ## The division
 
-### This repository (public lead layer) determines and exports:
+The repository ships both the public collector and provider-neutral private
+workspace commands. The boundary is between public collector data and private
+runtime state, not between code repositories. Private workspace files must be
+outside the Git checkout; selected leads move there only through explicit
+human or tool actions. Collection never invokes AI review.
+
+### The collector determines and exports:
 
 - what a **public source says**;
 - source provenance and health;
@@ -29,7 +35,7 @@ Every exported candidate is an `unverified-lead`. Aggregator provenance is not
 official verification. Inferred fields are labeled `inferred-signal`. Missing
 data is `unknown`.
 
-### The private downstream layer owns:
+### The private downstream workflow owns:
 
 - verification of selected leads on canonical official pages before they are
   promoted to anything actionable;
@@ -38,9 +44,10 @@ data is `unknown`.
 - application pipeline status, outcomes, dismissal history;
 - essays, resumes, drafts, and any model inference.
 
-This repository must never store or export: personal eligibility, personal
-priority, applicant work-authorization status, graduation date, academic
-standing, pipeline status/outcomes, dismissals, or application materials.
+Collector SQLite, public exports, and Git-tracked files must never store or
+export personal eligibility, personal priority, applicant work-authorization
+status, graduation date, academic standing, pipeline status/outcomes,
+dismissals, or application materials.
 
 ## Artifacts (all atomic, versioned)
 
@@ -85,8 +92,15 @@ no `exclude:` reason code, and its `generic_score` is greater than or equal to
 `scoring.review_queue_threshold`. All leads remain in SQLite and
 `candidates.jsonl` regardless of review-queue membership.
 
-`review_packet.md` orders this queue by generic score and stable ID, includes
-bounded excerpts and provenance links, and stops at `export.packet_char_limit`.
+`review_packet.md` is a bounded first-pass AI or human review input, not the
+private dashboard digest or a record of completed review. It selects up to 32
+`included` leads by generic score and reserves eight places for
+`research_needed` leads when available. Unused places are filled from the
+remaining queue. Stable ID breaks score ties; official-source
+observations, excerpts, and stated deadlines are displayed as evidence cues.
+It shows at most 40 entries, includes why each surfaced, unknown
+fields, source type, bounded excerpts and provenance links, and stops at
+`export.packet_char_limit`.
 Its footer states how many records were omitted. It is a convenience view, not a
 pagination mechanism or a replacement for the JSON artifacts. A prominent warning
 marks all source-controlled fields as untrusted data. Markdown-significant source
@@ -98,6 +112,12 @@ and failed source counts from that exact run and warns when coverage is partial.
 An export-only refresh has no current collection health; its header says so
 and treats any existing `run_summary.json` as an earlier run. In both cases,
 read `source_health.json` for individual source checks.
+
+The private dashboard Home reads imported workspace review decisions, not the
+collector packet. Explore reads the manifest-verified complete current review
+queue and shows unreviewed IDs. Its reviewed count covers only decisions
+recorded on the private board; it is not historical coverage across missed
+export generations. Neither view runs AI review automatically.
 
 ## Duplicate review hints
 

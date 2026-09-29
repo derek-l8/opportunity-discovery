@@ -25,7 +25,13 @@ def test_synthetic_demo_browser_and_manual_request(tmp_path):
     assert (root / ".opdisc" / "demo-generation" / "workspace-review.json").is_file()
 
     promoted = SCENARIO["opportunity_id"]
-    with dashboard(root) as (server, url):
+    with dashboard(root, Path(result["manifest_path"])) as (server, url):
+        home = urlopen(url).read().decode()
+        assert "Consider first" in home
+        assert "Why selected" in home
+        explore = urlopen(url + "/?view=explore&review_status=unreviewed").read().decode()
+        assert "Unreviewed Materials Internship" in explore
+        assert "no review imported: 1" in explore
         for view in ("active", "waiting", "dismissed", "history"):
             page = urlopen(url + "/?view=" + view).read().decode()
             assert view.title() + " board" in page

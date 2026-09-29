@@ -36,6 +36,13 @@ def test_student_profile_includes_student_lanes_and_excludes_full_time():
     fields, _ = candidate("Senior Hardware Engineer — Full-Time")
     assert fields["career_stage"] == c.CAREER_EXPERIENCED
 
+    fields, routes = candidate("Director, Site Reliability Engineering")
+    assert fields["career_stage"] == c.CAREER_EXPERIENCED
+    assert routes[c.PROFILE_STUDENT].state == c.ROUTE_EXCLUDED
+
+    _, internship = candidate("Firmware Intern", "Collaborate with the director of engineering.")
+    assert internship[c.PROFILE_STUDENT].state == c.ROUTE_INCLUDED
+
 
 def test_student_profile_excludes_required_graduate_degree_not_broad_degree_list():
     fields, routes = candidate("Research Internship", "Master's degree required. PhD preferred.")
@@ -48,6 +55,17 @@ def test_student_profile_excludes_required_graduate_degree_not_broad_degree_list
     )
     assert fields["required_degree"] == c.UNKNOWN
     assert routes[c.PROFILE_STUDENT].state == c.ROUTE_INCLUDED
+
+
+def test_phd_in_intern_title_requires_research_without_inventing_degree_requirement():
+    fields, routes = candidate("PhD Quantitative Researcher Intern")
+    assert fields["required_degree"] == c.UNKNOWN
+    assert fields["graduate_degree_title_signal"] is True
+    assert routes[c.PROFILE_STUDENT].state == c.ROUTE_RESEARCH
+    assert routes[c.PROFILE_STUDENT].confidence == c.CONFIDENCE_LOW
+    assert "profile:graduate-degree-title-unverified" in routes[c.PROFILE_STUDENT].reason_codes
+    assert routes[c.PROFILE_NEW_GRAD].state == c.ROUTE_EXCLUDED
+    assert routes[c.PROFILE_ALL].state == c.ROUTE_INCLUDED
 
 
 def test_new_grad_profile_accepts_up_to_four_and_excludes_five_plus():

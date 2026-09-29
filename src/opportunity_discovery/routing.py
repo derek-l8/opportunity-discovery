@@ -48,6 +48,7 @@ _CAREER_PATTERNS = (
     ),
     (c.CAREER_STUDENT, r"\bstudent\b|undergrad|freshman|sophomore|\bjunior\b|\bsenior\b"),
 )
+_DIRECTOR_TITLE_RE = re.compile(r"^\s*(?:(?:senior|sr\.?)\s+)?director\b(?!['’]s\b)", re.I)
 
 _REQUIRED_DEGREE_PATTERNS = (
     (
@@ -87,6 +88,7 @@ _PREFERRED_DEGREE_PATTERNS = (
         r"(?:bachelor'?s|b\.?s\.?|b\.?a\.?)\s+(?:degree\s+)?preferred|preferred[^.]{0,35}(?:bachelor'?s|b\.?s\.?|b\.?a\.?)",
     ),
 )
+_GRADUATE_TITLE_RE = re.compile(r"\b(?:ph\.?d|doctoral|doctorate|master'?s)\b", re.I)
 _RANGE_YEARS_RE = re.compile(r"\b(\d{1,2})\s*(?:-|–|to)\s*(\d{1,2})\+?\s+years?\b", re.I)
 _UP_TO_YEARS_RE = re.compile(r"\b(?:up to|maximum(?: of)?|no more than)\s+(\d{1,2})\s+years?\b", re.I)
 _MIN_YEARS_RE = re.compile(
@@ -177,6 +179,8 @@ def normalize_routing_fields(raw: RawOpportunity) -> dict[str, Any]:
         {"new graduate": c.CAREER_NEW_GRAD, "entry level": c.CAREER_ENTRY_LEVEL},
         _CAREER_VALUES,
     ) or _first_match(text, _CAREER_PATTERNS)
+    if raw.career_stage is None and _DIRECTOR_TITLE_RE.search(raw.title or ""):
+        career_stage = c.CAREER_EXPERIENCED
     if career_stage == c.UNKNOWN and engagement in {
         c.ENGAGEMENT_INTERNSHIP,
         c.ENGAGEMENT_COOP,
@@ -225,6 +229,7 @@ def normalize_routing_fields(raw: RawOpportunity) -> dict[str, Any]:
         "career_stage": career_stage,
         "required_degree": required_degree,
         "preferred_degree": preferred_degree,
+        "graduate_degree_title_signal": bool(_GRADUATE_TITLE_RE.search(raw.title or "")),
         "experience_requirement_text": exp_text,
         "experience_min_years": exp_min,
         "experience_max_years": exp_max,
@@ -249,6 +254,10 @@ def route_profiles(fields: dict[str, Any]) -> dict[str, ProfileDecision]:
     elif stage == c.CAREER_EXPERIENCED:
         student = ProfileDecision(
             c.ROUTE_EXCLUDED, c.CONFIDENCE_HIGH, ("profile:experienced-stage-excluded",)
+        )
+    elif fields.get("graduate_degree_title_signal"):
+        student = ProfileDecision(
+            c.ROUTE_RESEARCH, c.CONFIDENCE_LOW, ("profile:graduate-degree-title-unverified",)
         )
     elif engagement in {
         c.ENGAGEMENT_INTERNSHIP,

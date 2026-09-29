@@ -1,8 +1,9 @@
 # Private workspace review and recovery
 
-These commands are deterministic file tools for an external private workspace.
-They do not include an AI SDK, call a model, browse official pages, schedule AI
-work, submit applications, or modify collector SQLite state.
+These commands manage files in a private workspace you choose. The commands
+are part of this repository, but private files stay outside its Git checkout.
+They do not call an AI model, browse pages, schedule AI work, submit
+applications, or change collector SQLite.
 
 ## Apply structured review
 
@@ -117,13 +118,35 @@ and checkpoint files are individually atomic but do not form one transaction.
 
 ## Local browser dashboard
 
-`opdisc workspace-dashboard WORKSPACE [--port 8765]` opens the private board at
-`http://127.0.0.1:8765/`. Stop it with Ctrl+C. The server binds only to IPv4
-loopback and reads the explicitly selected external workspace. It uses the
-same Phase 6 board read and action functions as the CLI. Active, waiting,
-dismissed, and history lanes have search and filters; selecting a record shows
-verified facts, uncertainty, official and collector links, provenance, and
-board actions. The history lane also shows recent operation activity.
+`opdisc workspace-dashboard WORKSPACE [--manifest output/export_manifest.json]
+[--port 8765]` opens the local dashboard at `http://127.0.0.1:8765/`. Stop it
+with Ctrl+C. Without `--manifest`, Explore looks for `output/export_manifest.json`
+under the engine path recorded when the workspace was initialized. Select the
+manifest explicitly if the collector uses a different output directory.
+
+Home lists only imported AI review decisions still awaiting action. Promoted
+leads appear before leads requiring more investigation; a review-recorded exact
+deadline breaks ties within a group. Public generic scores do not set private
+priority. Cards show review reasons, AI-reported official-page checks,
+uncertainty, and a next step. An empty Home says whether no review has been
+imported; it never means the public queue has nothing useful.
+
+Explore reads the complete current `review_queue.jsonl` only when its hash
+matches the selected manifest. It searches title, organization, or ID and
+filters by public route and whether an imported review exists. Counts show
+reviewed and unreviewed current queue IDs. Public lead detail is read-only and
+labels availability, eligibility, and fit as unverified. If the export is
+missing or damaged, Explore says unavailable rather than showing zero leads.
+These counts are a current snapshot, not a claim that every past queue entry
+was reviewed. The existing active, waiting, dismissed, and history board lanes
+remain available for private actions and application state. The server binds
+only to IPv4 loopback.
+
+The 40-item `review_packet.md` is a bounded AI input preview, not Home content
+or a completion marker. Today, further manual AI sessions must select from the
+full queue and delta pages, check source health, and submit explicit review
+decisions. The packet can repeat high-scoring leads, and the board cannot record
+quick triage without the official evidence required for a structured review.
 
 Done and Delete accept an optional reason. Restore, pipeline, wait, and resume
 use the existing state model. Forget Completely requires typing `FORGET` and

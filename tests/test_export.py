@@ -300,6 +300,189 @@ def test_markdown_review_packet_is_bounded_and_explicitly_partial(engine_config,
     conn.close()
 
 
+def test_markdown_packet_prefers_usable_evidence_and_marks_unknowns(engine_config, tmp_path):
+    conn = seed(
+        engine_config,
+        tmp_path,
+        json.dumps(
+            {
+                "jobs": [
+                    {
+                        "id": "sparse",
+                        "title": "Sparse Firmware Intern",
+                        "absolute_url": "https://boards.greenhouse.io/acme/jobs/sparse",
+                    },
+                    {
+                        "id": "rich",
+                        "title": "Described Firmware Intern",
+                        "absolute_url": "https://boards.greenhouse.io/acme/jobs/rich",
+                        "content": "Firmware design and testing responsibilities.",
+                    },
+                ]
+            }
+        ),
+    )
+    aggregate = source(
+        source_id="greenhouse-aggregate",
+        endpoint_config={"board": "aggregate"},
+        official_source=False,
+    )
+    sync_sources_to_db(conn, [aggregate])
+    fetcher = MockFetcher()
+    fetcher.add(
+        "https://boards-api.greenhouse.io/v1/boards/aggregate/",
+        200,
+        json.dumps(
+            {
+                "jobs": [
+                    {
+                        "id": "aggregate",
+                        "title": "Aggregated Firmware Intern",
+                        "absolute_url": "https://boards.greenhouse.io/other/jobs/aggregate",
+                        "content": "Firmware design and testing responsibilities.",
+                    }
+                ]
+            }
+        ),
+    )
+    summary = RunSummary(run_id="run-aggregate", started_at="2026-09-28T00:00:00Z")
+    Pipeline(conn, engine_config, summary.run_id, summary).process_source(aggregate, fetcher)
+    conn.execute("UPDATE opportunities SET generic_score=100 WHERE title='Sparse Firmware Intern'")
+    conn.execute("UPDATE opportunities SET generic_score=200 WHERE title='Aggregated Firmware Intern'")
+    conn.execute(
+        "UPDATE opportunities SET generic_score=100, deadline='2020-02-01', application_state='open'"
+        " WHERE title='Described Firmware Intern'"
+    )
+    # A legacy or mistaken official-looking URL must not override provenance.
+    conn.execute(
+        "UPDATE opportunities SET official_url=canonical_url WHERE title='Aggregated Firmware Intern'"
+    )
+
+    info = export_all(conn, engine_config, "run-aggregate")
+    packet = (tmp_path / "output" / "review_packet.md").read_text(encoding="utf-8")
+    assert info["review_packet"]["count"] == info["review_queue"]["count"] == 3
+    assert packet.index("Aggregated Firmware Intern") < packet.index("Described Firmware Intern")
+    assert packet.index("Aggregated Firmware Intern") < packet.index("Sparse Firmware Intern")
+    tied = conn.execute(
+        "SELECT title FROM opportunities WHERE generic_score=100 ORDER BY opportunity_id"
+    ).fetchall()
+    assert packet.index(tied[0]["title"]) < packet.index(tied[1]["title"])
+    assert "Why surfaced: public-text tags" in packet
+    assert "Unknown: excerpt, stated deadline, application state" in packet
+    assert "observed by registered official source greenhouse\\-acmesilicon" in packet
+    assert "non-official lead only; find and check an official page" in packet
+    assert "Unknown: official-source observation, stated deadline, application state" in packet
+    assert "Source-stated application status: `open`" in packet
+    assert "source-stated deadline: 2020\\-02\\-01 (current availability unverified)" in packet
+    assert "A link, score, route, or deadline is not proof a role is open" in packet
+    assert "do not verify availability, applicant eligibility, or fit" in packet
+    assert len((tmp_path / "output" / "candidates.jsonl").read_text().splitlines()) == 3
+    conn.close()
+
+
+def test_markdown_packet_recognizes_official_observation_after_aggregator(engine_config, tmp_path):
+    conn = make_db(tmp_path)
+    aggregate = source(
+        source_id="greenhouse-aggregate",
+        endpoint_config={"board": "aggregate"},
+        official_source=False,
+    )
+    official = source(endpoint_config={"board": "official"})
+    sync_sources_to_db(conn, [aggregate, official])
+    fetcher = MockFetcher()
+    shared_url = "https://boards.greenhouse.io/acme/jobs/shared"
+    fetcher.add(
+        "https://boards-api.greenhouse.io/v1/boards/aggregate/",
+        200,
+        json.dumps(
+            {
+                "jobs": [
+                    {"id": "shared", "title": "Shared Firmware Intern", "absolute_url": shared_url},
+                    {
+                        "id": "only-aggregate",
+                        "title": "Aggregate Firmware Intern",
+                        "absolute_url": "https://boards.greenhouse.io/other/jobs/only-aggregate",
+                    },
+                ]
+            }
+        ),
+    )
+    fetcher.add(
+        "https://boards-api.greenhouse.io/v1/boards/official/",
+        200,
+        json.dumps(
+            {"jobs": [{"id": "shared", "title": "Shared Firmware Intern", "absolute_url": shared_url}]}
+        ),
+    )
+    summary = RunSummary(run_id="run-shared", started_at="2026-09-28T00:00:00Z")
+    pipeline = Pipeline(conn, engine_config, summary.run_id, summary)
+    pipeline.process_source(aggregate, fetcher)
+    pipeline.process_source(official, fetcher)
+    shared = conn.execute("SELECT * FROM opportunities WHERE title='Shared Firmware Intern'").fetchone()
+    assert shared["official_url"] is None
+    conn.execute(
+        "UPDATE opportunities SET generic_score=? WHERE title='Aggregate Firmware Intern'",
+        (shared["generic_score"],),
+    )
+
+    export_all(conn, engine_config, summary.run_id)
+    packet = (tmp_path / "output" / "review_packet.md").read_text(encoding="utf-8")
+    assert "Shared Firmware Intern" in packet and "Aggregate Firmware Intern" in packet
+    assert "observed by registered official source greenhouse\\-acmesilicon" in packet
+    assert f"Lead URL: <{shared_url}>" in packet
+    conn.close()
+
+
+def test_markdown_packet_caps_items_without_truncating_json(engine_config, tmp_path):
+    jobs = [
+        {
+            "id": index,
+            "title": f"Firmware Intern {index}",
+            "absolute_url": f"https://boards.greenhouse.io/acme/jobs/{index}",
+            "content": "Firmware development.",
+        }
+        for index in range(45)
+    ]
+    conn = seed(engine_config, tmp_path, json.dumps({"jobs": jobs}))
+    info = export_all(conn, engine_config, "run-cap")
+    packet = (tmp_path / "output" / "review_packet.md").read_text(encoding="utf-8")
+    assert info["review_packet"]["count"] == 40
+    assert info["review_queue"]["count"] == info["candidates"]["count"] == 45
+    assert "Displayed: 40; omitted from compact view: 5" in packet
+    assert len((tmp_path / "output" / "review_queue.jsonl").read_text().splitlines()) == 45
+    conn.close()
+
+
+def test_markdown_packet_reserves_research_lane_after_included_leads(engine_config, tmp_path):
+    jobs = [
+        {
+            "id": index,
+            "title": f"Firmware Intern {index}",
+            "absolute_url": f"https://boards.greenhouse.io/acme/jobs/{index}",
+        }
+        for index in range(40)
+    ] + [
+        {
+            "id": 100 + index,
+            "title": f"Firmware Technical Opportunity {index}",
+            "absolute_url": f"https://boards.greenhouse.io/acme/jobs/{100 + index}",
+        }
+        for index in range(10)
+    ]
+    conn = seed(engine_config, tmp_path, json.dumps({"jobs": jobs}))
+    conn.execute(
+        "UPDATE opportunities SET generic_score=100 WHERE title LIKE 'Firmware Technical Opportunity %'"
+    )
+    export_all(conn, engine_config, "run-lanes")
+    packet = (tmp_path / "output" / "review_packet.md").read_text(encoding="utf-8")
+    assert packet.count("route `included`") == 32
+    assert packet.count("route `research_needed`") == 8
+    assert packet.index("Firmware Intern") < packet.index("Firmware Technical Opportunity")
+    assert "Displayed: 40; omitted from compact view: 10" in packet
+    assert len((tmp_path / "output" / "review_queue.jsonl").read_text().splitlines()) == 50
+    conn.close()
+
+
 def test_markdown_packet_shows_current_run_coverage(engine_config, tmp_path):
     conn = seed(engine_config, tmp_path, '{"jobs": []}')
     summary = RunSummary(run_id="run-current", started_at="2026-09-28T00:00:00Z")

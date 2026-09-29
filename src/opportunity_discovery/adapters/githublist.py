@@ -98,6 +98,7 @@ class GithubListAdapter:
         colmap: dict[str, int] | None = None
         records: list[RawOpportunity] = []
         rows_seen = 0
+        last_organization: str | None = None
 
         def make_cell(bound_cells: list[str], bound_map: dict[str, int]) -> Callable[[str], str | None]:
             def cell(logical: str) -> str | None:
@@ -123,6 +124,9 @@ class GithubListAdapter:
             if not colmap:
                 continue
             cell = make_cell(cells, dict(colmap))
+            organization = cell("organization")
+            if organization and organization != "↳":
+                last_organization = organization
 
             title_raw = cell("title")
             links = _LINK.findall(cell("canonical_url") or "")
@@ -133,7 +137,7 @@ class GithubListAdapter:
                     RawOpportunity(
                         title=_LINK.sub("", title_raw).strip() or title_raw,
                         canonical_url=url,
-                        organization=cell("organization") or default_org,
+                        organization=last_organization or default_org,
                         provider=None,
                         location_text=cell("location_text"),
                         deadline=deadline_raw or None,
@@ -159,6 +163,7 @@ class GithubListAdapter:
             colmap = _map_columns(header_cells, columns)
             if not colmap:
                 continue
+            last_organization: str | None = None
             body = table.find("tbody") or table
             for tr in body.find_all("tr"):
                 row_cells = list(tr.find_all("td"))
@@ -185,6 +190,9 @@ class GithubListAdapter:
                     text_val = _cell(logical)
                     return text_val if text_val and text_val.startswith("http") else None
 
+                organization = cell("organization")
+                if organization and organization != "↳":
+                    last_organization = organization
                 title = cell("title")
                 url = link("canonical_url")
                 if not title or not url:
@@ -193,7 +201,7 @@ class GithubListAdapter:
                     RawOpportunity(
                         title=title,
                         canonical_url=url,
-                        organization=cell("organization") or default_org,
+                        organization=last_organization or default_org,
                         provider=None,
                         location_text=cell("location_text"),
                         season=cell("season"),

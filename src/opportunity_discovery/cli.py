@@ -258,7 +258,11 @@ def cmd_workspace_history(args: argparse.Namespace) -> int:
 
 def cmd_workspace_dashboard(args: argparse.Namespace) -> int:
     try:
-        serve_workspace_dashboard(Path(args.workspace), port=args.port)
+        serve_workspace_dashboard(
+            Path(args.workspace),
+            port=args.port,
+            manifest_path=Path(args.manifest) if args.manifest else None,
+        )
     except (OSError, WorkspaceStateError, ValueError) as exc:
         print(f"ERROR workspace dashboard not started: {exc}", file=sys.stderr)
         return 2
@@ -732,9 +736,12 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--opportunity-id")
     p.add_argument("--offset", type=int, default=0)
     p.add_argument("--limit", type=int, default=50)
-    p = add("workspace-dashboard", cmd_workspace_dashboard, "open the local private board in a browser")
+    p = add("workspace-dashboard", cmd_workspace_dashboard, "open curated Home and full-queue Explore")
     p.add_argument("workspace", help="private workspace root")
     p.add_argument("--port", type=int, default=8765, help="localhost port (default: 8765)")
+    p.add_argument(
+        "--manifest", help="current public export manifest (default: engine/output/export_manifest.json)"
+    )
     p = add("workspace-request", cmd_workspace_request, "create a manual application handoff")
     p.add_argument("workspace", help="private workspace root")
     p.add_argument("opportunity_id", help="stable opportunity ID")

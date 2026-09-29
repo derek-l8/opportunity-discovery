@@ -1,5 +1,110 @@
 # Validation record
 
+## Curated Home and complete Explore (2026-09-29 UTC)
+
+The uncommitted 32/8 Markdown packet remains a bounded input preview, not the
+dashboard digest. Home now reads imported private review decisions, grouping
+promoted active leads before reviewed leads needing investigation. Review
+reasons, reported official-page check, unknowns, and a next action are visible;
+public generic score does not order Home. Done/Delete, waiting, dismissed, and
+application state still use the existing private board actions.
+
+Explore reads the full current `review_queue.jsonl` only after checking its
+hash against `export_manifest.json`. It searches title, organization, location,
+and excerpts; filters by opportunity type, public route, and imported-review
+status; and shows newly discovered leads first. Its counts distinguish imported
+reviews from leads without one, not current verification. A missing or damaged
+export is reported as unavailable. The synthetic walkthrough includes
+an unreviewed lead that appears in Explore but not Home. No model is invoked.
+Neither the packet nor delta export pages acknowledge AI work; batching across
+sessions still needs a small private progress record for quick triage. This
+change does not claim historical review coverage.
+
+| Gate | Result |
+| --- | --- |
+| Full non-live Linux suite | 281 passed; 4 native PowerShell tests skipped |
+| Ruff lint and format | Passed |
+| Mypy | Passed, 43 source files |
+| Wheel and sdist | Built under `/tmp/opdisc-review-build-Ax76My`; setuptools emitted license-metadata deprecation warnings |
+| Configuration | 272 sources, 0 errors |
+| Publication audit and diff whitespace | Passed; 160 publication-candidate files, 0 errors, 0 warnings |
+| Isolated live `validate-sources` | 241 validated, 6 valid-empty, 1 failed, 24 quarantined |
+
+Live source validation used only the isolated `/data/opdisc-sept29-review`
+state. Its single failure remains the Amplitude HTTP 404. The installed Windows
+workspace was not changed. Native Windows and Windows CI remain unverified; a
+pushed PR needs all CI jobs, including Windows, checked before it is called
+ready to merge.
+
+## First-pass packet correction (2026-09-29 UTC)
+
+Base: `f0a01f22a50f00b55c9f27055361613bf5c525c8`, matching
+`origin/main` by `git ls-remote`. The mounted checkout began clean on branch
+`simplify-documentation`; its Git metadata is read-only. Changes remain
+uncommitted in `/workspace`.
+
+The user's read-only analysis of the installed September 28 export found
+22,130 candidates and 7,155 queue entries. They verified that a reconstruction
+of the old score-first order matched the installed packet's first 40 IDs. Their
+simulation of the proposed evidence-first order was **not** an execution of
+this Linux diff:
+
+| Top-40 measure | Old score-first | Simulated evidence-first |
+| --- | ---: | ---: |
+| Official-source observations | 13 | 40 |
+| Excerpts present | 8 | 40 |
+| `included` routes | 33 | 1 |
+| Internships | 32 | 1 |
+| Anduril | 4 | 29 |
+
+Only eight leads overlapped. No queue entry had a stated deadline or known
+application state, so deadline ordering added no value in that export. The
+revised Markdown selector now takes up to 32 `included` leads by generic score
+and reserves eight places for `research_needed`; unused places are filled from
+the remaining queue. Stable ID breaks score ties. Registered official-source
+observations, excerpts, and stated deadlines are displayed as evidence cues.
+The 40-item and character budgets remain.
+The exact revised top 40 IDs, source mix, and missing-evidence counts have not
+been measured because the installed export is not mounted in this Linux
+workspace. Given the user's confirmed old order of 33 `included` and seven
+`research_needed` leads, the revised selector would retain 39 of those 40 IDs
+on the same stored queue: it exchanges the lowest-ranked included lead for the
+next research lead. This assumes the default character budget fits all 40 and
+no collection updates the stored scores or routes. The revised selection would
+have 32 included leads, 31–33 internships, 3–5 Anduril leads, 12–14 official
+observations, and 7–9 excerpts. These are derived bounds, not measured counts.
+The published JSON queue and candidate exports are unchanged by packet
+selection.
+
+The packet's official-source label now uses `provenance` joined to the source
+registry, not `official_url`; an aggregator-supplied official-looking link alone
+cannot earn that label. It calls current status unverified and labels application
+status and deadlines as source-stated. A PhD-titled internship with no explicit
+degree requirement routes to `research_needed`, not an invented exclusion;
+"Director" is recognized as an experienced-stage title. Existing stored routes
+update only after a successful re-observation, not an export-only refresh.
+
+The Simplify GitHub list uses `↳` for the preceding company. A read-only live
+payload saved under `/data/simplify-readme-sample.md` contained 770 such cells;
+the corrected adapter parsed 2,020 records with zero `↳` organizations. A
+successful future re-observation repairs a stored `↳` organization and records
+a material change. The installed SQLite and private workspace were not edited.
+
+| Gate | Result |
+| --- | --- |
+| Focused adapter, pipeline, export, and routing tests | 73 passed |
+| Full non-live Linux suite | 274 passed; 4 native PowerShell tests skipped |
+| Ruff lint and format | Passed |
+| Mypy | Passed, 42 source files |
+| Build | Wheel and sdist built under `/data/opdisc-sept29-review/build` |
+| Configuration | 272 sources, 248 enabled, 0 errors |
+| Publication audit and diff whitespace | Passed; 156 publication-candidate files, 0 errors, 0 warnings |
+| Live `validate-sources` in isolated `/data/opdisc-sept29-review` | 241 validated, 6 valid-empty, 1 failed (Amplitude HTTP 404), 24 quarantined; Simplify validated with 2,020 records |
+
+Live validation read the repository registry and wrote only under `/data`.
+Native Windows and Windows CI remain unverified; a pushed PR needs all CI jobs,
+including Windows, checked before it is called ready to merge.
+
 ## Bounded large-board collection and review coverage (2026-09-28 UTC)
 
 Starting checkout: branch `decompression-fixes`, HEAD

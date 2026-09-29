@@ -1,23 +1,28 @@
 # Architecture
 
-## Two-layer workflow
+## Code and data boundary
 
 ```
-┌─────────────────────────────────────────────┐      ┌──────────────────────┐
-│  THIS REPO (public, deterministic, local)   │      │ Private AI workflow  │
-│                                             │      │ (Windows, outside)   │
-│  public sources ─► adapters ─► SQLite       │ JSON │                      │
-│                    normalize/reconcile      │ ───► │ verify on official   │
-│                    change detection         │ pack.│ pages, eligibility,  │
-│                    generic scoring          │ ets  │ ranking, Do-now view,│
-│                    atomic exports           │      │ drafting             │
-└─────────────────────────────────────────────┘      └──────────────────────┘
+┌──────────────────────── Git checkout: code and templates ────────────────────────┐
+│ Collector: fetch → normalize → reconcile → score → export public leads           │
+│ Provider-neutral workspace tools: initialize, validate, apply, inspect, recover │
+└──────────────────────────┬─────────────────────────────┬─────────────────────────┘
+                           │ public runtime data         │ explicit workspace path
+                           ▼                             ▼
+                collector SQLite and exports    private files outside checkout
+                (no applicant state)            (applicant state and decisions)
+                           │                             ▲
+                           └── selected leads, manually ─┘
 ```
 
-This engine owns: what public sources say, provenance, identity, generic
+The collector owns: what public sources say, provenance, identity, generic
 categories, dates, locations, explicit compensation/funding/class-year/major/
 work-authorization *language*, duplicate relationships, change detection, and
-source health. It never owns personal eligibility or priority.
+source health. It never owns personal eligibility or priority. Workspace tools
+are shipped here, but their private runtime files must remain outside the Git
+checkout. Collection does not invoke review or transfer leads automatically.
+Human or optional AI review of selected official pages happens in the private
+workflow.
 
 ## Module map (`src/opportunity_discovery/`)
 
@@ -37,6 +42,7 @@ source health. It never owns personal eligibility or priority.
 | `review_contract.py` | Provider-neutral review-response validation and atomic boundary import |
 | `workspace.py` | External private-workspace initialization; user-owned starters are preserved |
 | `workspace_state.py` | Validated private review/feedback application below an external workspace root |
+| `workspace_discovery.py` | Read-only curated Home and manifest-verified full-queue Explore |
 | `workspace_recovery.py` | Private knowledge snapshots, ZIP backup/restore, and workspace audit |
 | `runner.py` | The normal workflow behind `opdisc run` |
 | `validate_sources.py` | Live probes that record validation status |
@@ -75,8 +81,9 @@ adapter becomes a `check-failed` health row, never an aborted run and never a
 
 - Stable IDs are content-derived hashes; identical input state yields
   identical exports (byte-for-byte) — verified by tests.
-- Ordering is always by `opportunity_id`; packet pagination splits on a
-  character budget with continuation metadata, never truncation.
+- Complete JSON candidates are ordered by `opportunity_id`; the Markdown
+  review packet uses its documented route-and-score order. Delta pagination
+  splits on a character budget with continuation metadata, never truncation.
 
 The workspace modules are not part of the scheduled public collection path.
 They require an explicit workspace path and never write applicant-specific

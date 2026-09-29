@@ -5,7 +5,8 @@
     {"opportunity_id": "opp_62275629da8a983b921695cc4ce53996", "title": "Robotics Technical Opportunity", "organization": "Fictional Robotics Lab", "routing_state": "research_needed"},
     {"opportunity_id": "opp_5f0b35733254ca79f838f299b22d48c5", "title": "Expired Student Event", "organization": "Example University", "routing_state": "included"},
     {"opportunity_id": "opp_dadec78eb76bb2e6078c9f729d396c50", "title": "Firmware Internship Copy", "organization": "Example Devices", "routing_state": "included"},
-    {"opportunity_id": "opp_3cf744c778c9ceccceb50d064383d337", "title": "Systems Research Internship", "organization": "Fictional Systems Institute", "routing_state": "included"}
+    {"opportunity_id": "opp_3cf744c778c9ceccceb50d064383d337", "title": "Systems Research Internship", "organization": "Fictional Systems Institute", "routing_state": "included"},
+    {"opportunity_id": "opp_0123456789abcdef0123456789abcdef", "title": "Unreviewed Materials Internship", "organization": "Example Materials Lab", "routing_state": "research_needed"}
   ],
   "extra_decision": {
     "opportunity_id": "opp_3cf744c778c9ceccceb50d064383d337",
