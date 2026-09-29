@@ -58,10 +58,14 @@ def create_demo(root: Path) -> dict[str, object]:
     generation.mkdir()
     payload = "".join(json.dumps(item, sort_keys=True) + "\n" for item in candidates).encode("utf-8")
     (generation / "candidates.jsonl").write_bytes(payload)
+    (generation / "review_queue.jsonl").write_bytes(payload)
     manifest = {
         "schema_version": "1.0",
         "generation_id": GENERATION_ID,
-        "files": [{"filename": "candidates.jsonl", "sha256": hashlib.sha256(payload).hexdigest()}],
+        "files": [
+            {"filename": name, "sha256": hashlib.sha256(payload).hexdigest(), "bytes": len(payload)}
+            for name in ("candidates.jsonl", "review_queue.jsonl")
+        ],
     }
     manifest_path = generation / "export_manifest.json"
     manifest_path.write_text(json.dumps(manifest), encoding="utf-8")
@@ -102,6 +106,7 @@ def create_demo(root: Path) -> dict[str, object]:
             for view in ("active", "waiting", "dismissed", "history")
         },
         "request_path": result["request_path"],
+        "manifest_path": manifest_path.as_posix(),
     }
 
 
@@ -115,7 +120,7 @@ def main() -> int:
         print(f"ERROR demo not created: {exc}", file=sys.stderr)
         return 2
     print(json.dumps(result, indent=2))
-    print("Launch with: opdisc workspace-dashboard NEW-WORKSPACE-PATH")
+    print(f"Launch with: opdisc workspace-dashboard NEW-WORKSPACE-PATH --manifest {result['manifest_path']}")
     return 0
 
 

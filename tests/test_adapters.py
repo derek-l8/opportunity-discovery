@@ -319,6 +319,50 @@ def test_github_markdown_table(mock_fetcher):
     assert rec.canonical_url == "https://deltasemis.example.com/analog-intern"
 
 
+def test_github_html_table_carries_continuation_organization(mock_fetcher):
+    from tests.helpers import source as src
+
+    spec = src(
+        source_id="gh-continuation",
+        adapter="githublist",
+        official_source=False,
+        organization="Community aggregator",
+        endpoint_config={"url": "https://raw.example.org/board.html", "format": "html_table"},
+    )
+    mock_fetcher.add("https://raw.example.org/board.html", 200, load_fixture("github_continuation.html"))
+    result = run_source(spec, mock_fetcher)
+    assert result.ok and result.state == "healthy"
+    assert [record.organization for record in result.records] == [
+        "Acme Circuits",
+        "Acme Circuits",
+        "Acme Circuits",
+        "Beta Robotics",
+        "Beta Robotics",
+    ]
+    assert all(record.evidence == "source-stated" for record in result.records)
+
+
+def test_github_markdown_table_carries_continuation_organization(mock_fetcher):
+    from tests.helpers import source as src
+
+    spec = src(
+        source_id="gh-continuation-markdown",
+        adapter="githublist",
+        endpoint_config={"url": "https://raw.example.org/board.md", "format": "table"},
+    )
+    mock_fetcher.add(
+        "https://raw.example.org/board.md",
+        200,
+        "| Company | Role | Application |\n"
+        "| --- | --- | --- |\n"
+        "| Acme Circuits | Firmware Intern | https://acme.example.org/jobs/1 |\n"
+        "| ↳ | Hardware Intern | https://acme.example.org/jobs/2 |\n",
+    )
+    result = run_source(spec, mock_fetcher)
+    assert result.ok
+    assert [record.organization for record in result.records] == ["Acme Circuits", "Acme Circuits"]
+
+
 def test_htmllist_selectors(mock_fetcher):
     from tests.helpers import source as src
 

@@ -10,7 +10,7 @@ import pytest
 from opportunity_discovery.models import RunSummary
 from opportunity_discovery.pipeline import Pipeline, expected_opportunities_from_sources
 from opportunity_discovery.registry import sync_sources_to_db
-from tests.helpers import MockFetcher, make_db, source
+from tests.helpers import MockFetcher, load_fixture, make_db, source
 
 
 def make_pipeline(engine_config, conn):
@@ -75,6 +75,45 @@ def test_first_run_creates_new_records(env):
     assert check["duration_ms"] >= 0
     assert check["pages_fetched"] == 1
     assert summary.detail["sources"][spec.source_id]["records_new"] == 2
+
+
+def test_continuation_organization_repairs_on_successful_reobservation(engine_config, tmp_path):
+    conn = make_db(tmp_path)
+    fetcher = MockFetcher()
+    url = "https://raw.example.org/board.html"
+    fetcher.add(url, 200, load_fixture("github_continuation.html"))
+    spec = source(
+        source_id="gh-continuation",
+        adapter="githublist",
+        official_source=False,
+        organization="Community aggregator",
+        endpoint_config={"url": url, "format": "html_table"},
+    )
+    sync_sources_to_db(conn, [spec])
+    pipeline, _ = make_pipeline(engine_config, conn)
+    pipeline.process_source(spec, fetcher)
+    original = conn.execute(
+        "SELECT opportunity_id FROM opportunities WHERE title='Hardware Intern'"
+    ).fetchone()["opportunity_id"]
+    conn.execute("UPDATE opportunities SET organization='↳' WHERE opportunity_id=?", (original,))
+    conn.commit()
+
+    pipeline, summary = make_pipeline(engine_config, conn)
+    pipeline.process_source(spec, fetcher)
+    repaired = conn.execute(
+        "SELECT opportunity_id, organization, change_type FROM opportunities WHERE opportunity_id=?",
+        (original,),
+    ).fetchone()
+    assert repaired["opportunity_id"] == original
+    assert repaired["organization"] == "Acme Circuits"
+    assert repaired["change_type"] == "materially-changed"
+    assert summary.opportunities_changed == 1
+    detail = conn.execute(
+        "SELECT changed_fields_json FROM changes WHERE opportunity_id=? ORDER BY change_id DESC LIMIT 1",
+        (original,),
+    ).fetchone()["changed_fields_json"]
+    assert json.loads(detail)["organization"] == {"old": "↳", "new": "Acme Circuits"}
+    conn.close()
 
 
 def test_large_greenhouse_board_keeps_id_and_failed_refresh_preserves_state(tmp_path, engine_config):

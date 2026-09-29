@@ -28,6 +28,12 @@ from .workspace_application import (
     list_application_requests,
 )
 from .workspace_board import BOARD_VIEWS, PIPELINE_STATES, list_workspace_board
+from .workspace_discovery import (
+    ENGAGEMENT_TYPES,
+    default_manifest_path,
+    list_curated_home,
+    list_explore,
+)
 from .workspace_state import OPPORTUNITY_ID, WorkspaceStateError, require_workspace
 
 _PAGE_SIZE = 25
@@ -79,6 +85,29 @@ def _card(item: dict[str, Any], *, view: str, selected: str | None, filters: dic
     href = _query(view=view, item=identifier, **filters)
     title = item.get("title") or "Untitled opportunity"
     meta = " · ".join(str(value) for value in (item.get("organization"), item.get("exact_deadline")) if value)
+    review = item.get("review") or {}
+    review_note = ""
+    if view == "home":
+        reasons = ", ".join(str(code).replace("-", " ") for code in review.get("reason_codes") or [])
+        facts = item.get("verified_facts") or {}
+        eligibility = item.get("eligibility") or {}
+        unknowns = [
+            label
+            for label, value in (
+                ("availability", item.get("availability")),
+                ("eligibility", eligibility.get("conclusion")),
+                ("exact deadline", item.get("exact_deadline")),
+            )
+            if value in (None, "", "unknown")
+        ]
+        review_note = (
+            f'<span class="card-meta">Why selected: {_e(reasons or "reviewer reason not recorded")}</span>'
+            f'<span class="card-meta">AI-reported official-page check: {_display(facts.get("checked_at"))}; '
+            f"availability {_e(item.get('availability') or 'unknown')}; "
+            f"eligibility {_e(eligibility.get('conclusion') or 'unknown')}. "
+            f"Unknown: {_e(', '.join(unknowns) if unknowns else 'none of these fields')}.</span>"
+            f'<span class="card-action">Next: {_e(item["next_action"])}</span>'
+        )
     return (
         f'<a class="opportunity-card{" selected" if selected == identifier else ""}" href="{_e(href)}" '
         f'aria-label="View {_e(title)}">'
@@ -86,7 +115,57 @@ def _card(item: dict[str, Any], *, view: str, selected: str | None, filters: dic
         f'<span class="card-arrow" aria-hidden="true">↗</span></span>'
         f'<strong>{_e(title)}</strong><span class="card-meta">{_e(meta or "Organization unknown")}</span>'
         f'<span class="card-badges">{_badge(item.get("availability"), "availability")}'
-        f"{_badge(item.get('pipeline_state'), 'pipeline')}</span></a>"
+        f"{_badge(item.get('pipeline_state'), 'pipeline')}</span>{review_note}</a>"
+    )
+
+
+def _explore_card(item: dict[str, Any], *, selected: str | None, filters: dict[str, str]) -> str:
+    identifier = item["opportunity_id"]
+    href = _query(view="explore", item=identifier, **filters)
+    title = item.get("title") or "Untitled opportunity"
+    return (
+        f'<a class="opportunity-card{" selected" if selected == identifier else ""}" href="{_e(href)}" '
+        f'aria-label="View {_e(title)}">'
+        f'<span class="card-top"><span class="eyebrow">Public lead / '
+        f"{_e('review imported' if item['review_status'] == 'reviewed' else 'no review imported')}</span>"
+        '<span class="card-arrow" aria-hidden="true">↗</span></span>'
+        f'<strong>{_e(title)}</strong><span class="card-meta">{_display(item.get("organization"))}</span>'
+        f'<span class="card-meta">First found: {_display(str(item.get("first_seen") or "")[:10])}</span>'
+        f'<span class="card-badges">{_badge(item.get("routing_state"))}'
+        f"{_badge(item.get('engagement_type'))}</span></a>"
+    )
+
+
+def _explore_detail(item: dict[str, Any]) -> str:
+    provenance = item.get("provenance") or []
+    source_rows = []
+    if isinstance(provenance, list):
+        for source in provenance:
+            if isinstance(source, dict):
+                source_rows.append(
+                    f"<li><span>{_e(source.get('source_id') or 'Unknown source')}</span>"
+                    f"{_safe_link(source.get('url') or source.get('source_url'), 'Open lead source')}</li>"
+                )
+    return (
+        '<section class="detail" aria-labelledby="detail-title">'
+        '<div class="detail-head"><div><span class="eyebrow">Explore / public lead</span>'
+        f'<h2 id="detail-title">{_e(item.get("title") or "Untitled opportunity")}</h2>'
+        f"<p>{_display(item.get('organization'))}</p></div>{_badge(item['review_status'])}</div>"
+        f'<p class="identifier">{_e(item["opportunity_id"])}</p>'
+        '<p class="evidence-note">Collector text and links are unverified. A route, score, or stated deadline does '
+        "not establish availability, applicant eligibility, or fit. An unreviewed lead has no imported AI decision.</p>"
+        f'<p class="lead-link">{_safe_link(item.get("canonical_url"), "Open collected lead")}</p>'
+        '<dl class="fact-grid">'
+        f"{_field('Review record', 'Imported' if item['review_status'] == 'reviewed' else 'None imported')}"
+        f"{_field('Collector route', item.get('routing_state'))}"
+        f"{_field('First found', item.get('first_seen'))}"
+        f"{_field('Public score', item.get('generic_score'))}"
+        f"{_field('Source-stated deadline', item.get('stated_deadline'))}"
+        '</dl><div class="section-title"><h3>What the source says</h3></div>'
+        f"<p>{_display(item.get('description_excerpt'))}</p>"
+        "<h4>Collector provenance</h4>"
+        f'<ul class="source-list">{"".join(source_rows) or "<li>No provenance recorded.</li>"}</ul>'
+        "</section>"
     )
 
 
@@ -138,20 +217,20 @@ def _detail(root: Path, item: dict[str, Any], token: str, view: str) -> str:
         f'<h2 id="detail-title">{_e(title)}</h2><p>{_display(item.get("organization"))}</p></div>',
         f"{_badge(item.get('lane'), 'lane')}</div>",
         f'<p class="identifier">{_e(identifier)}</p>',
-        f'<div class="hero-link">{official_link}<p>Verified destination when supplied by review. Check the page again before acting.</p></div>',
-        '<div class="section-title"><h3>What is known</h3><span>Unrecorded facts are shown as Unknown</span></div>',
+        f'<div class="hero-link">{official_link}<p>Destination reported by the reviewer. Check the page again before acting.</p></div>',
+        '<div class="section-title"><h3>Review-reported facts</h3><span>Unrecorded facts are shown as Unknown</span></div>',
         '<dl class="fact-grid">',
-        _field("Availability", item.get("availability")),
+        _field("Reported availability", item.get("availability")),
         _field("Exact deadline", item.get("exact_deadline")),
-        _field("Eligibility conclusion", eligibility.get("conclusion")),
+        _field("Reported eligibility", eligibility.get("conclusion")),
         _field("Board state", item.get("board_state")),
         _field("Pipeline", item.get("pipeline_state")),
         _field("Last updated", item.get("updated_at")),
         "</dl>",
         '<div class="section-title"><h3>Evidence & provenance</h3></div>',
         '<dl class="fact-grid">',
-        _field("Official source type", source_kind),
-        _field("Official page checked", facts.get("checked_at")),
+        _field("Reported official source type", source_kind),
+        _field("Official page checked (reported)", facts.get("checked_at")),
         _field("Reviewer disposition", review.get("disposition")),
         _field("Collector route", item.get("routing_state")),
         _field("Review completed", review.get("reviewed_at")),
@@ -259,52 +338,170 @@ def _detail(root: Path, item: dict[str, Any], token: str, view: str) -> str:
     return "".join(parts)
 
 
-def render_dashboard(root: Path, token: str, params: dict[str, str], *, notice: str = "") -> str:
-    """Render the current board from the Phase 6 read model."""
-    view = params.get("view", "active")
-    if view not in BOARD_VIEWS:
-        view = "active"
-    filters = {
-        key: params.get(key, "").strip()
-        for key in ("search", "availability", "pipeline_state", "board_state")
-    }
+def render_dashboard(
+    root: Path,
+    token: str,
+    params: dict[str, str],
+    *,
+    notice: str = "",
+    manifest_path: Path | None = None,
+) -> str:
+    """Render AI-reviewed Home, complete public Explore, or existing board lanes."""
+    view = params.get("view", "home")
+    if view not in (*BOARD_VIEWS, "home", "explore"):
+        view = "home"
     try:
         offset = max(0, int(params.get("offset", "0")))
     except ValueError:
         offset = 0
-    page = list_workspace_board(
-        root,
-        view=view,
-        offset=offset,
-        limit=_PAGE_SIZE,
-        **{key: value or None for key, value in filters.items()},
-    )
     counts = {
         lane: list_workspace_board(root, view=lane, limit=1)["total"] for lane in BOARD_VIEWS if lane != "all"
     }
+    home_count = list_curated_home(root, limit=1)["total"]
     selected = params.get("item")
+    explore_error = ""
+    queue_summary: dict[str, Any] | None = None
+    filters: dict[str, str]
+    if view == "home":
+        public_manifest = manifest_path or default_manifest_path(root)
+        try:
+            queue_summary = list_explore(root, public_manifest, limit=1)
+        except WorkspaceStateError as exc:
+            explore_error = str(exc)
+    if view == "home":
+        filters = {}
+        page = list_curated_home(root, offset=offset, limit=_PAGE_SIZE)
+        title = "Consider first"
+        subtitle = "Imported AI review decisions, with the next step and uncertainty visible."
+    elif view == "explore":
+        filters = {
+            key: params.get(key, "").strip()
+            for key in ("search", "route", "engagement_type", "review_status")
+        }
+        if filters["route"] not in {"", "included", "research_needed"}:
+            filters["route"] = ""
+        if filters["engagement_type"] not in ("", *ENGAGEMENT_TYPES):
+            filters["engagement_type"] = ""
+        if filters["review_status"] not in {"", "reviewed", "unreviewed"}:
+            filters["review_status"] = ""
+        public_manifest = manifest_path or default_manifest_path(root)
+        try:
+            page = list_explore(
+                root,
+                public_manifest,
+                search=filters["search"],
+                route=filters["route"] or None,
+                engagement_type=filters["engagement_type"] or None,
+                review_status=filters["review_status"] or None,
+                offset=offset,
+                limit=_PAGE_SIZE,
+            )
+            queue_summary = page
+        except WorkspaceStateError as exc:
+            explore_error = str(exc)
+            page = {"total": 0, "next_offset": None, "items": []}
+        title = "Explore all leads"
+        subtitle = "Search the complete current collector review queue, including leads without AI review."
+    else:
+        filters = {
+            key: params.get(key, "").strip()
+            for key in ("search", "availability", "pipeline_state", "board_state")
+        }
+        page = list_workspace_board(
+            root,
+            view=view,
+            offset=offset,
+            limit=_PAGE_SIZE,
+            **{key: value or None for key, value in filters.items()},
+        )
+        title = f"{view.title()} board"
+        subtitle = "Track imported reviews and your own application state."
+
     detail_item = None
     if selected and OPPORTUNITY_ID.fullmatch(selected):
-        matches = list_workspace_board(root, view="all", search=selected, limit=200)["items"]
-        detail_item = next((item for item in matches if item["opportunity_id"] == selected), None)
+        detail_item = next((item for item in page["items"] if item["opportunity_id"] == selected), None)
+        if detail_item is None and view in BOARD_VIEWS:
+            matches = list_workspace_board(root, view="all", search=selected, limit=200)["items"]
+            detail_item = next((item for item in matches if item["opportunity_id"] == selected), None)
     if detail_item is None and page["items"]:
         detail_item = page["items"][0]
         selected = detail_item["opportunity_id"]
     request_id = params.get("request", "")
-    if detail_item and REQUEST_ID.fullmatch(request_id):
+    if detail_item and view != "explore" and REQUEST_ID.fullmatch(request_id):
         recent = list_application_requests(root, detail_item["opportunity_id"])
         created = next((row for row in recent if row["request_id"] == request_id), None)
         if created:
             notice = f"Manual request created at {created['path']}. Open HANDOFF.md there with your agent."
-    activity = list_workspace_history(root, limit=8)["events"] if view == "history" else []
+
+    links = [("home", "Home", home_count)]
+    links += [(lane, lane.title(), counts[lane]) for lane in ("active", "waiting", "dismissed", "history")]
+    links.append(("explore", "Explore", queue_summary["queue_count"] if queue_summary else None))
     nav = "".join(
         f'<a href="{_e(_query(view=lane))}" class="nav-link{" current" if view == lane else ""}"'
-        f"{' aria-current=page' if view == lane else ''}><span>{_e(lane.title())}</span><b>{counts[lane]}</b></a>"
-        for lane in ("active", "waiting", "dismissed", "history")
+        f"{' aria-current=page' if view == lane else ''}><span>{_e(label)}</span>"
+        f"{'<b>' + str(count) + '</b>' if count is not None else ''}</a>"
+        for lane, label, count in links
     )
-    cards = "".join(_card(item, view=view, selected=selected, filters=filters) for item in page["items"])
+    if view == "explore":
+        cards = "".join(_explore_card(item, selected=selected, filters=filters) for item in page["items"])
+    else:
+        cards = "".join(_card(item, view=view, selected=selected, filters=filters) for item in page["items"])
     if not cards:
-        cards = '<div class="empty"><span aria-hidden="true">◇</span><h3>No opportunities here</h3><p>Try another view or clear your filters.</p></div>'
+        if view == "home":
+            message = (
+                "No AI review has been imported yet. Explore the full queue; no reviewed items does not mean "
+                "there is nothing worth doing. If review import failed, correct it and retry."
+                if page["reviewed_count"] == 0
+                else "No imported review currently calls for action. Explore still shows unreviewed leads."
+            )
+        elif view == "explore":
+            message = (
+                "Explore is unavailable until a valid current export is selected."
+                if explore_error
+                else "No leads match these filters in the current queue."
+            )
+        else:
+            message = "Try another board view or clear your filters."
+        cards = f'<div class="empty"><span aria-hidden="true">◇</span><h3>{_e(message)}</h3></div>'
+
+    if view == "home":
+        filters_form = (
+            '<p class="view-note">Only successfully imported review decisions appear here. '
+            "A failed or absent review never means the queue has nothing worth doing. "
+            'The complete current queue is in <a href="/?view=explore">Explore</a>.</p>'
+        )
+    else:
+        filter_rows = (
+            _filter_options("route", filters["route"], ("included", "research_needed"), "Collector route")
+            + _filter_options("engagement_type", filters["engagement_type"], ENGAGEMENT_TYPES, "Type")
+            + _filter_options(
+                "review_status", filters["review_status"], ("reviewed", "unreviewed"), "AI review"
+            )
+            if view == "explore"
+            else _filter_options(
+                "availability",
+                filters["availability"],
+                ("open", "closed", "upcoming", "unknown"),
+                "Availability",
+            )
+            + _filter_options(
+                "pipeline_state", filters["pipeline_state"], tuple(sorted(PIPELINE_STATES)), "Pipeline"
+            )
+            + _filter_options(
+                "board_state",
+                filters["board_state"],
+                ("active", "research_needed", "dismissed", "duplicate"),
+                "Board state",
+            )
+        )
+        filters_form = (
+            f'<form class="filters" method="get" action="/"><input type="hidden" name="view" value="{_e(view)}">'
+            f'<label class="search-label">Search opportunities<input type="search" name="search" '
+            f'value="{_e(filters["search"])}" placeholder="Title, organization, location or keyword"></label>'
+            f'<div class="filter-row">{filter_rows}</div><div class="filter-actions">'
+            f'<button class="button subtle">Apply filters</button><a href="{_e(_query(view=view))}">Clear</a>'
+            "</div></form>"
+        )
     paging = ""
     if offset:
         paging += f'<a class="page-link" href="{_e(_query(view=view, offset=max(0, offset - _PAGE_SIZE), **filters))}">← Previous</a>'
@@ -312,34 +509,74 @@ def render_dashboard(root: Path, token: str, params: dict[str, str], *, notice: 
         paging += f'<a class="page-link" href="{_e(_query(view=view, offset=page["next_offset"], **filters))}">Next →</a>'
     events = ""
     if view == "history":
+        activity = list_workspace_history(root, limit=8)["events"]
         rows = "".join(
             f"<li><time>{_display(event.get('at'))}</time><strong>{_e(event.get('action', 'event'))}</strong>"
             f"<span>{_display(event.get('opportunity_id'))}</span></li>"
             for event in activity
         )
         events = f'<section class="activity"><h2>Recent activity</h2><ol>{rows or "<li>No activity recorded.</li>"}</ol></section>'
+    if view == "explore":
+        detail = (
+            _explore_detail(detail_item)
+            if detail_item
+            else (
+                '<section class="detail empty-detail"><h2>Select a lead</h2><p>Public source text appears here.</p></section>'
+            )
+        )
+    else:
+        detail = (
+            _detail(root, detail_item, token, view)
+            if detail_item
+            else (
+                '<section class="detail empty-detail"><h2>Select an opportunity</h2>'
+                "<p>Imported review facts and actions appear here.</p></section>"
+            )
+        )
+    coverage = ""
+    if queue_summary:
+        coverage = (
+            f'<p class="view-note">Current queue: {queue_summary["queue_count"]}; '
+            f"reviews imported: {queue_summary['reviewed_count']}; "
+            f"no review imported: {queue_summary['unreviewed_count']}. "
+            "An imported review may predate newer source changes.</p>"
+        )
+    elif explore_error and view in {"home", "explore"}:
+        coverage = f'<p class="evidence-note" role="status">Explore unavailable: {_e(explore_error)}</p>'
     css = files("opportunity_discovery").joinpath("dashboard.css").read_text(encoding="utf-8")
-    return f'''<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Opportunity board · {_e(view.title())}</title><style>{css}</style></head><body>
-<a class="skip-link" href="#main">Skip to board</a><div class="shell"><aside class="sidebar"><div class="brand"><span class="brand-mark">◈</span><span>OPPORTUNITY<br><b>DISCOVERY</b></span></div>
-<div class="sidebar-label">PRIVATE WORKSPACE</div><nav aria-label="Board views">{nav}</nav><div class="sidebar-foot"><span class="live-dot"></span> Local board<br><small>{_e(root.name)}</small></div></aside>
-<main id="main"><header class="topbar"><div><span class="eyebrow">YOUR OPPORTUNITY WORKSPACE</span><h1>{_e(view.title())} board</h1><p>Review verified leads, track your progress, and keep uncertainty visible.</p></div><div class="topbar-stat"><b>{counts["active"]}</b><span>active leads</span></div></header>
+    stat = (
+        "Unavailable"
+        if view == "explore" and explore_error
+        else queue_summary["queue_count"]
+        if view == "explore" and queue_summary
+        else page["total"]
+    )
+    stat_label = "current queue leads" if view == "explore" else "items in this view"
+    shown_total = "Unavailable" if view == "explore" and explore_error else str(page["total"])
+    pagination = (
+        "<span>Current queue unavailable</span>"
+        if view == "explore" and explore_error
+        else f"<span>Showing {len(page['items'])} of {page['total']}</span>{paging}"
+    )
+    return f"""<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Opportunity discovery · {_e(title)}</title><style>{css}</style></head><body>
+<a class="skip-link" href="#main">Skip to opportunities</a><div class="shell"><aside class="sidebar"><div class="brand"><span class="brand-mark">◈</span><span>OPPORTUNITY<br><b>DISCOVERY</b></span></div>
+<div class="sidebar-label">PRIVATE WORKSPACE</div><nav aria-label="Discovery views">{nav}</nav><div class="sidebar-foot"><span class="live-dot"></span> Local workspace<br><small>{_e(root.name)}</small></div></aside>
+<main id="main"><header class="topbar"><div><span class="eyebrow">YOUR OPPORTUNITY WORKSPACE</span><h1>{_e(title)}</h1><p>{_e(subtitle)}</p></div><div class="topbar-stat"><b>{stat}</b><span>{_e(stat_label)}</span></div></header>
 {'<div class="notice" role="status">' + _e(notice) + "</div>" if notice else ""}
-<div class="mobile-nav"><nav aria-label="Board views">{nav}</nav></div>
-<section class="workspace-grid"><div class="list-panel"><div class="list-head"><div><span class="eyebrow">BOARD / {_e(view.upper())}</span><h2>Opportunities <span>{page["total"]}</span></h2></div></div>
-<form class="filters" method="get" action="/"><input type="hidden" name="view" value="{_e(view)}"><label class="search-label">Search opportunities<input type="search" name="search" value="{_e(filters["search"])}" placeholder="Title, organization or ID"></label>
-<div class="filter-row">{_filter_options("availability", filters["availability"], ("open", "closed", "upcoming", "unknown"), "Availability")}{_filter_options("pipeline_state", filters["pipeline_state"], tuple(sorted(PIPELINE_STATES)), "Pipeline")}{_filter_options("board_state", filters["board_state"], ("active", "research_needed", "dismissed", "duplicate"), "Board state")}</div>
-<div class="filter-actions"><button class="button subtle">Apply filters</button><a href="{_e(_query(view=view))}">Clear</a></div></form>
-<div class="cards" aria-label="Opportunity results">{cards}</div><div class="pagination"><span>Showing {len(page["items"])} of {page["total"]}</span>{paging}</div>{events}</div>
-{_detail(root, detail_item, token, view) if detail_item else '<section class="detail empty-detail"><span aria-hidden="true">◇</span><h2>Select an opportunity</h2><p>Its facts, sources and actions appear here.</p></section>'}</section></main></div></body></html>'''
+{coverage}<div class="mobile-nav"><nav aria-label="Discovery views">{nav}</nav></div>
+<section class="workspace-grid"><div class="list-panel"><div class="list-head"><div><span class="eyebrow">{_e(view.upper())}</span><h2>Opportunities <span>{shown_total}</span></h2></div></div>
+{filters_form}<div class="cards" aria-label="Opportunity results">{cards}</div><div class="pagination">{pagination}</div>{events}</div>
+{detail}</section></main></div></body></html>"""
 
 
 class _DashboardServer(ThreadingHTTPServer):
     daemon_threads = True
     allow_reuse_address = False
 
-    def __init__(self, root: Path, port: int) -> None:
+    def __init__(self, root: Path, port: int, manifest_path: Path | None = None) -> None:
         self.workspace_root = root
+        self.manifest_path = manifest_path
         self.form_token = secrets.token_urlsafe(32)
         super().__init__(("127.0.0.1", port), _DashboardHandler)
 
@@ -390,7 +627,13 @@ class _DashboardHandler(BaseHTTPRequestHandler):
         params = {key: values[-1] for key, values in parse_qs(parsed.query, keep_blank_values=True).items()}
         try:
             self._send_html(
-                HTTPStatus.OK, render_dashboard(self.server.workspace_root, self.server.form_token, params)
+                HTTPStatus.OK,
+                render_dashboard(
+                    self.server.workspace_root,
+                    self.server.form_token,
+                    params,
+                    manifest_path=self.server.manifest_path,
+                ),
             )
         except (OSError, WorkspaceStateError) as exc:
             self._fail(HTTPStatus.INTERNAL_SERVER_ERROR, str(exc))
@@ -428,8 +671,8 @@ class _DashboardHandler(BaseHTTPRequestHandler):
             return
         identifier = form.get("item", "")
         action = form.get("action", "")
-        view = form.get("view", "active")
-        if not OPPORTUNITY_ID.fullmatch(identifier) or view not in BOARD_VIEWS:
+        view = form.get("view", "home")
+        if not OPPORTUNITY_ID.fullmatch(identifier) or view not in (*BOARD_VIEWS, "home"):
             self._fail(HTTPStatus.BAD_REQUEST, "Invalid opportunity or view")
             return
         root = self.server.workspace_root
@@ -486,12 +729,18 @@ class _DashboardHandler(BaseHTTPRequestHandler):
         self.end_headers()
 
 
-def serve_workspace_dashboard(root: Path, *, port: int = 8765, open_browser: bool = True) -> None:
+def serve_workspace_dashboard(
+    root: Path,
+    *,
+    port: int = 8765,
+    open_browser: bool = True,
+    manifest_path: Path | None = None,
+) -> None:
     """Serve an explicitly selected workspace on IPv4 loopback only."""
     root, _metadata = require_workspace(root)
     if not 0 <= port <= 65535:
         raise ValueError("port must be between 0 and 65535")
-    with _DashboardServer(root, port) as server:
+    with _DashboardServer(root, port, manifest_path) as server:
         url = f"http://127.0.0.1:{server.server_port}/"
         print(f"Private board: {url}  (Ctrl+C to stop)", flush=True)
         if open_browser:

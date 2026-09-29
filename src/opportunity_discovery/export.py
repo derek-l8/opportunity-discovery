@@ -23,6 +23,8 @@ from .config import EngineConfig
 from .models import RunSummary
 
 SCHEMA_VERSION = "1.0"
+MAX_MARKDOWN_ITEMS = 40
+MARKDOWN_RESEARCH_SLOTS = 8
 
 EXPORT_CHANGE_TYPES = {
     "new",
@@ -259,6 +261,8 @@ def export_all(
     review_path = out_dir / "review_queue.jsonl"
     review_count = 0
     rlines: list[bytes] = []
+    markdown_rows: list[sqlite3.Row] = []
+    markdown_routes: dict[str, str] = {}
     for row in _iter_candidates(conn):
         member, reasons = is_review_queue_member(
             row, cfg.scoring.review_queue_threshold, cfg.routing.active_profile
@@ -271,6 +275,8 @@ def export_all(
         )
         rlines.append(json.dumps(cand, sort_keys=True).encode("utf-8"))
         review_count += 1
+        markdown_rows.append(row)
+        markdown_routes[str(row["opportunity_id"])] = str(cand["routing_state"])
     rpayload = b"".join(line + b"\n" for line in rlines)
     _atomic_write(review_path, rpayload)
     written["review_queue"] = {
@@ -281,14 +287,52 @@ def export_all(
 
     # ---- compact human-readable review view -----------------------------
     markdown_path = out_dir / "review_packet.md"
-    markdown_rows = [
-        row
-        for row in _iter_candidates(conn)
-        if is_review_queue_member(row, cfg.scoring.review_queue_threshold, cfg.routing.active_profile)[0]
+    official_observations: dict[str, tuple[str, str | None]] = {}
+    for observation in conn.execute(
+        "SELECT p.opportunity_id, p.source_id, p.source_url FROM provenance p"
+        " JOIN sources s ON s.source_id = p.source_id WHERE s.official_source = 1"
+        " ORDER BY p.opportunity_id, p.provenance_id"
+    ):
+        official_observations.setdefault(
+            str(observation["opportunity_id"]),
+            (str(observation["source_id"]), observation["source_url"]),
+        )
+
+    def packet_rank(row: sqlite3.Row) -> tuple[float, str]:
+        return (
+            -float(row["generic_score"] or 0),
+            str(row["opportunity_id"]),
+        )
+
+    markdown_rows.sort(key=packet_rank)
+    included_rows = [
+        row for row in markdown_rows if markdown_routes[str(row["opportunity_id"])] == "included"
     ]
-    markdown_rows.sort(key=lambda row: (-float(row["generic_score"] or 0), str(row["opportunity_id"])))
+    research_rows = [
+        row for row in markdown_rows if markdown_routes[str(row["opportunity_id"])] == "research_needed"
+    ]
+    selected_rows = included_rows[: MAX_MARKDOWN_ITEMS - MARKDOWN_RESEARCH_SLOTS]
+    selected_rows += research_rows[:MARKDOWN_RESEARCH_SLOTS]
+    remaining_rows = (
+        included_rows[MAX_MARKDOWN_ITEMS - MARKDOWN_RESEARCH_SLOTS :]
+        + research_rows[MARKDOWN_RESEARCH_SLOTS:]
+    )
+    selected_rows += remaining_rows[: MAX_MARKDOWN_ITEMS - len(selected_rows)]
+    selected_rows.sort(
+        key=lambda row: (
+            markdown_routes[str(row["opportunity_id"])] != "included",
+            *packet_rank(row),
+        )
+    )
     markdown_payload, markdown_count = _build_markdown_packet(
-        conn, markdown_rows, cfg, run_id, possible_duplicates, run_summary
+        conn,
+        selected_rows,
+        review_count,
+        cfg,
+        run_id,
+        possible_duplicates,
+        official_observations,
+        run_summary,
     )
     _atomic_write(markdown_path, markdown_payload)
     written["review_packet"] = {
@@ -497,12 +541,14 @@ def _markdown_url(value: Any) -> str:
 def _build_markdown_packet(
     conn: sqlite3.Connection,
     rows: list[sqlite3.Row],
+    queue_count: int,
     cfg: EngineConfig,
     run_id: str | None,
     possible_duplicates: dict[str, list[str]],
+    official_observations: dict[str, tuple[str, str | None]],
     run_summary: RunSummary | None,
 ) -> tuple[bytes, int]:
-    """Build a score-ordered, bounded view; JSON remains the complete state."""
+    """Build a bounded first-pass view; JSON remains the complete state."""
     if run_summary is None:
         coverage = [
             "> **Source coverage unavailable:** This export did not run collection. "
@@ -529,12 +575,17 @@ def _build_markdown_packet(
         "",
         f"Run: `{_markdown_text(run_id)}`  " if run_id else "Run: export only; no collection run  ",
         f"Profile: `{cfg.routing.active_profile}`  ",
-        f"Eligible review-queue records: {len(rows)}",
+        f"Review-queue records: {queue_count}",
         "",
         *coverage,
         "",
-        "This is a compact subset. Use `review_queue.jsonl` and paginated "
-        "`delta_packet*.json` for complete state.",
+        "First-pass selection: active-profile included leads by generic score, with up to eight "
+        "research_needed leads reserved for investigation; stable ID breaks score ties. "
+        "Official-source observations, excerpts, and stated deadlines are shown as evidence cues. "
+        f"At most {MAX_MARKDOWN_ITEMS} leads appear here. These signals do not verify availability, "
+        "applicant eligibility, or fit. A link, score, route, or deadline is not proof a role is open.",
+        "This is a compact subset. Use `review_queue.jsonl` for the full queue, "
+        "`candidates.jsonl` for all leads, and `delta_packet*.json` for changes.",
         "",
     ]
     sections: list[str] = []
@@ -546,35 +597,58 @@ def _build_markdown_packet(
             _row_to_candidate(row, cfg.export.excerpt_chars, cfg.routing.active_profile, possible_duplicates),
         )
         provenance_urls = [item["url"] for item in candidate["provenance"] if item.get("url")]
+        official_observation = official_observations.get(str(candidate["opportunity_id"]))
         duplicate_ids = candidate["possible_duplicate_ids"]
         deadline = _markdown_text(candidate["stated_deadline"])
         review_url = _markdown_url(
-            candidate["official_url"] or candidate["application_url"] or candidate["canonical_url"]
+            (official_observation[1] if official_observation else None)
+            or candidate["application_url"]
+            or candidate["canonical_url"]
         )
         provenance = ", ".join(_markdown_url(url) for url in provenance_urls) or "unknown"
+        unknowns = [
+            label
+            for label, value in (
+                ("official-source observation", official_observation),
+                ("excerpt", candidate["description_excerpt"]),
+                ("stated deadline", candidate["stated_deadline"]),
+            )
+            if not value
+        ]
+        if candidate["application_state"] == "unknown":
+            unknowns.append("application state")
+        source_type = (
+            f"observed by registered official source {_markdown_text(official_observation[0])}; "
+            "current status unverified"
+            if official_observation
+            else "non-official lead only; find and check an official page"
+        )
         section_lines = [
             f"## {_markdown_text(candidate['title'])}",
             "",
             f"- ID: `{candidate['opportunity_id']}`",
             f"- Organization: {_markdown_text(candidate['organization'])}",
-            f"- Route: `{candidate['routing_state']}` ({candidate['eligibility_confidence']})",
-            f"- Score: {candidate['generic_score']}",
-            f"- Application: `{candidate['application_state']}`; deadline: {deadline}",
-            f"- Official/application URL: {review_url}",
+            f"- Why surfaced: public-text tags {_markdown_text(', '.join(candidate['role_family_tags']))}; "
+            f"route `{candidate['routing_state']}`; generic score {candidate['generic_score']}",
+            f"- Source type: {source_type}",
+            f"- Unknown: {', '.join(unknowns) if unknowns else 'none of the listed fields'}",
+            f"- Source-stated application status: `{candidate['application_state']}`; "
+            f"source-stated deadline: {deadline} (current availability unverified)",
+            f"- Lead URL: {review_url}",
             f"- Provenance: {provenance}",
             f"- Possible duplicates: {_markdown_text(', '.join(duplicate_ids) if duplicate_ids else 'none')}",
             f"- Excerpt: {_markdown_text(candidate['description_excerpt'])}",
             "",
         ]
         trial_sections = [*sections, "\n".join(section_lines)]
-        omitted = len(rows) - (included + 1)
+        omitted = queue_count - (included + 1)
         footer = ["", f"Displayed: {included + 1}; omitted from compact view: {omitted}", ""]
         payload = "\n".join([*header, *trial_sections, *footer]).encode("utf-8")
         if len(payload) > limit:
             break
         sections = trial_sections
         included += 1
-    footer = ["", f"Displayed: {included}; omitted from compact view: {len(rows) - included}", ""]
+    footer = ["", f"Displayed: {included}; omitted from compact view: {queue_count - included}", ""]
     payload = "\n".join([*header, *sections, *footer]).encode("utf-8")
     if len(payload) > limit:
         raise ValueError(f"Markdown review packet header cannot fit export.packet_char_limit={limit}")

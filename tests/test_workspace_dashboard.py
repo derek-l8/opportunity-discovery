@@ -13,6 +13,7 @@ import pytest
 from opportunity_discovery.workspace_board import list_workspace_board
 from opportunity_discovery.workspace_dashboard import _DashboardServer, render_dashboard
 from opportunity_discovery.workspace_state import apply_workspace_review
+from tests.test_workspace_discovery import add_review_queue
 from tests.test_workspace_state import make_generation, make_workspace, materialize_review
 
 SCENARIO = json.loads(
@@ -23,8 +24,8 @@ RESEARCH_ID = SCENARIO["opportunity_ids"]["research"]
 
 
 @contextmanager
-def dashboard(root):
-    with _DashboardServer(root, 0) as server:
+def dashboard(root, manifest=None):
+    with _DashboardServer(root, 0, manifest) as server:
         worker = Thread(target=server.serve_forever, daemon=True)
         worker.start()
         try:
@@ -66,7 +67,7 @@ def test_dashboard_renders_real_board_and_escapes_untrusted_content(tmp_path):
     assert "Forget Completely" in page
     assert "Type FORGET to confirm" in page
     assert "Unknown" in page
-    assert 'aria-label="Board views"' in page
+    assert 'aria-label="Discovery views"' in page
     assert 'name="reason_code"' in page
 
     board_path = root / ".opdisc" / "board.json"
@@ -191,3 +192,22 @@ def test_dashboard_http_action_flow_and_request_guards(tmp_path):
         )
         assert list_workspace_board(root, view="all")["total"] == 3
         assert "Recent activity" in get.open(url + "/?view=history").read().decode()
+
+
+def test_dashboard_http_explore_reads_full_queue_without_creating_board_records(tmp_path):
+    root = make_workspace(tmp_path)
+    manifest = make_generation(tmp_path)
+    add_review_queue(manifest)
+    apply_workspace_review(root, materialize_review(tmp_path), manifest_path=manifest)
+    untouched = "opp_3cf744c778c9ceccceb50d064383d337"
+    with dashboard(root, manifest) as (_server, url):
+        page = (
+            build_opener(NoRedirect())
+            .open(url + "/?view=explore&review_status=unreviewed&search=Embedded+Firmware+Internship")
+            .read()
+            .decode()
+        )
+        assert untouched in page
+        assert "reviews imported: 4; no review imported: 1" in page
+        assert "Forget Completely" not in page  # Explore is read-only for public leads.
+    assert list_workspace_board(root, view="all")["total"] == 4

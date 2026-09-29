@@ -326,6 +326,10 @@ class Pipeline:
         changed: dict[str, dict[str, Any]] = {}
         material_fields = self.cfg.changes.material_fields
         updates: dict[str, Any] = {"last_seen": now, "last_successful_check": now}
+        if existing["organization"] == "↳" and raw.organization and raw.organization.strip() != "↳":
+            corrected_organization = raw.organization.strip()
+            changed["organization"] = {"old": "↳", "new": corrected_organization}
+            updates["organization"] = corrected_organization
         owners: dict[str, str] = json.loads(existing["field_owner_json"] or "{}")
         source_class = "official" if source.official_source else "aggregate"
         owner_tag = f"{source_class}:{source.source_id}"

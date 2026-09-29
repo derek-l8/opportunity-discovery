@@ -2,16 +2,19 @@
 
 ## Posture
 
-- **Local-only**: SQLite + files under `data/`, `output/`, `logs/`.
+- **Local-only**: collector SQLite + files under `data/`, `output/`, `logs/`;
+  private workspace commands are also shipped here. Keep their runtime state
+  outside the Git checkout.
 - **No credentials**: no API keys, no logins, nothing authenticated. If a
   source requires an Authorization-Key (e.g. USAJOBS), it is out of scope.
 - **No AI/model dependencies** and no telemetry.
 - **No submissions**: the engine never applies, messages, uploads, or saves
   anything to any service.
-- **External workspace only**: `opdisc init-workspace` writes private starter
+- **Selected workspace**: `opdisc init-workspace` writes private starter
   files only to the path explicitly selected by the user. Review, feedback,
   recovery, backup, and workspace-audit commands require that explicit root and
-  never copy private state into collector SQLite or public exports.
+  never copy private state into collector SQLite or public exports. Initialization
+  warns if the selected workspace is inside Git; it does not refuse that path.
 - **Bounded public HTTP**: remote URLs must use HTTP(S), may not embed
   credentials, resolve only to public addresses, and are revalidated at each
   redirect. Redirect count and response body size are capped. Program-page
@@ -22,9 +25,10 @@
 Collector SQLite and public outputs never store personal data: applicant
 profiles, eligibility decisions, resumes/transcripts/essays, application
 history or outcomes, or demographic data. The engine stores only what public
-sources state about opportunities. An external private workspace may contain
-private user material and decisions by design; it is outside the engine Git
-history and publication boundary.
+sources state about opportunities. A selected private workspace may contain
+private user material and decisions by design. Its files must be kept outside
+the engine Git checkout and publication boundary; `workspace-audit` reports
+tracked private files.
 
 Private workspace backups are unencrypted ZIP files. Backup and restore reject
 engine paths, caches, traversal, unlisted content, and symlinks; restore also

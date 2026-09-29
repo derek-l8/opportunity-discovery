@@ -4,17 +4,16 @@ Read this before changing anything in this repository.
 
 ## What this repository is
 
-This repository is **only the public deterministic discovery layer** of a
-two-layer workflow. It collects, normalizes, deduplicates, and exports broad
-public opportunity leads. A separate private AI workflow (Windows, outside
-this repo) consumes the export packets and owns all applicant-specific work:
-verification on official pages, eligibility analysis, ranking, the "Do now" /
+This repository contains the public deterministic collector and provider-neutral
+tools for an explicitly selected private workspace. The collector collects,
+normalizes, deduplicates, and exports broad public opportunity leads. A separate
+private review workflow consumes selected leads and owns all applicant-specific
+work: verification on official pages, eligibility analysis, ranking, the "Do now" /
 "Prepare next" action view, application management, and drafting.
 
-The repository may ship provider-neutral commands and schemas that operate on
-an explicitly selected external private workspace. Runtime private state must
-remain below that workspace root; it never belongs in collector SQLite,
-collector exports, fixtures, or this Git checkout.
+The workspace tools and schemas are code in this repository. Runtime private
+state must remain below the selected workspace root and outside the Git
+checkout; it never belongs in collector SQLite, collector exports, or fixtures.
 
 ## Hard rules
 
