@@ -1,230 +1,132 @@
-# Private workspace review and recovery
+# Review and manage your workspace
 
-These commands manage files in a private workspace you choose. The commands
-are part of this repository, but private files stay outside its Git checkout.
-They do not call an AI model, browse pages, schedule AI work, submit
-applications, or change collector SQLite.
+Use the dashboard for everyday actions. Use the commands below to import an agent's review, back up your files, or recover earlier work.
 
-## Apply structured review
-
-An agent writes a `schemas/workspace-review.schema.json` response against the
-current export generation. Apply it explicitly:
-
-```text
-opdisc workspace-apply-review WORKSPACE RESPONSE.json --manifest output/export_manifest.json
-```
-
-All input and generation checks finish before private files change. The command
-also validates every existing board, knowledge, proposal, and operation-report
-file it will touch. An older review cannot replace a newer review for the same
-opportunity. At an equal `reviewed_at`, only the identical input (tracked by
-SHA-256) is accepted as an idempotent replay.
-
-The command
-updates `.opdisc/board.json`, `knowledge/AUTOMATED.json`, a bounded generated
-Markdown view, `.opdisc/proposals.json`, and a material-change report. It keeps
-availability, deadline, private eligibility, reviewer disposition, user state,
-and collector snapshot in separate fields. Existing `user_state` is never
-inferred or overwritten by automatic review. Existing proposal status and
-metadata are preserved. Supported nested `custom` metadata, including
-response-level metadata in operation reports, is merged or preserved.
-
-Promotion is guarded by the threshold in `docs/INTEGRATION_CONTRACT.md`.
-Unresolved promotion attempts remain `research_needed`. Protected changes are
-only proposals; there is no command here that applies them.
-
-## Record reasoned feedback
-
-`opdisc workspace-apply-feedback WORKSPACE FEEDBACK.json` accepts
-`schemas/workspace-feedback.schema.json`. Done or Delete requires at least one
-non-blank string reason. `preference_signals` is required but may be empty.
-The command changes the explicitly selected record's private `user_state` and
-updates only named soft preference counters in `knowledge/PREFERENCES.json`.
-Feedback IDs make learning idempotent. No collector configuration or hard
-filter changes.
-Feedback for the same opportunity must advance past the latest feedback or
-direct Done/Delete/restore action. An older input, or a different input at the
-same decision time, is rejected before any files change. Replaying the exact
-latest input remains safe. Each input may name an opportunity only once, and
-the board's update time never moves backward when an older but valid decision
-for another record is applied.
-
-## Knowledge history
-
-Before automated review changes generated knowledge, or feedback changes soft
-preferences, the workspace records the selected files under
-`.opdisc/history/knowledge/`. Each snapshot says which operation created it and
-whether each file existed. Retention keeps the latest daily snapshot for 30
-days and the latest snapshot per older month. The snapshot for the current
-operation is always kept.
-
-Use `knowledge-snapshots`, `compare-knowledge`, and `restore-knowledge` to list,
-compare, and restore. Restore validates snapshot hashes and first captures the
-current files as a pre-restore snapshot. Snapshot creation, comparison, and
-restore reject a symlink in any knowledge path component. Restore records a
-complete or failed checkpoint; a failure names the pre-restore snapshot and
-the exact recovery command.
-
-## Dashboard-ready board commands
-
-`opdisc --json workspace-board WORKSPACE` returns the versioned private read
-model defined by `schemas/workspace-board-page.schema.json`. It reads only the
-selected external workspace. Records sort by stable opportunity ID and support
-`--view active|waiting|dismissed|history|all`, `--board-state`, `--user-status`,
-`--pipeline-state`, `--availability`, case-insensitive `--search` over ID/title/
-organization, and `--offset`/`--limit` (1–200). The response includes total
-matches and `next_offset`. It carries verified facts, reviewer provenance,
-collector provenance, user state, and supported `custom` fields without copying
-the full collector description into each page. Record and board update times
-remain monotonic when a later research response has an earlier timestamp than
-a user action.
-
-Lane precedence is dismissed (user Delete, reviewer dismissal, or duplicate),
-then history for Done, then waiting (explicit wait or submitted/interviewing
-pipeline), then history for an outcome pipeline state, then active. Done leaves
-the factual pipeline state in place but moves the item to history, including
-when it was submitted or explicitly waiting. These lanes are a view of private
-state; they do not change public collector routing or eligibility.
-
-`workspace-done` and `workspace-delete` take a workspace and opportunity ID.
-Without a reason, they only change the user-controlled status. With
-`--reason-code` or `--reason-text`, they use the same validated feedback importer
-as `workspace-apply-feedback`; optional `--prefer SIGNAL` and `--avoid SIGNAL`
-learn only named soft preferences and require a reason. `workspace-restore`
-clears Done/Delete to the prior user status when known (otherwise `unreviewed`).
-It leaves verified facts, review, pipeline state, and custom metadata intact.
-
-`workspace-pipeline WORKSPACE ID STATE` records one of `not-started`,
-`preparing`, `submitted`, `interviewing`, `offer`, `rejected`, or `withdrawn`.
-`workspace-wait WORKSPACE ID --reason TEXT [--until YYYY-MM-DD]` and
-`workspace-resume WORKSPACE ID` manage an explicit waiting flag separately from
-pipeline state. These commands never infer an application submission.
-
-`workspace-history WORKSPACE [--opportunity-id ID] [--offset N] [--limit N]`
-reads Phase 6 board actions and the existing Phase 4/5 operation reports. A
-per-opportunity query shows Phase 6 actions; older reports did not record a
-complete per-opportunity event trail. The JSON contract is
-`schemas/workspace-history-page.schema.json`. Reasoned direct actions appear
-once even though they also create a Phase 4 feedback report.
-
-`workspace-purge WORKSPACE ID` removes the current board record, its Phase 6
-board events, and ID-named folders under `opportunities/` and `applications/`.
-This removes the current anti-rediscovery record, so the public lead may appear
-again. Purge rejects symlinked artifact paths. Earlier operation reports,
-knowledge, source evidence, and separately created backup ZIPs remain; purge
-is not secure erasure of archives. The user must manage those copies separately.
-Mutating commands should run serially in one workspace; board, report, event,
-and checkpoint files are individually atomic but do not form one transaction.
-
-## Local browser dashboard
-
-`opdisc workspace-dashboard WORKSPACE [--manifest output/export_manifest.json]
-[--port 8765]` opens the local dashboard at `http://127.0.0.1:8765/`. Stop it
-with Ctrl+C. Without `--manifest`, Explore looks for `output/export_manifest.json`
-under the engine path recorded when the workspace was initialized. Select the
-manifest explicitly if the collector uses a different output directory.
-
-Home lists only imported AI review decisions still awaiting action. Promoted
-leads appear before leads requiring more investigation; a review-recorded exact
-deadline breaks ties within a group. Public generic scores do not set private
-priority. Cards show review reasons, AI-reported official-page checks,
-uncertainty, and a next step. An empty Home says whether no review has been
-imported; it never means the public queue has nothing useful.
-
-Explore reads the complete current `review_queue.jsonl` only when its hash
-matches the selected manifest. It searches title, organization, or ID and
-filters by public route and whether an imported review exists. Counts show
-reviewed and unreviewed current queue IDs. Public lead detail is read-only and
-labels availability, eligibility, and fit as unverified. If the export is
-missing or damaged, Explore says unavailable rather than showing zero leads.
-These counts are a current snapshot, not a claim that every past queue entry
-was reviewed. The existing active, waiting, dismissed, and history board lanes
-remain available for private actions and application state. The server binds
-only to IPv4 loopback.
-
-The 40-item `review_packet.md` is a bounded AI input preview, not Home content
-or a completion marker. Today, further manual AI sessions must select from the
-full queue and delta pages, check source health, and submit explicit review
-decisions. The packet can repeat high-scoring leads, and the board cannot record
-quick triage without the official evidence required for a structured review.
-
-Done and Delete accept an optional reason. Restore, pipeline, wait, and resume
-use the existing state model. Forget Completely requires typing `FORGET` and
-removes the board record and ID-named artifacts as described above. Browser
-forms are protected by a per-server token and same-origin checks. Run one
-dashboard process per workspace while changing state; separate processes and
-CLI mutations are not transactionally coordinated.
-
-## Manual application requests
-
-Select an opportunity in the dashboard and use **Application preparation**, or
-run `opdisc workspace-request WORKSPACE ID TYPE "Request text"` with optional
-`--reference sources/name` or `--reference knowledge/name` arguments. Supported
-types are resume, cover-letter, essay, short-answer, application-notes,
-interview-prep, and other. The command creates a unique folder under
-`applications/ID/requests/` containing `request.json`, a snapshot of the
-current board item in `opportunity.json`, `references.json` with private paths
-and hashes, `HANDOFF.md`, and empty `drafts/` and `revisions/` folders. The
-profile and catalog are included as references when present. Paths supplied by
-the user must point to existing, non-symlinked files under `sources/` or
-`knowledge/`. Source content is not copied into the request.
-
-Open `HANDOFF.md` in that request folder with your chosen agent after making
-the request. The agent may write a new file in `drafts/`, use `revisions/` for
-later versions, and record the result in `response.json` according to
-`schemas/workspace-application-response.schema.json`. The engine does not
-invoke an agent, generate filler drafts, overwrite an edited draft, or submit
-an application. `AGENTS.md` and `CLAUDE.md` in the workspace remain thin
-pointers to the user-owned `WORKSPACE.md`.
-
-To click through a realistic board without private data, create a new external
-demo workspace from the engine checkout:
+Run the PowerShell examples from the project folder. Set your workspace path once in that window, changing it if you chose another folder:
 
 ```powershell
-.\.venv\Scripts\python.exe scripts\demo_workspace.py "$env:TEMP\Opportunity-Demo"
-.\.venv\Scripts\opdisc.exe workspace-dashboard "$env:TEMP\Opportunity-Demo"
+$workspace = Join-Path ([Environment]::GetFolderPath("MyDocuments")) "Opportunity-Workspace"
+$opdisc = ".\.venv\Scripts\opdisc.exe"
 ```
 
-The demo refuses an existing destination. Its five fictional records populate
-all four board lanes through the production review importer and board actions.
-It also includes a fake private profile, one source, a manual resume request,
-and a fake agent response and draft. The dashboard can create additional
-requests from any opportunity.
+On Linux, use your actual workspace path and `.venv/bin/opdisc` in place of `& $opdisc`.
+
+## Open the dashboard
+
+```powershell
+& $opdisc workspace-dashboard $workspace
+```
+
+Open `http://127.0.0.1:8765/` if the browser does not open automatically. Stop the server with Ctrl+C.
+
+- **Home** shows imported review decisions that still need attention, with reasons and a next action.
+- **Explore** searches the complete current review queue, including leads with no imported review.
+- **Waiting**, **Dismissed**, and **History** show your other board items.
+
+Home can be empty before your first review. If Explore says its export is unavailable, run the collector and check `output/source_health.json`. To use a different export folder, pass `--manifest PATH/TO/export_manifest.json`.
+
+Select a reviewed item to use **Done**, **Delete**, or **Restore**. Done means no further action is needed; Delete hides an unwanted item. You can add a reason to help your agent understand your preferences. Neither action removes the public lead from the collector.
+
+**Forget Completely** requires typing `FORGET`. It deletes the current board record and its ID-named opportunity and application folders. The lead can appear again. Earlier reports, knowledge, source files, and backups remain; this is not complete erasure of every copy.
+
+Run one dashboard per workspace and stop it before changing that workspace through CLI commands.
+
+## Import an agent's review
+
+Follow [Review with your own AI](../README.md#review-with-your-own-ai) to have your agent save `review.json` in the private workspace. Then run:
+
+```powershell
+& $opdisc workspace-apply-review $workspace (Join-Path $workspace "review.json") --manifest .\output\export_manifest.json
+```
+
+A successful import makes the decisions available in the dashboard. If the command rejects a response, correct the reported problem before retrying. If collection has generated new exports, ask the agent to refresh its response against them.
+
+The 40-lead packet is a starting sample, not a complete review. For later sessions, ask your agent to select more leads from `review_queue.jsonl` or the new/changed-lead packets. Imported decisions do not track everything an agent has read, and the starter sample may repeat leads.
+
+## Prepare an application
+
+Select a reviewed opportunity and use **Application preparation**. Choose the kind of work and describe what you want your agent to do. The dashboard shows the new request folder under `applications/OPPORTUNITY_ID/requests/`.
+
+Open that folder's `HANDOFF.md` with your agent. It contains the request and references; the agent can save drafts in `drafts/` and later versions in `revisions/`. Review the result yourself before applying. Creating a request does not invoke an agent or submit an application.
+
+For CLI requests, use `workspace-request --help`. Reference files must exist under the workspace's `sources/` or `knowledge/` folders.
 
 ## Backup and restore
 
-`backup-workspace --kind full` includes instructions, inbox, sources,
-knowledge, opportunities, applications, manifests, board state, reports, and
-history. `--kind state` omits inbox and source binaries. Both exclude the
-engine checkout, caches, backup folders, temporary files, and symlinks.
+Stop the dashboard and other workspace-changing commands before backing up or restoring.
 
-Backups are ordinary unencrypted ZIP files containing private information.
-`restore-workspace` rejects unlisted, corrupt, non-portable, cache, engine, and
-out-of-scope archive paths. It creates a full pre-restore ZIP before atomically
-replacing named files. It does not delete unrelated current files. The target
-workspace's machine-specific root and engine paths remain authoritative while
-the backed-up workspace `custom` metadata is restored.
+Create a full backup outside the project folder:
 
-Restore also rejects colon-bearing names (including Windows alternate data
-streams) and case-insensitive path collisions. A failed backup records the
-error and an exact rerun action in the workspace checkpoint.
+```powershell
+$backupFolder = Join-Path (Split-Path $workspace -Parent) "Opportunity-Backups"
+$backup = Join-Path $backupFolder ("workspace-" + (Get-Date -Format "yyyyMMdd-HHmmss") + ".zip")
+& $opdisc backup-workspace $workspace $backup --kind full
+```
 
-## Workspace audit and checkpoints
+The command creates the destination folder if needed. A full backup includes your instructions, inbox, sources, knowledge, decisions, application files, and history. Use `--kind state` for a smaller backup without inbox or source files. Neither includes the engine checkout or caches.
 
-`workspace-audit` reports a workspace inside Git, every tracked private file,
-missing, changed, or symlinked preserved sources, unavailable external references,
-knowledge links to missing local sources, and a dirty engine checkout. A dirty
-engine warning means an updater must stop before pulling.
+Backups are **unencrypted ZIP files containing private information**. Store them accordingly and use a new filename for each backup.
 
-Mutating operations update `.opdisc/checkpoint.json` with their status,
-completed steps, input hash when applicable, and exact next action. Review and
-feedback inputs are idempotent so the same file can be rerun after correcting a
-reported failure.
+To restore, set `$backup` to the actual ZIP you want to use:
 
-## Current limitations
+```powershell
+$backup = Read-Host "Full path to the workspace backup ZIP"
+& $opdisc restore-workspace $workspace $backup
+```
 
-There is no encryption, cloud transport, live-provider integration, scheduled
-AI review, automatic proposal approval, engine-authored application drafting,
-or submission in these phases. Native Windows PowerShell
-validation remains a platform check; the implementation itself uses `pathlib`,
-`os.replace`, and Python's cross-platform ZIP support.
+Restore checks the archive and creates a full backup of your current workspace before replacing matching files. It leaves unrelated files in place and reports the pre-restore backup path. It is not an exact rollback that deletes newer files.
+
+## Recover generated knowledge
+
+Review imports and reasoned feedback save snapshots of the generated knowledge files they change. These are not backups of everything an agent edits; use a full workspace backup for that.
+
+```powershell
+& $opdisc knowledge-snapshots $workspace
+```
+
+Choose a snapshot ID from the output, compare it, and restore only if it contains the version you want:
+
+```powershell
+$snapshot = Read-Host "Snapshot ID"
+& $opdisc compare-knowledge $workspace $snapshot
+```
+
+After inspecting the comparison:
+
+```powershell
+& $opdisc restore-knowledge $workspace $snapshot
+```
+
+Restore saves the current generated knowledge first. Retention keeps the latest daily snapshot for 30 days and one per older month.
+
+## Try the fictional demo
+
+From the project folder, create a new temporary workspace:
+
+```powershell
+$demo = Join-Path $env:TEMP ("Opportunity-Demo-" + [guid]::NewGuid().ToString("N"))
+.\.venv\Scripts\python.exe scripts\demo_workspace.py $demo
+```
+
+After creation succeeds, open it using its synthetic exports:
+
+```powershell
+$demoManifest = Join-Path $demo ".opdisc\demo-generation\export_manifest.json"
+& $opdisc workspace-dashboard $demo --manifest $demoManifest
+```
+
+The demo contains fictional leads, a profile, and an application request with a fake draft. It refuses an existing destination.
+
+## CLI and file-format reference
+
+Use `& $opdisc COMMAND --help` for arguments to a specific command. The [integration contract](INTEGRATION_CONTRACT.md) describes the review rules and formats.
+
+- [Review responses](../schemas/workspace-review.schema.json) must match the selected export generation. Older reviews cannot replace newer ones. Repeating the same accepted response is safe. Promotion requires the official evidence and eligibility checks described in the contract.
+- [Feedback responses](../schemas/workspace-feedback.schema.json) require a reason for Done/Delete and a `preference_signals` list, which can be empty. Older feedback cannot replace a later Done/Delete/restore action. Feedback learns named soft preferences, not collector configuration or hard filters.
+- `workspace-board` and `workspace-history` provide filtered, paginated JSON for integrations. Per-opportunity history is incomplete for records created before board-action logging was added.
+- `workspace-pipeline`, `workspace-wait`, and `workspace-resume` update application progress and waiting state. Done moves an item to History without changing its factual pipeline state.
+- Application results can use the [application response schema](../schemas/workspace-application-response.schema.json). The profile and catalog are included as request references when present.
+- `workspace-audit` checks for private files tracked in Git and missing or changed references. A dirty-engine warning means you should preserve local changes before updating.
+- `.opdisc/checkpoint.json` records operation progress and recovery instructions. Files are replaced individually, not as one transaction; do not run concurrent workspace mutations.
+
+Backup and recovery reject unsafe archive paths and symlinked files. These checks do not encrypt your data or control who can access your computer.

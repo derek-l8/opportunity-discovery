@@ -1,140 +1,104 @@
-# Operations — native Windows
+# Install and update on Windows
 
-Production runs on native Windows Python. WSL is a development convenience
-only; nothing at runtime depends on it.
+Use PowerShell. Install [Git for Windows](https://git-scm.com/install/windows) and [Python 3.11–3.14](https://www.python.org/downloads/windows/) first. These commands install into `Documents\Opportunity-Workspace` by default. Change `$workspace` if you prefer another location.
 
-## Install (PowerShell, one-time)
-
-The installer and the manual commands are **alternatives** — either produces
-the same repository-local `.venv` for a **normal installation** (runtime
-package only, which is all scheduled runs need). For a **development
-installation** (tests, Ruff, Mypy) use the dev extra shown at the end.
+## New installation
 
 ```powershell
-# Recommended canonical layout: create the private parent, then place the
-# actual public Git checkout at engine\opportunity-discovery.
-$documents = [Environment]::GetFolderPath("MyDocuments")
-$workspace = Join-Path $documents "Opportunity-Workspace"
-New-Item -ItemType Directory -Force (Join-Path $workspace "engine")
-git clone https://github.com/derek-l8/opportunity-discovery.git `
-    (Join-Path $workspace "engine\opportunity-discovery")
-Set-Location (Join-Path $workspace "engine\opportunity-discovery")
+$workspace = Join-Path ([Environment]::GetFolderPath("MyDocuments")) "Opportunity-Workspace"
+$engine = Join-Path $workspace "engine\opportunity-discovery"
+New-Item -ItemType Directory -Force (Split-Path $engine -Parent) | Out-Null
+git clone https://github.com/derek-l8/opportunity-discovery.git $engine
+```
 
-# Option A: installer (selects the newest compatible installed Python via the
-#           py launcher or python.exe, then performs the same steps as Option B)
+After cloning succeeds, enter the project folder and install:
+
+```powershell
+Set-Location $engine
 .\scripts\install.ps1 -WorkspacePath $workspace
-
-# Option B: manual
-py -3.14 -m venv .venv                       # recommended for new installs
-.\.venv\Scripts\python -m pip install --upgrade pip
-.\.venv\Scripts\pip install -e .             # normal installation
 ```
 
-During Option A, setup prompts for a private workspace location and offers
-`Documents\Opportunity-Workspace`. For a noninteractive run, pass an explicit
-path; for an engine-only installation, opt out:
+The installer chooses an installed Python version, creates `.venv`, sets up collector storage, and initializes the private workspace. It leaves existing private files in place. If you already cloned the repository, skip `git clone` and run the installer from that checkout with your chosen workspace path.
+
+If PowerShell blocks the script, see [Troubleshooting](TROUBLESHOOTING.md#installation).
+
+## First run
+
+From the project folder:
 
 ```powershell
-.\scripts\install.ps1 -WorkspacePath "D:\Opportunity-Workspace"
-.\scripts\install.ps1 -SkipWorkspaceSetup
+.\scripts\run.ps1
+.\.venv\Scripts\opdisc.exe source-health
+.\.venv\Scripts\opdisc.exe workspace-dashboard $workspace
 ```
 
-The installer operates on its active checkout in place. It never moves, copies,
-reclones, or duplicates that checkout. The initializer preserves all existing
-workspace files. If the chosen workspace is
-inside a Git checkout it emits a privacy warning, but does not override the
-user's choice. `.opdisc\workspace.json` records the resolved checkout path and
-is authoritative. Existing installations may keep their engine elsewhere, but
-setup warns that an agent opened only at the workspace root may not be able to
-access an external checkout. External mode does not create an empty or
-misleading `engine\opportunity-discovery` directory.
+The collector writes results under `output\` and a dated log under `logs\`. In the dashboard, **Explore** shows current leads; **Home** fills only after you import review decisions. Stop the dashboard with Ctrl+C.
 
-Python 3.14 is the current recommended/default version. Python 3.11, 3.12,
-3.13, and 3.14 remain supported, and the installer tries them newest-first.
-If 3.14 is unavailable, use 3.13, 3.12, or 3.11. An existing `.venv` does not
-automatically upgrade its Python; recreate it explicitly to change versions.
+## Update an existing installation
 
-Development installation (instead of the plain `-e .` above):
+Use the same project folder and private workspace; do not clone a second copy. In a new PowerShell session, set `$workspace` to your existing workspace path:
 
 ```powershell
-.\.venv\Scripts\pip install -e '.[dev]'
+$workspace = Join-Path ([Environment]::GetFolderPath("MyDocuments")) "Opportunity-Workspace"
+Set-Location (Join-Path $workspace "engine\opportunity-discovery")
+git status --short
 ```
 
-## Normal run
+If your project folder is elsewhere, use its actual path in `Set-Location`. If the status command prints files, preserve those changes before updating. For configuration edits, follow [Keep your settings when updating](#keep-your-settings-when-updating). With an empty status, run these commands one at a time:
 
 ```powershell
-.\.venv\Scripts\opdisc.exe init
-.\.venv\Scripts\opdisc.exe validate-config
-.\.venv\Scripts\opdisc.exe validate-sources     # one-time + after registry edits
-.\scripts\run.ps1                               # scheduled-run entry point
+git switch main
+git pull --ff-only
 ```
 
-`scripts/run.ps1`:
-
-- runs `opdisc --quiet run` (global CLI options precede the subcommand),
-- appends output to `logs\run-YYYYMMDD.log`,
-- maps exit codes (same contract as `opdisc collect`): `0` no failures /
-  nothing due / at least one source succeeded, `1` all attempted sources
-  failed, `2` fatal/config error, `3` already-running (lock),
-- surfaces the code to Task Scheduler as the task result.
-
-A partial source failure still returns `0` by design: successful sources are
-exported, failed checks preserve their last successful state, and details are
-available in `output\source_health.json`. An all-source or hard failure is
-recorded in `output\run_summary.json` when export finalization was reached;
-the dated log always records the process exit code.
-
-## Scheduled task
-
-Review, then run manually — nothing is installed automatically:
+After both succeed, update the installed package and run the collector:
 
 ```powershell
-.\scripts\register-task.ps1      # creates "OpportunityDiscovery" daily task
-.\scripts\unregister-task.ps1    # removes it (or disable via Task Scheduler GUI)
+.\scripts\install.ps1 -WorkspacePath $workspace
+.\scripts\run.ps1
 ```
 
-The task only ever executes `scripts\run.ps1`. It never rewrites source rules,
-code, weights, or configuration.
+Re-running the installer leaves your private files in place. A daily task needs no change if the project folder has not moved.
 
-## Windows-specific guarantees
+### Keep your settings when updating
 
-- pathlib everywhere; no hardcoded drive letters or user paths.
-- Atomic exports via temp file + `os.replace` (atomic on NTFS).
-- Run lock (`data\run.lock`) prevents overlapping mutations; stale locks are
-  reclaimed safely.
-- Logs and JSON outputs are ASCII/UTF-8 safe for Task Scheduler capture.
+Use this procedure when your only edits are in `config/default.toml` or `config/sources.toml`. If other files appear in `git status --short`, preserve that work separately before proceeding.
 
-## Retention & pruning
+From your project folder, check the branch:
 
 ```powershell
-.\.venv\Scripts\opdisc.exe prune          # dry-run report
-.\.venv\Scripts\opdisc.exe prune --apply  # actually delete expired cache rows
+git branch --show-current
 ```
 
-Normalized history is never deleted by pruning.
+These steps assume it prints `main`. If you are working on another branch, finish that work before updating this installation.
 
-## Troubleshooting
-
-See `docs/TROUBLESHOOTING.md`.
-## Private workspace review and recovery
-
-These commands are manual file-boundary operations. They do not contact an AI
-provider or a public website:
+Save your configuration edits temporarily in Git's stash:
 
 ```powershell
-opdisc workspace-apply-review $workspace .\review.json --manifest .\output\export_manifest.json
-opdisc workspace-apply-feedback $workspace .\feedback.json
-opdisc knowledge-snapshots $workspace
-opdisc compare-knowledge $workspace SNAPSHOT_ID
-opdisc restore-knowledge $workspace SNAPSHOT_ID
-opdisc backup-workspace $workspace D:\PrivateBackups\opportunity-full.zip --kind full
-opdisc backup-workspace $workspace D:\PrivateBackups\opportunity-state.zip --kind state
-opdisc workspace-audit $workspace
+git stash push -m "opdisc settings before update" -- config/default.toml config/sources.toml
 ```
 
-`restore-knowledge` first records a pre-restore knowledge snapshot.
-`restore-workspace` verifies every archive path and content hash and creates a
-full pre-restore backup before changing files. Workspace ZIPs are unencrypted
-and contain private information; store them accordingly. A state-only backup
-omits `sources/`, `inbox/`, caches, and the engine checkout. A full backup adds
-`sources/` and `inbox/`; both omit the engine checkout and symlinks.
+After that succeeds, download the update:
+
+```powershell
+git pull --ff-only
+```
+
+Only after the pull succeeds, bring your settings back:
+
+```powershell
+git stash pop
+git diff -- config/default.toml config/sources.toml
+```
+
+Check that your settings are present, then rerun the installer and collector as shown above. If the pull fails, your settings remain in the stash. If `stash pop` reports a conflict, stop: the saved copy remains in the stash, and the affected files contain both versions. Resolve the conflict while keeping your settings and any new required options; your coding agent can help. Do not discard the files or drop the stash to bypass the problem.
+
+## Optional daily collection
+
+```powershell
+.\scripts\register-task.ps1
+```
+
+This creates an `OpportunityDiscovery` task for 7:30 a.m. local time. It runs the collector, not AI review. To remove it, run `.\scripts\unregister-task.ps1`. Nothing is scheduled by the installer.
+
+For failed runs, check the newest `logs\run-YYYYMMDD.log` and `output\source_health.json`. Some sources can fail while a run still succeeds; their earlier results are retained. See [Troubleshooting](TROUBLESHOOTING.md) for common errors. For private review, backup, and restore commands, see [Private workspace operations](PRIVATE_WORKSPACE_OPERATIONS.md).
