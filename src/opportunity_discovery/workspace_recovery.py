@@ -7,10 +7,10 @@ import json
 import os
 import re
 import shutil
+import stat
 import subprocess
 import tempfile
 import zipfile
-from collections.abc import Iterable
 from contextlib import suppress
 from dataclasses import dataclass, field
 from datetime import UTC, datetime, timedelta
@@ -29,7 +29,19 @@ from .workspace_state import (
 )
 
 SNAPSHOT_RETENTION_DAYS = 30
-CACHE_PARTS = {"cache", "caches", "tmp", "temp", "__pycache__"}
+GENERATED_DIRECTORIES = {
+    ".git",
+    ".venv",
+    "venv",
+    "__pycache__",
+    ".pytest_cache",
+    ".mypy_cache",
+    ".ruff_cache",
+}
+ENGINE_SETTINGS = (
+    "engine/opportunity-discovery/config/default.toml",
+    "engine/opportunity-discovery/config/sources.toml",
+)
 BACKUP_KINDS = {"full", "state"}
 
 
@@ -456,10 +468,13 @@ def _backup_roots(kind: str) -> tuple[str, ...]:
         "WORKSPACE.md",
         "AGENTS.md",
         "CLAUDE.md",
+        "Open Dashboard.cmd",
+        ".agents",
         "knowledge",
         "opportunities",
         "applications",
         ".opdisc",
+        *ENGINE_SETTINGS,
     )
     if kind == "full":
         return (*common, "inbox", "sources")
@@ -470,27 +485,43 @@ def _backup_files(root: Path, kind: str, output_path: Path) -> tuple[list[Path],
     files: list[Path] = []
     skipped_symlinks: list[str] = []
     output_absolute = output_path.absolute()
-    for name in _backup_roots(kind):
-        path = root / name
-        candidates: Iterable[Path]
-        if path.is_file() or path.is_symlink():
-            candidates = [path]
-        else:
-            candidates = path.rglob("*") if path.is_dir() else []
-        for candidate in candidates:
-            relative = _safe_relative(root, candidate)
-            if candidate.absolute() == output_absolute or candidate.name.endswith(".tmp"):
-                continue
-            if candidate.is_symlink():
-                skipped_symlinks.append(relative)
-                continue
-            if not candidate.is_file():
-                continue
-            parts = {part.casefold() for part in PurePosixPath(relative).parts}
-            if parts & CACHE_PARTS or relative.startswith(".opdisc/backups/"):
-                continue
+    pending = (
+        [*root.iterdir(), *(root / name for name in ENGINE_SETTINGS)]
+        if kind == "full"
+        else [root / name for name in _backup_roots(kind)]
+    )
+    while pending:
+        candidate = pending.pop()
+        relative = _safe_relative(root, candidate)
+        if _has_symlink_component(root, relative):
+            skipped_symlinks.append(relative)
+            continue
+        if not _archive_path_allowed(relative, kind):
+            continue
+        if candidate.is_dir():
+            pending.extend(candidate.iterdir())
+        elif (
+            candidate.is_file()
+            and candidate.absolute() != output_absolute
+            and candidate.absolute() != output_absolute.with_suffix(output_absolute.suffix + ".tmp")
+            and not _is_workspace_backup(candidate)
+        ):
             files.append(candidate)
+    files = list(set(files))
+    names = [_safe_archive_name(_safe_relative(root, path)) for path in files]
+    if len({name.casefold() for name in names}) != len(names):
+        raise WorkspaceStateError("workspace contains case-insensitive path collisions")
     return sorted(set(files), key=lambda item: _safe_relative(root, item)), sorted(skipped_symlinks)
+
+
+def _is_workspace_backup(path: Path) -> bool:
+    if path.suffix.casefold() != ".zip":
+        return False
+    try:
+        with zipfile.ZipFile(path) as archive:
+            return ".opdisc-backup.json" in archive.namelist()
+    except zipfile.BadZipFile:
+        return False
 
 
 def backup_workspace(
@@ -585,17 +616,27 @@ def _safe_archive_name(name: str) -> str:
     if "\\" in name or ":" in name:
         raise WorkspaceStateError(f"backup contains non-portable path: {name}")
     path = PurePosixPath(name)
-    if path.is_absolute() or ".." in path.parts or not path.parts:
+    if path.is_absolute() or ".." in path.parts or not path.parts or path.as_posix() != name:
         raise WorkspaceStateError(f"backup contains unsafe path: {name}")
     return path.as_posix()
 
 
 def _archive_path_allowed(name: str, kind: str) -> bool:
-    top = PurePosixPath(name).parts[0]
-    if top not in _backup_roots(kind):
+    parts = PurePosixPath(name).parts
+    folded = tuple(part.casefold() for part in parts)
+    if set(folded) & GENERATED_DIRECTORIES or name.endswith(".restore.tmp"):
         return False
-    parts = {part.casefold() for part in PurePosixPath(name).parts}
-    return not bool(parts & CACHE_PARTS) and not name.startswith(".opdisc/backups/")
+    if folded[0] == ".opdisc-backup.json":
+        return False
+    if (
+        folded[0] == ".opdisc"
+        and len(folded) > 1
+        and (folded[1] in {"backups", "cache", "caches", "tmp", "temp"} or name.endswith(".tmp"))
+    ):
+        return False
+    if folded[0] == "engine":
+        return name in ENGINE_SETTINGS
+    return kind == "full" or parts[0] in _backup_roots(kind)
 
 
 def _archive_member_sha256(archive: zipfile.ZipFile, name: str) -> tuple[str, int]:
@@ -680,7 +721,13 @@ def _has_symlink_component(root: Path, relative: str) -> bool:
     current = root
     for part in PurePosixPath(relative).parts:
         current = current / part
-        if current.is_symlink():
+        try:
+            metadata = current.lstat()
+        except FileNotFoundError:
+            return False
+        if stat.S_ISLNK(metadata.st_mode) or getattr(metadata, "st_reparse_tag", 0) == getattr(
+            stat, "IO_REPARSE_TAG_MOUNT_POINT", -1
+        ):
             return True
     return False
 
@@ -692,6 +739,9 @@ def restore_workspace_backup(
     root, current_metadata = require_workspace(root)
     archive_path = Path(archive_path).expanduser().resolve()
     _manifest, entries = _validated_backup(archive_path)
+    for entry in entries:
+        if _has_symlink_component(root, str(entry["path"])):
+            raise WorkspaceStateError(f"restore refuses symlink path: {entry['path']}")
     pre_restore = (
         Path(pre_restore_path).expanduser().resolve()
         if pre_restore_path
