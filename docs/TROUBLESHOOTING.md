@@ -1,69 +1,25 @@
 # Troubleshooting
 
-## Exit codes
-
-| Code | Meaning |
-| --- | --- |
-| 0 | No source failed, no sources were due, or at least one attempted source succeeded (partial source failures are tolerated and visible in `source-health`) |
-| 1 | All attempted sources failed this run (prior state preserved) |
-| 2 | Fatal: config/registry error or unexpected crash |
-| 3 | Another run holds `data/run.lock` |
-
 ## Installation
 
-**`install.ps1` reports "No compatible Python interpreter found"**
-The installer tried `py -3.14`, `py -3.13`, `py -3.12`, `py -3.11`, then
-`python.exe` on PATH. Install a supported Python and re-run. Python 3.14 is
-recommended for new installations; 3.11, 3.12, 3.13, and 3.14 are supported.
-The newest compatible installed version is selected automatically.
-The installer and the manual commands in `docs/OPERATIONS_WINDOWS.md` are
-alternatives — either produces the same `.venv`.
+**PowerShell says running scripts is disabled.** Run `Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass`, then retry the script in the same window. This setting lasts only for that PowerShell window.
 
-Existing virtual environments do not upgrade their Python automatically.
-Remove and recreate `.venv` deliberately if you want to change its version.
+**No compatible Python interpreter found.** Install Python 3.11, 3.12, 3.13, or 3.14, then rerun the installer. It chooses the newest compatible version it finds.
 
-## Common issues
+**The clone destination already exists.** Do not clone again over an existing checkout. Follow the [update steps](OPERATIONS_WINDOWS.md#update-an-existing-installation) instead.
 
-**`opdisc: error: unrecognized arguments: --quiet` (or `--json`)**
-These are global options and must precede the subcommand. Use
-`opdisc --quiet run` or `opdisc --json source-health`, not
-`opdisc run --quiet`.
+**`git pull` stops because of local changes.** For configuration edits, follow [Keep your settings when updating](OPERATIONS_WINDOWS.md#keep-your-settings-when-updating). Preserve other edits separately; do not discard them to force an update. If Git reports a conflict, stop and resolve it before rerunning the installer.
 
-**A scheduled run reports a nonzero task result**
-Open the newest `logs\run-YYYYMMDD.log` and inspect
-`output\source_health.json`. Exit `1` means every attempted source failed but
-prior successful lead state was preserved. Exit `2` is a hard configuration
-or workflow failure; run `opdisc validate-config`, then retry `opdisc run`
-interactively. Exit `3` means another run owns the lock.
+## Running and viewing results
 
-**`another run appears active`**
-A previous run crashed leaving a stale lock. The lock self-heals if the pid is
-dead; otherwise delete `data/run.lock` after confirming no `opdisc` process is
-running.
+**`opdisc` is not recognized.** From the engine checkout, use `.\.venv\Scripts\opdisc.exe` (or rerun the installer if `.venv` is missing).
 
-**A source shows `format-changed`**
-The live response no longer matches the adapter's expected shape. Re-run
-`opdisc validate-sources --source-id …`; if confirmed, quarantine the source
-with a reason and file an adapter fix (fixtures first).
+**Dashboard Home is empty.** Home needs imported review decisions. Check **Explore** for the current public queue. If Explore says its export is unavailable, run `.\scripts\run.ps1` and check `output\source_health.json`.
 
-**A source shows `rate-limited` repeatedly**
-Increase its `cadence_hours` or the global per-domain interval in
-`config/default.toml`. Never hammer endpoints.
+**A scheduled run failed.** Check the newest `logs\run-YYYYMMDD.log` and `output\source_health.json`. Result code `1` means all attempted sources failed; `2` means a configuration or workflow error; `3` means another run is active. A partial source failure can still return `0`; check the health file for details.
 
-**Records disappeared from review_queue but exist in candidates.jsonl**
-They were excluded by deterministic reason codes (`exclude:*`). Inspect
-`reason_codes` in `candidates.jsonl`; adjust suppression rules only via
-reviewed code changes with tests.
+**`another run appears active`.** Confirm no collection process is running before removing `data\run.lock`. A stale lock normally clears itself after a crashed process exits.
 
-**Second run shows new records that shouldn't be new**
-Identity changed — usually a URL whose requisition parameter is being stripped
-or an aggregator changing link format. Check `identity_basis`; add the param
-to `PRESERVE_PARAMS` in `urlnorm.py` with a test.
+**`unrecognized arguments: --quiet` or `--json`.** Put these options before the command: `opdisc --quiet run` or `opdisc --json source-health`.
 
-**Windows: `os.replace` fails on exports**
-Another process holds the target file open (editor/sync tool). Close it;
-exports retry-safe because temp files remain until replace.
-
-**Live validation DNS failures for specific hosts**
-Record honestly as quarantined with the failure text. Do not disable robots or
-retry aggressively.
+For a source whose format or rate limit has changed, see [adapter and source diagnostics](ADAPTERS.md).
