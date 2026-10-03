@@ -1,5 +1,27 @@
 # Validation record
 
+## Private workspace backups (2026-10-03)
+
+Full backups include new workspace folders by default. Both backup modes include
+`.agents/`, the dashboard launcher, and the two workspace-local collector settings
+files. State-only backups retain their smaller, named scope. Generated caches,
+Python environments, Git metadata, engine code, and previous workspace backup ZIPs
+are excluded. Personal folders named `cache` or `temp` remain included.
+
+| Check | Result |
+| --- | --- |
+| Native Windows Python 3.12.10, non-live suite | 303 passed; 8 symlink tests skipped for OS permissions; junction and PowerShell tests passed |
+| Linux Python 3.12.3, non-live suite | 303 passed; 8 native-Windows tests skipped; all 36 applicable recovery tests passed |
+| Production CLI rehearsal | Six commands on disposable workspaces; 55 byte-exact file round trips covering skills, arbitrary files, the launcher, settings, and pre-restore copies |
+| Ruff format/lint, Mypy, configuration, wheel and sdist build | Passed; existing setuptools license-metadata warnings remain |
+| Publication audit and diff whitespace | Passed; zero findings |
+
+Regressions cover exact bytes, missing files, pre-restore recovery, archives
+without skills, tampering, unsafe paths, arbitrary folders, ordinary ZIP
+attachments, and symlink/junction protection. Restore checks every destination
+for links before changing files. All 288 existing personal files were verified
+unchanged. No live collection was run; Windows CI remains to be checked after a push.
+
 ## AI onboarding and dashboard launcher (2026-10-03)
 
 Added a short setup guide with separate personal-information and board-review

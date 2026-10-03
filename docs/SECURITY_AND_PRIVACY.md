@@ -30,9 +30,13 @@ private user material and decisions by design. Its files must be kept outside
 the engine Git checkout and publication boundary; `workspace-audit` reports
 tracked private files.
 
-Private workspace backups are unencrypted ZIP files. Backup and restore reject
-engine paths, caches, traversal, unlisted content, and symlinks; restore also
-rejects Windows alternate-data-stream names and case-insensitive target
+Private workspace backups are unencrypted ZIP files. Full backups include new
+workspace folders by default, including any private credentials stored there.
+Engine code is excluded; only its two workspace-local collector settings files
+are included. Generated caches, environments, Git metadata, and previous backup
+ZIPs are excluded. Backup skips symlinks and Windows junctions. Restore rejects
+linked targets, traversal, and unlisted content; it also rejects
+Windows alternate-data-stream names and case-insensitive target
 collisions, verifies recorded hashes, and creates a full pre-restore backup.
 Knowledge history operations reject symlinks in every path component, and the
 workspace audit treats manifested symlinked or out-of-sources files as errors.

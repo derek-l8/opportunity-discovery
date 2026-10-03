@@ -4,14 +4,15 @@ Start with [profile and board setup](AI_SETUP.md) for the two AI prompts.
 Use the dashboard for everyday actions. The commands below cover manual imports,
 backups, and recovery.
 
-Run the PowerShell examples from the project folder. Set your workspace path once in that window, changing it if you chose another folder:
+Open PowerShell and run this setup, changing `$workspace` if you chose another location:
 
 ```powershell
 $workspace = Join-Path ([Environment]::GetFolderPath("MyDocuments")) "Opportunity-Workspace"
+Set-Location -LiteralPath (Join-Path $workspace "engine\opportunity-discovery") -ErrorAction Stop
 $opdisc = ".\.venv\Scripts\opdisc.exe"
 ```
 
-On Linux, use your actual workspace path and `.venv/bin/opdisc` in place of `& $opdisc`.
+If you installed the engine elsewhere, use that folder in `Set-Location`. On Linux, run commands from the engine folder using your actual workspace path and `.venv/bin/opdisc` in place of `& $opdisc`.
 
 ## Open the dashboard
 
@@ -72,7 +73,7 @@ For CLI requests, use `workspace-request --help`. Reference files must exist und
 
 Stop the dashboard and other workspace-changing commands before backing up or restoring.
 
-Create a full backup outside the project folder:
+Create a full backup outside your workspace:
 
 ```powershell
 $backupFolder = Join-Path (Split-Path $workspace -Parent) "Opportunity-Backups"
@@ -80,11 +81,17 @@ $backup = Join-Path $backupFolder ("workspace-" + (Get-Date -Format "yyyyMMdd-HH
 & $opdisc backup-workspace $workspace $backup --kind full
 ```
 
-The command creates the destination folder if needed. A full backup includes your instructions, inbox, sources, knowledge, decisions, application files, and history. Use `--kind state` for a smaller backup without inbox or source files. Neither includes the engine checkout or caches.
+A full backup preserves your workspace files, including skills and folders you add. It also includes the dashboard launcher and `config/default.toml` and `config/sources.toml` from the engine folder inside your workspace. The command creates the backup folder if needed.
+
+Engine code, Python environments, Git history, generated caches and temporary files, and earlier workspace backup ZIPs are excluded. Files linked from outside your workspace are not copied.
+
+For a smaller backup, use `--kind state`. It keeps instructions, skills, knowledge, board state, applications, history, the launcher, and collector settings. It omits `inbox/`, `sources/`, and other custom folders.
 
 Backups are **unencrypted ZIP files containing private information**. Store them accordingly and use a new filename for each backup.
 
-To restore, set `$backup` to the actual ZIP you want to use:
+On a new computer or after removing your workspace, [install the app](OPERATIONS_WINDOWS.md#new-installation) first. Then run the PowerShell setup at the top of this page with the workspace you want to restore.
+
+Choose the backup ZIP and restore:
 
 ```powershell
 $backup = Read-Host "Full path to the workspace backup ZIP"

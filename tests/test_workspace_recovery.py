@@ -2,6 +2,7 @@
 
 import hashlib
 import json
+import os
 import shutil
 import subprocess
 import zipfile
@@ -224,7 +225,7 @@ def test_snapshot_retention_keeps_daily_recent_and_monthly_older(tmp_path):
     assert "today" in kept
 
 
-def test_full_and_state_backups_have_explicit_scope_and_skip_symlinks(tmp_path):
+def test_full_and_state_backups_have_documented_scope_and_skip_symlinks(tmp_path):
     root = make_workspace(tmp_path)
     fixture = json.loads(RECOVERY_FIXTURE.read_text(encoding="utf-8"))
     for relative, content in fixture["synthetic_files"].items():
@@ -259,6 +260,292 @@ def test_full_and_state_backups_have_explicit_scope_and_skip_symlinks(tmp_path):
     if (root / "sources" / "external-link").is_symlink():
         assert "sources/external-link" in full.skipped_symlinks
     assert state.file_count < full.file_count
+
+
+@pytest.mark.parametrize("kind", ["full", "state"])
+def test_workspace_backup_preserves_launcher_settings_and_custom_files(tmp_path, kind):
+    root = make_workspace(tmp_path)
+    settings = {
+        "engine/opportunity-discovery/config/default.toml": b"# Custom settings\r\nseason = 2026\r\n",
+        "engine/opportunity-discovery/config/sources.toml": b"# Synthetic source rules\n",
+    }
+    custom_files = {
+        "README.md": b"# Personal workspace\r\n",
+        ".codex/config.toml": b'model = "synthetic-model"\n',
+        "prompts/review.md": b"# Synthetic review prompt\n",
+        "notes/cache/observations.md": b"A personal folder named cache is still content.\n",
+        "notes/temp/draft.tmp": b"User working notes, not an engine temporary file.\r\n",
+        "templates/example.bin": b"\x00\xff\r\n",
+    }
+    launcher = root / "Open Dashboard.cmd"
+    launcher.write_bytes(b"@echo off\r\nrem Synthetic custom launcher\r\n")
+    for relative, content in {**settings, **custom_files}.items():
+        target = root / relative
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_bytes(content)
+    engine_code = root / "engine" / "opportunity-discovery" / "collector.py"
+    engine_code.write_bytes(b"public engine stays unchanged")
+    archive = tmp_path / f"custom-{kind}.zip"
+    assert main(["--json", "backup-workspace", str(root), str(archive), "--kind", kind]) == 0
+    expected = {**settings, "Open Dashboard.cmd": launcher.read_bytes()}
+    if kind == "full":
+        expected.update(custom_files)
+    with zipfile.ZipFile(archive) as saved:
+        for relative, content in expected.items():
+            assert saved.read(relative) == content
+        assert engine_code.relative_to(root).as_posix() not in saved.namelist()
+        if kind == "state":
+            assert not set(custom_files) & set(saved.namelist())
+    for relative in expected:
+        (root / relative).write_bytes(b"changed before restore\r\n")
+    pre_restore = tmp_path / f"custom-pre-restore-{kind}.zip"
+    assert (
+        main(
+            [
+                "--json",
+                "restore-workspace",
+                str(root),
+                str(archive),
+                "--pre-restore-output",
+                str(pre_restore),
+            ]
+        )
+        == 0
+    )
+    for relative, content in expected.items():
+        assert (root / relative).read_bytes() == content
+    with zipfile.ZipFile(pre_restore) as saved:
+        for relative in expected:
+            assert saved.read(relative) == b"changed before restore\r\n"
+    assert engine_code.read_bytes() == b"public engine stays unchanged"
+
+
+def test_full_backup_skips_generated_files_and_prior_backups_but_keeps_regular_zips(tmp_path):
+    root = make_workspace(tmp_path)
+    excluded = [
+        ".git/config",
+        ".venv/pyvenv.cfg",
+        "tools/venv/pyvenv.cfg",
+        "tools/__pycache__/helper.pyc",
+        ".pytest_cache/state",
+        ".mypy_cache/state",
+        ".ruff_cache/state",
+        ".opdisc/cache/payload",
+        ".opdisc/temp/payload",
+        ".opdisc/backups/old.zip",
+        "notes/draft.restore.tmp",
+        "engine/opportunity-discovery/config/unrelated.txt",
+    ]
+    for relative in excluded:
+        target = root / relative
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_bytes(b"excluded generated content")
+    old_backup = root / "archives" / "earlier.zip"
+    backup_workspace(root, old_backup, kind="full")
+    ordinary_zip = root / "sources" / "materials.zip"
+    with zipfile.ZipFile(ordinary_zip, "w") as writer:
+        writer.writestr("sample.txt", b"original source material")
+    invalid_zip = root / "sources" / "unusual.zip"
+    invalid_zip.write_bytes(b"preserve these bytes too")
+    archive = root / "archives" / "current.zip"
+    archive.write_bytes(b"previous destination contents")
+    archive.with_suffix(".zip.tmp").write_bytes(b"stale backup temporary file")
+
+    backup_workspace(root, archive, kind="full")
+
+    with zipfile.ZipFile(archive) as saved:
+        names = set(saved.namelist())
+        assert not set(excluded) & names
+        assert "archives/earlier.zip" not in names
+        assert "archives/current.zip" not in names
+        assert "archives/current.zip.tmp" not in names
+        assert saved.read("sources/materials.zip") == ordinary_zip.read_bytes()
+        assert saved.read("sources/unusual.zip") == invalid_zip.read_bytes()
+
+
+def test_full_backup_skips_arbitrary_external_links_and_restore_checks_all_targets_first(tmp_path):
+    root = make_workspace(tmp_path)
+    notes = root / "notes"
+    notes.mkdir()
+    (notes / "draft.md").write_bytes(b"archived notes")
+    archive = tmp_path / "arbitrary.zip"
+    backup_workspace(root, archive, kind="full")
+    (root / "knowledge" / "PROFILE.md").write_bytes(b"current profile must survive failed restore")
+    notes.rename(root / "saved-notes")
+    outside = tmp_path / "outside"
+    outside.mkdir()
+    sentinel = outside / "draft.md"
+    sentinel.write_bytes(b"outside sentinel")
+    try:
+        notes.symlink_to(outside, target_is_directory=True)
+    except OSError as exc:
+        pytest.skip(f"symlink creation unavailable: {exc}")
+    linked = tmp_path / "linked.zip"
+    result = backup_workspace(root, linked, kind="full")
+    assert "notes" in result.skipped_symlinks
+    with zipfile.ZipFile(linked) as saved:
+        assert "notes/draft.md" not in saved.namelist()
+    checkpoint = (root / ".opdisc" / "checkpoint.json").read_bytes()
+    with pytest.raises(WorkspaceStateError, match="restore refuses symlink path"):
+        restore_workspace_backup(root, archive)
+    assert (root / "knowledge" / "PROFILE.md").read_bytes() == b"current profile must survive failed restore"
+    assert (root / ".opdisc" / "checkpoint.json").read_bytes() == checkpoint
+    assert not list(tmp_path.glob("pre-restore-*.zip"))
+    assert sentinel.read_bytes() == b"outside sentinel"
+
+
+@pytest.mark.skipif(os.name != "nt", reason="native Windows junction test")
+def test_backup_and_restore_do_not_follow_windows_junctions(tmp_path):
+    root = make_workspace(tmp_path)
+    outside = tmp_path / "outside"
+    outside.mkdir()
+    sentinel = outside / "default.toml"
+    sentinel.write_bytes(b"outside settings")
+    settings = root / "engine" / "opportunity-discovery" / "config"
+    settings.mkdir(parents=True)
+    (settings / "default.toml").write_bytes(b"archived settings")
+    archive = tmp_path / "before-junction.zip"
+    backup_workspace(root, archive, kind="full")
+    settings.rename(root / "saved-settings")
+    subprocess.run(
+        ["cmd", "/c", "mklink", "/J", str(settings), str(outside)], check=True, capture_output=True
+    )
+    linked = tmp_path / "junction.zip"
+    result = backup_workspace(root, linked, kind="full")
+    assert "engine/opportunity-discovery/config/default.toml" in result.skipped_symlinks
+    with zipfile.ZipFile(linked) as saved:
+        assert "engine/opportunity-discovery/config/default.toml" not in saved.namelist()
+    with pytest.raises(WorkspaceStateError, match="restore refuses symlink path"):
+        restore_workspace_backup(root, archive)
+    assert sentinel.read_bytes() == b"outside settings"
+
+
+@pytest.mark.parametrize("kind", ["full", "state"])
+def test_skill_backups_restore_exact_bytes_and_preserve_pre_restore_copies(tmp_path, kind):
+    root = make_workspace(tmp_path)
+    skill_prefix = ".agents/skills/synthetic-skill"
+    skill_files = {
+        f"{skill_prefix}/SKILL.md": b"---\r\nname: synthetic-skill\r\n---\r\n# Caf\xc3\xa9\r\n",
+        f"{skill_prefix}/references/writing.md": b"Preserved synthetic reference.\n",
+        f"{skill_prefix}/assets/template.bin": b"\x00\xff\r\n\x80",
+        f"{skill_prefix}/scripts/helper.py": b"raise RuntimeError('do not execute on restore')\n",
+        f"{skill_prefix}/agents/openai.yaml": b'interface:\r\n  display_name: "Synthetic skill"\r\n',
+    }
+    for relative, content in skill_files.items():
+        target = root / relative
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_bytes(content)
+    cached = root / skill_prefix / "scripts" / "__pycache__" / "ignored.pyc"
+    cached.parent.mkdir()
+    cached.write_bytes(b"cache")
+    unrelated = root / "engine" / "sentinel.txt"
+    unrelated.write_bytes(b"engine stays unchanged")
+    archive = tmp_path / f"skills-{kind}.zip"
+    backup_workspace(root, archive, kind=kind)
+
+    with zipfile.ZipFile(archive) as saved:
+        manifest = json.loads(saved.read(".opdisc-backup.json"))
+        entries = {entry["path"]: entry for entry in manifest["files"]}
+        for relative, content in skill_files.items():
+            assert saved.read(relative) == content
+            assert entries[relative]["sha256"] == hashlib.sha256(content).hexdigest()
+            assert entries[relative]["size"] == len(content)
+        assert not any("\\" in name for name in saved.namelist())
+        assert cached.relative_to(root).as_posix() not in saved.namelist()
+        assert not any(name.startswith("engine/") for name in saved.namelist())
+
+    changed_skill = root / skill_prefix / "SKILL.md"
+    changed_bytes = b"# Later synthetic instructions\r\n"
+    changed_skill.write_bytes(changed_bytes)
+    (root / skill_prefix / "assets" / "template.bin").unlink()
+    extra = root / ".agents" / "skills" / "new-skill" / "SKILL.md"
+    extra.parent.mkdir()
+    extra.write_bytes(b"# Newer skill stays in place\n")
+    pre_restore = tmp_path / f"skills-pre-restore-{kind}.zip"
+
+    restore_workspace_backup(root, archive, pre_restore_path=pre_restore)
+
+    for relative, content in skill_files.items():
+        assert (root / relative).read_bytes() == content
+    assert extra.read_bytes() == b"# Newer skill stays in place\n"
+    assert unrelated.read_bytes() == b"engine stays unchanged"
+    with zipfile.ZipFile(pre_restore) as saved:
+        assert saved.read(f"{skill_prefix}/SKILL.md") == changed_bytes
+        assert saved.read(extra.relative_to(root).as_posix()) == extra.read_bytes()
+
+
+@pytest.mark.parametrize("kind", ["full", "state"])
+def test_backup_without_skills_restores_without_removing_current_skills(tmp_path, kind):
+    root = make_workspace(tmp_path)
+    archive = tmp_path / f"without-skills-{kind}.zip"
+    backup_workspace(root, archive, kind=kind)
+    assert not (root / ".agents").exists()
+    with zipfile.ZipFile(archive) as saved:
+        assert not any(name.startswith(".agents/") for name in saved.namelist())
+    current_skill = root / ".agents" / "skills" / "local-skill" / "SKILL.md"
+    current_skill.parent.mkdir(parents=True)
+    current_skill.write_bytes(b"# Current local skill\r\n")
+    pre_restore = tmp_path / f"without-skills-pre-restore-{kind}.zip"
+
+    restore_workspace_backup(root, archive, pre_restore_path=pre_restore)
+
+    assert current_skill.read_bytes() == b"# Current local skill\r\n"
+    with zipfile.ZipFile(pre_restore) as saved:
+        assert saved.read(current_skill.relative_to(root).as_posix()) == current_skill.read_bytes()
+
+
+@pytest.mark.parametrize("kind", ["full", "state"])
+def test_tampered_skill_backup_is_rejected_before_mutation(tmp_path, kind):
+    root = make_workspace(tmp_path)
+    skill = root / ".agents" / "skills" / "synthetic-skill" / "SKILL.md"
+    skill.parent.mkdir(parents=True)
+    skill.write_bytes(b"# Archived synthetic skill\n")
+    original = tmp_path / f"original-{kind}.zip"
+    backup_workspace(root, original, kind=kind)
+    tampered = tmp_path / f"tampered-{kind}.zip"
+    relative = skill.relative_to(root).as_posix()
+    with zipfile.ZipFile(original) as source, zipfile.ZipFile(tampered, "w") as target:
+        for name in source.namelist():
+            target.writestr(name, b"changed" if name == relative else source.read(name))
+    current_bytes = b"# Current synthetic skill\r\n"
+    skill.write_bytes(current_bytes)
+    checkpoint = (root / ".opdisc" / "checkpoint.json").read_bytes()
+    pre_restore = tmp_path / f"tampered-pre-restore-{kind}.zip"
+
+    with pytest.raises(WorkspaceStateError, match="content hash mismatch"):
+        restore_workspace_backup(root, tampered, pre_restore_path=pre_restore)
+
+    assert skill.read_bytes() == current_bytes
+    assert (root / ".opdisc" / "checkpoint.json").read_bytes() == checkpoint
+    assert not pre_restore.exists()
+
+
+@pytest.mark.parametrize("kind", ["full", "state"])
+def test_skill_backups_skip_symlinks_and_restore_refuses_linked_destination(tmp_path, kind):
+    root = make_workspace(tmp_path)
+    skill_dir = root / ".agents" / "skills" / "synthetic-skill"
+    skill_dir.mkdir(parents=True)
+    (skill_dir / "SKILL.md").write_bytes(b"# Archived synthetic skill\n")
+    original = tmp_path / f"before-link-{kind}.zip"
+    backup_workspace(root, original, kind=kind)
+    skill_dir.rename(root / "saved-skill")
+    outside = tmp_path / "outside-skills"
+    outside.mkdir()
+    outside_file = outside / "SKILL.md"
+    outside_file.write_bytes(b"outside sentinel")
+    try:
+        skill_dir.symlink_to(outside, target_is_directory=True)
+    except OSError as exc:
+        pytest.skip(f"symlink creation unavailable: {exc}")
+
+    linked_backup = tmp_path / f"with-link-{kind}.zip"
+    result = backup_workspace(root, linked_backup, kind=kind)
+    with zipfile.ZipFile(linked_backup) as saved:
+        assert not any(name.startswith(".agents/skills/synthetic-skill/") for name in saved.namelist())
+    assert ".agents/skills/synthetic-skill" in result.skipped_symlinks
+    with pytest.raises(WorkspaceStateError, match="restore refuses symlink path"):
+        restore_workspace_backup(root, original)
+    assert outside_file.read_bytes() == b"outside sentinel"
 
 
 def test_failed_backup_records_error_and_same_command_can_be_rerun(tmp_path, monkeypatch):
@@ -316,7 +603,15 @@ def test_restore_verifies_backup_and_creates_full_pre_restore_backup(tmp_path):
 
 @pytest.mark.parametrize(
     ("bad_path", "error"),
-    [("../escape.txt", "unsafe path"), ("engine/overwrite.py", "declared scope")],
+    [
+        ("../escape.txt", "unsafe path"),
+        ("engine/overwrite.py", "declared scope"),
+        ("engine/opportunity-discovery/config/other.toml", "declared scope"),
+        (".opdisc/backups/old.zip", "declared scope"),
+        ("notes/.venv/overwrite.py", "declared scope"),
+        ("notes/./draft.md", "unsafe path"),
+        (".agents/skills/example/../../../escape.txt", "unsafe path"),
+    ],
 )
 def test_restore_rejects_unsafe_or_out_of_scope_path_before_mutation(tmp_path, bad_path, error):
     root = make_workspace(tmp_path)
@@ -345,6 +640,11 @@ def test_restore_rejects_unsafe_or_out_of_scope_path_before_mutation(tmp_path, b
     [
         (["knowledge/PROFILE.md:stream"], "non-portable path"),
         (["knowledge/Profile.md", "knowledge/profile.md"], "case-insensitive path collisions"),
+        ([".agents/skills/example/SKILL.md:stream"], "non-portable path"),
+        (
+            [".agents/skills/Example/SKILL.md", ".agents/skills/example/SKILL.md"],
+            "case-insensitive path collisions",
+        ),
     ],
 )
 def test_restore_rejects_windows_unsafe_archive_paths_portably(tmp_path, members, error):
