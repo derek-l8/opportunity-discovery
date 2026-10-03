@@ -4,7 +4,7 @@ import json
 from pathlib import Path
 
 from opportunity_discovery.cli import main
-from opportunity_discovery.workspace import initialize_workspace
+from opportunity_discovery.workspace import WORKSPACE_MD, initialize_workspace
 
 DEMO = Path(__file__).parent / "fixtures" / "demo" / "phase3-workspace.json"
 
@@ -124,7 +124,7 @@ def test_init_workspace_cli_json(tmp_path, capsys):
     payload = json.loads(capsys.readouterr().out)
     assert payload["schema_version"] == "1.0"
     assert payload["workspace"] == str(root.resolve())
-    assert len(payload["created_files"]) == 7
+    assert len(payload["created_files"]) == 8
     assert len(payload["warnings"]) == 1
 
 
@@ -149,3 +149,32 @@ def test_init_workspace_cli_rejects_missing_engine(tmp_path, capsys):
         == 2
     )
     assert "explicit engine path is not an existing directory" in capsys.readouterr().err
+
+
+def test_starter_instructions_cover_personal_setup_and_board_review_separately():
+    setup = WORKSPACE_MD.split("## Personal information")[1].split("## Opportunity review")[0]
+    assert "source-manifest.json" in setup
+    assert "Verify saved copies" in setup
+    assert "knowledge/PROFILE.md" in setup
+    assert "knowledge/CATALOG.md" in setup
+    review = WORKSPACE_MD.split("## Opportunity review")[1]
+    assert "docs/PRIVATE_WORKSPACE_OPERATIONS.md" in review
+    assert "docs/INTEGRATION_CONTRACT.md" in review
+    assert "packet is a sample" in review
+    assert "successful import" in review
+    assert "what remains" in review
+
+
+def test_dashboard_launcher_resolves_engine_at_launch_and_preserves_user_edits(tmp_path):
+    root = tmp_path / "workspace"
+    first_engine = tmp_path / "first-engine"
+    first_engine.mkdir()
+    initialize_workspace(root, engine_path=first_engine)
+    launcher = root / "Open Dashboard.cmd"
+    assert "engine_path" in launcher.read_text()
+    assert str(first_engine) not in launcher.read_text()
+    launcher.write_text("@echo off\necho My launcher\n")
+    next_engine = tmp_path / "next-engine"
+    next_engine.mkdir()
+    initialize_workspace(root, engine_path=next_engine)
+    assert launcher.read_text() == "@echo off\necho My launcher\n"

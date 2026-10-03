@@ -7,6 +7,7 @@ Opportunity-Workspace/
 |-- WORKSPACE.md
 |-- AGENTS.md
 |-- CLAUDE.md
+|-- Open Dashboard.cmd
 |-- engine/opportunity-discovery/   # Git checkout
 |-- inbox/
 |-- sources/
@@ -16,7 +17,10 @@ Opportunity-Workspace/
 `-- .opdisc/                       # local app state
 ```
 
-Put resumes, writing samples, and other reference files in `sources/` or `inbox/`, not in `engine/opportunity-discovery/`. The engine folder is the public Git checkout; the other folders hold your private work. The app does not upload your private files to GitHub.
+Put reference files in `inbox/` and follow [personal setup](AI_SETUP.md#1-add-your-information).
+Your AI preserves them in `sources/` and builds a profile and catalog in
+`knowledge/`. The engine folder holds the public code; your personal material
+belongs outside it.
 
 `WORKSPACE.md` is the starting place for instructions to your AI agent. `AGENTS.md` and `CLAUDE.md` point compatible agents to it. You can change or remove these files. Running setup again leaves your existing files and instructions alone.
 
