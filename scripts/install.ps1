@@ -8,9 +8,6 @@ param(
 # One-time native Windows installation for opportunity-discovery.
 # Usage: powershell -ExecutionPolicy Bypass -File scripts\install.ps1
 #
-# This installer is an ALTERNATIVE to the manual commands in
-# docs\OPERATIONS_WINDOWS.md ("Normal install"); both produce the same
-# repository-local .venv with the package installed for normal runs.
 # For development (tests, linters, type checker) additionally run:
 #   .\.venv\Scripts\pip install -e '.[dev]'
 $ErrorActionPreference = "Stop"
@@ -98,10 +95,13 @@ if (-not $SkipWorkspaceSetup) {
 }
 
 Write-Host ""
-Write-Host "Install complete. Next steps:"
-Write-Host "  .\.venv\Scripts\opdisc.exe validate-sources   # one-time live validation"
-Write-Host "  .\scripts\run.ps1                             # normal run"
+Write-Host "Install complete."
 if (-not $SkipWorkspaceSetup) {
     Write-Host "  Private workspace: $WorkspacePath"
+    Write-Host "  Setup guide: $(Join-Path $repoRoot 'docs\AI_SETUP.md')"
+    Write-Host "  Open later: double-click Open Dashboard.cmd in your workspace."
+}
+else {
+    Write-Host "  Run collection: .\scripts\run.ps1"
 }
 exit $LASTEXITCODE

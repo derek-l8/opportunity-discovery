@@ -12,6 +12,15 @@
 
 ## Running and viewing results
 
+**Open Dashboard.cmd reports an error.** Keep the window open to read it. If
+the dashboard is missing, rerun the installer from your existing project folder.
+If port 8765 is already in use, close the earlier dashboard window.
+
+**Your AI cannot read files or run commands.** Open the workspace as a project
+in a tool with local file access and command execution. Opportunity review also
+needs web access. You can still open the dashboard and search collected leads
+in Explore.
+
 **`opdisc` is not recognized.** From the engine checkout, use `.\.venv\Scripts\opdisc.exe` (or rerun the installer if `.venv` is missing).
 
 **Dashboard Home is empty.** Home needs imported review decisions. Check **Explore** for the current public queue. If Explore says its export is unavailable, run `.\scripts\run.ps1` and check `output\source_health.json`.

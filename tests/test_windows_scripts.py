@@ -9,6 +9,7 @@ from pathlib import Path
 import pytest
 
 from opportunity_discovery.cli import build_parser
+from opportunity_discovery.workspace import initialize_workspace
 
 REPO_ROOT = Path(__file__).parent.parent
 
@@ -128,3 +129,85 @@ def test_scheduled_run_preserves_opdisc_exit_code():
     capture = script.index("$code = $LASTEXITCODE")
     exit_statement = script.index("exit $code")
     assert capture < exit_statement
+
+
+def test_dashboard_script_uses_the_recorded_engine_and_installed_command():
+    script = _script("open-dashboard.ps1")
+    assert "$metadata.engine_path" in script
+    assert "Set-Location -LiteralPath $engine" in script
+    assert "& $opdisc workspace-dashboard $workspace" in script
+    assert "exit $LASTEXITCODE" in script
+    assert "git clone" not in script
+
+
+def _run_dashboard_launcher(root: Path):
+    if sys.platform != "win32":
+        pytest.skip("native Windows dashboard launcher test")
+    return subprocess.run(
+        f'cmd.exe /d /s /c ""{root / "Open Dashboard.cmd"}""',
+        input="\n",
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+
+
+def test_dashboard_launcher_handles_spaces_and_resolves_changed_engine(tmp_path):
+    if sys.platform != "win32":
+        pytest.skip("native Windows dashboard launcher test")
+    root = tmp_path / "workspace & student's files"
+    for name in ("first-engine", "next-engine"):
+        engine = tmp_path / (name + " with spaces")
+        (engine / "scripts").mkdir(parents=True)
+        (engine / "scripts" / "open-dashboard.ps1").write_text(
+            "param([string]$WorkspacePath)\n"
+            f"Write-Output '{name}'\n"
+            "Write-Output $WorkspacePath.TrimEnd([char]92)\n"
+            "exit 0\n"
+        )
+        initialize_workspace(root, engine_path=engine)
+        result = _run_dashboard_launcher(root)
+        assert result.returncode == 0, result.stdout + result.stderr
+        assert name in result.stdout
+        assert str(root) in result.stdout
+
+
+def test_dashboard_launcher_keeps_failure_visible_and_returns_exit_code(tmp_path):
+    if sys.platform != "win32":
+        pytest.skip("native Windows dashboard launcher test")
+    root = tmp_path / "workspace"
+    engine = tmp_path / "engine"
+    (engine / "scripts").mkdir(parents=True)
+    (engine / "scripts" / "open-dashboard.ps1").write_text(
+        "param([string]$WorkspacePath)\nWrite-Output 'Setup needed'\nexit 7\n"
+    )
+    initialize_workspace(root, engine_path=engine)
+    result = _run_dashboard_launcher(root)
+    assert result.returncode == 7, result.stdout + result.stderr
+    assert "Setup needed" in result.stdout
+
+
+def test_dashboard_script_reports_missing_installation(tmp_path):
+    if sys.platform != "win32":
+        pytest.skip("native Windows dashboard launcher test")
+    root = tmp_path / "workspace"
+    engine = tmp_path / "engine"
+    engine.mkdir()
+    initialize_workspace(root, engine_path=engine)
+    result = subprocess.run(
+        [
+            "powershell.exe",
+            "-NoProfile",
+            "-ExecutionPolicy",
+            "Bypass",
+            "-File",
+            str(REPO_ROOT / "scripts" / "open-dashboard.ps1"),
+            "-WorkspacePath",
+            str(root),
+        ],
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+    assert result.returncode == 1
+    assert "Run scripts\\install.ps1" in result.stdout

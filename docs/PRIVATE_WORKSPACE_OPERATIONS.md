@@ -1,6 +1,8 @@
 # Review and manage your workspace
 
-Use the dashboard for everyday actions. Use the commands below to import an agent's review, back up your files, or recover earlier work.
+Start with [profile and board setup](AI_SETUP.md) for the two AI prompts.
+Use the dashboard for everyday actions. The commands below cover manual imports,
+backups, and recovery.
 
 Run the PowerShell examples from the project folder. Set your workspace path once in that window, changing it if you chose another folder:
 
@@ -12,6 +14,11 @@ $opdisc = ".\.venv\Scripts\opdisc.exe"
 On Linux, use your actual workspace path and `.venv/bin/opdisc` in place of `& $opdisc`.
 
 ## Open the dashboard
+
+On Windows, double-click **Open Dashboard.cmd** in your workspace. Keep its
+window open while using the dashboard; close it or press Ctrl+C to stop.
+
+For a manual launch from the project folder:
 
 ```powershell
 & $opdisc workspace-dashboard $workspace
@@ -33,13 +40,23 @@ Run one dashboard per workspace and stop it before changing that workspace throu
 
 ## Import an agent's review
 
-Follow [Review with your own AI](../README.md#review-with-your-own-ai) to have your agent save `review.json` in the private workspace. Then run:
+The [board setup prompt](AI_SETUP.md#2-create-your-first-board) asks your AI to
+review and import its findings. For a manual import of a saved `review.json`,
+run:
 
 ```powershell
 & $opdisc workspace-apply-review $workspace (Join-Path $workspace "review.json") --manifest .\output\export_manifest.json
 ```
 
 A successful import makes the decisions available in the dashboard. If the command rejects a response, correct the reported problem before retrying. If collection has generated new exports, ask the agent to refresh its response against them.
+
+On Linux, from the project folder:
+
+```bash
+workspace="/path/to/Opportunity-Workspace"
+.venv/bin/opdisc workspace-apply-review "$workspace" "$workspace/review.json" --manifest output/export_manifest.json
+.venv/bin/opdisc workspace-dashboard "$workspace"
+```
 
 The 40-lead packet is a starting sample, not a complete review. For later sessions, ask your agent to select more leads from `review_queue.jsonl` or the new/changed-lead packets. Imported decisions do not track everything an agent has read, and the starter sample may repeat leads.
 

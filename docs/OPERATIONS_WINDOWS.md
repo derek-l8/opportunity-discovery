@@ -24,15 +24,22 @@ If PowerShell blocks the script, see [Troubleshooting](TROUBLESHOOTING.md#instal
 
 ## First run
 
-From the project folder:
+Follow [Set up your profile and first board](AI_SETUP.md). It has prompts for
+your AI to organize your information, run collection, review leads, and open the
+dashboard.
+
+Open the dashboard later by double-clicking **Open Dashboard.cmd** in your
+workspace. Keep its window open while using it; close it or press Ctrl+C to stop.
+
+To collect without AI, run these commands from the project folder:
 
 ```powershell
 .\scripts\run.ps1
 .\.venv\Scripts\opdisc.exe source-health
-.\.venv\Scripts\opdisc.exe workspace-dashboard $workspace
 ```
 
-The collector writes results under `output\` and a dated log under `logs\`. In the dashboard, **Explore** shows current leads; **Home** fills only after you import review decisions. Stop the dashboard with Ctrl+C.
+The collector writes results under `output\` and a dated log under `logs\`.
+Open the dashboard to search them in **Explore**. **Home** fills after AI review.
 
 ## Update an existing installation
 

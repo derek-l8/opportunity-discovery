@@ -4,7 +4,7 @@ Collect public internship, research, program, and event leads. The local dashboa
 
 ## Get started
 
-On Windows, install Git and Python 3.11–3.14, then follow [Install on Windows](docs/OPERATIONS_WINDOWS.md#new-installation). That guide shows how to choose a folder, run the collector, open the dashboard, and [update later](docs/OPERATIONS_WINDOWS.md#update-an-existing-installation).
+On Windows, install Git and Python 3.11–3.14, then follow [Install on Windows](docs/OPERATIONS_WINDOWS.md#new-installation). Next, [add your information and create your first board](docs/AI_SETUP.md). Open it afterward by double-clicking **Open Dashboard.cmd** in your workspace. See [update instructions](docs/OPERATIONS_WINDOWS.md#update-an-existing-installation) when needed.
 
 On Linux, use Python 3.11–3.14. From a checkout:
 
@@ -26,25 +26,9 @@ The collector writes public leads to `output/`. Start with `source_health.json` 
 
 ## Review with your own AI
 
-Open your private workspace in your agent so it can use your reference files. Give it `output/review_packet.md`, `output/source_health.json`, `output/export_manifest.json`, and `schemas/workspace-review.schema.json` from the project folder. Ask it to check selected leads against official pages and save a JSON response matching the schema as `review.json` in the private workspace.
+The [setup guide](docs/AI_SETUP.md) has two prompts: one to organize your personal material, and one to collect leads, investigate them, import findings, and open the dashboard. Your AI handles the files and commands. You can add material and ask for another review later.
 
-Import the response using the same exports the agent reviewed. In PowerShell, from the project folder, set `$workspace` to your private workspace:
-
-```powershell
-$workspace = Join-Path ([Environment]::GetFolderPath("MyDocuments")) "Opportunity-Workspace"
-.\.venv\Scripts\opdisc.exe workspace-apply-review $workspace (Join-Path $workspace "review.json") --manifest .\output\export_manifest.json
-.\.venv\Scripts\opdisc.exe workspace-dashboard $workspace
-```
-
-Change `$workspace` above if you chose a different folder. If collection generated new exports while the agent was reviewing, refresh the response against those exports before importing it. Explore remains available for leads that were not in the sample. Imported findings may become outdated as sources change; check an official page before acting.
-
-On Linux, from the project folder, set `workspace` to the private folder you chose:
-
-```bash
-workspace="/path/to/Opportunity-Workspace"
-.venv/bin/opdisc workspace-apply-review "$workspace" "$workspace/review.json" --manifest output/export_manifest.json
-.venv/bin/opdisc workspace-dashboard "$workspace"
-```
+Check an official page before acting on an opportunity. For manual review imports and Linux commands, see [workspace operations](docs/PRIVATE_WORKSPACE_OPERATIONS.md#import-an-agents-review).
 
 ## Your files and settings
 

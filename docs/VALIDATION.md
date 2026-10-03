@@ -1,5 +1,26 @@
 # Validation record
 
+## AI onboarding and dashboard launcher (2026-10-03)
+
+Added a short setup guide with separate personal-information and board-review
+prompts, concise workspace instructions, and a Windows dashboard launcher.
+Existing user files are preserved. The original dashboard demo is unchanged.
+
+| Check | Result |
+| --- | --- |
+| Linux Python 3.12.3, non-live suite | 284 passed; 7 native-Windows tests skipped |
+| Native Windows Python 3.12.10, non-live suite | 286 passed; 5 symlink tests skipped for OS permissions |
+| Ruff format/lint, Mypy, configuration, wheel build | Passed |
+| Publication audit and diff whitespace | Passed; 160 files, zero findings before this record |
+| Documentation links and PowerShell syntax | 31 relative links/anchors passed; installer and launcher parsed |
+
+Native launcher tests cover spaces and punctuation in paths, engine relocation,
+visible errors, and exit codes. Initialization tests cover existing-file
+preservation. The installer was also executed in a disposable Windows checkout.
+No AI intake or research session was executed; collector behavior is unchanged
+and live collection was not rerun. Windows CI remains to be checked after a push.
+The installed personal workspace was not changed.
+
 ## Curated Home and complete Explore (2026-09-29 UTC)
 
 The uncommitted 32/8 Markdown packet remains a bounded input preview, not the
