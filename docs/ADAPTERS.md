@@ -1,5 +1,19 @@
 # Adapters
 
+Employer description extraction happens before display truncation for
+Greenhouse, Lever, Ashby, and description content available in SmartRecruiters
+payloads. Nested HTML entities are decoded; Lever's separate lists participate
+in extraction. Requirement excerpts are bounded to 2,400 characters, with
+separate bounded fact fields. Required and preferred degree normalization sees
+all available requirement text. The extraction is conservative pattern matching,
+not a complete interpretation of every employer's prose.
+
+Workday's listing response still supplies limited content. SmartRecruiters
+listing payloads may omit detailed sections. These changes do not add per-job
+detail requests, authenticated access, or an embedded AI dependency; absent
+content stays unknown. Source registry coverage is unchanged by this extraction
+and screening update.
+
 Adapters turn one fetched public payload into `RawOpportunity` records. They
 are registered in `src/opportunity_discovery/adapters/` and selected by the
 `adapter` field of a registry entry.

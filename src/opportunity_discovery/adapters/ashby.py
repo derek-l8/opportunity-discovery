@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import json
 
+from ..extraction import description_location, extract_description
 from ..models import AdapterResult, RawOpportunity
 from .base import bounded_excerpt, outcome_to_result, parse_json_body, register_adapter
 
@@ -44,7 +45,9 @@ class AshbyAdapter:
             )
         records = []
         for job in jobs:
-            loc = job.get("location") or ""
+            content = job.get("descriptionPlain") or job.get("descriptionHtml")
+            facts = extract_description(content)
+            loc = job.get("location") or description_location(content) or ""
             published = (job.get("publishedAt") or "")[:10] or None
             records.append(
                 RawOpportunity(
@@ -57,7 +60,11 @@ class AshbyAdapter:
                     remote_signal="remote" if "remote" in str(loc).lower() else None,
                     posted_date=published,
                     employment_type=(job.get("employmentType") or "").lower() or None,
-                    description_excerpt=bounded_excerpt(job.get("descriptionPlain"), ctx.excerpt_chars),
+                    description_excerpt=bounded_excerpt(
+                        facts["requirements_text"] or content, ctx.excerpt_chars
+                    ),
+                    extra={"requirements_extracted": True},
+                    **facts,
                 )
             )
         return AdapterResult(ok=True, records=records, empty_ok=True, http_status=out.status)

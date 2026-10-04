@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import logging
+import re
 import sqlite3
 import time
 from datetime import UTC, datetime
@@ -356,12 +357,7 @@ class Pipeline:
             if col == "description_hash":
                 old_desc_hash = existing["description_hash"]
                 new_desc_hash = description_hash(fields["description_excerpt"])
-                if (
-                    old_desc_hash
-                    and new_desc_hash
-                    and old_desc_hash != new_desc_hash
-                    and _may_overwrite("description")
-                ):
+                if new_desc_hash and old_desc_hash != new_desc_hash and _may_overwrite("description"):
                     changed["description"] = {"old": old_desc_hash, "new": new_desc_hash}
                     updates["description_hash"] = new_desc_hash
                     updates["description_excerpt"] = fields["description_excerpt"]
@@ -500,7 +496,7 @@ class Pipeline:
         employment = raw.employment_type
         if employment is None:
             t = (raw.title or "").lower()
-            if "intern" in t:
+            if re.search(r"\bintern(?:ship)?\b", t):
                 employment = "internship"
             elif any(k in t for k in ("fellowship", "scholarship")):
                 employment = "program"
@@ -520,6 +516,7 @@ class Pipeline:
                 required_degree=raw.required_degree,
                 preferred_degree=raw.preferred_degree,
                 experience_requirement_text=raw.experience_requirement_text,
+                extra=raw.extra,
             )
         )
         official = raw.canonical_url if source.official_source else None
@@ -578,14 +575,24 @@ class Pipeline:
                 events.append(c.CHANGE_APPLICATION_CLOSED)
         categories = (
             (c.CHANGE_DEADLINE, {"deadline", "deadline_tz"}),
-            (c.CHANGE_REQUIREMENTS, {"requirements_text", "description"}),
+            (
+                c.CHANGE_REQUIREMENTS,
+                {
+                    "requirements_text",
+                    "class_year_language",
+                    "graduation_window_language",
+                    "major_language",
+                    "work_auth_language",
+                    "description",
+                },
+            ),
             (c.CHANGE_DATES, {"event_start_date", "event_end_date"}),
             (c.CHANGE_LOCATION, {"location_text"}),
         )
         categorized: set[str] = {"application_state"}
         for event_type, fields in categories:
             triggered = (
-                "requirements_text" in changed
+                bool((fields - {"description"}) & set(changed))
                 if event_type == c.CHANGE_REQUIREMENTS
                 else bool(fields & set(changed))
             )
@@ -602,7 +609,14 @@ class Pipeline:
             c.CHANGE_APPLICATION_OPENED: {"application_state"},
             c.CHANGE_APPLICATION_CLOSED: {"application_state"},
             c.CHANGE_DEADLINE: {"deadline", "deadline_tz"},
-            c.CHANGE_REQUIREMENTS: {"requirements_text", "description"},
+            c.CHANGE_REQUIREMENTS: {
+                "requirements_text",
+                "class_year_language",
+                "graduation_window_language",
+                "major_language",
+                "work_auth_language",
+                "description",
+            },
             c.CHANGE_DATES: {"event_start_date", "event_end_date"},
             c.CHANGE_LOCATION: {"location_text"},
         }

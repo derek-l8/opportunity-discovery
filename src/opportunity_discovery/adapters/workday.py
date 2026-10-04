@@ -153,7 +153,7 @@ class WorkdayAdapter:
             provider_req_id=req_id,
             location_text=str(locations) if locations else None,
             remote_signal="remote" if "remote" in str(locations).lower() else None,
-            employment_type="internship" if "intern" in title.lower() else None,
+            employment_type="internship" if re.search(r"\bintern(?:ship)?\b", title, re.I) else None,
             description_excerpt=None,
             extra={"raw_posted_on": posted_on},
         )

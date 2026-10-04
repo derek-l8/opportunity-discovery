@@ -57,6 +57,26 @@ def test_student_profile_excludes_required_graduate_degree_not_broad_degree_list
     assert routes[c.PROFILE_STUDENT].state == c.ROUTE_INCLUDED
 
 
+@pytest.mark.parametrize(
+    ("title", "description"),
+    [
+        ("Product Manager Intern", "Currently pursuing an undergraduate degree."),
+        ("Product Design Intern", "Work with your intern manager on a design project."),
+        ("Platform Engineer Intern", "A senior engineer will mentor your project."),
+    ],
+)
+def test_internship_role_is_not_experienced_because_of_manager_or_mentor(title, description):
+    fields, routes = candidate(title, description)
+    assert fields["career_stage"] == c.CAREER_STUDENT
+    assert routes[c.PROFILE_STUDENT].state == c.ROUTE_INCLUDED
+
+
+def test_colleague_seniority_does_not_define_ambiguous_role_stage():
+    fields, routes = candidate("Hardware Technician", "Collaborate with a senior engineer and a manager.")
+    assert fields["career_stage"] == c.UNKNOWN
+    assert routes[c.PROFILE_STUDENT].state == c.ROUTE_RESEARCH
+
+
 def test_phd_in_intern_title_requires_research_without_inventing_degree_requirement():
     fields, routes = candidate("PhD Quantitative Researcher Intern")
     assert fields["required_degree"] == c.UNKNOWN

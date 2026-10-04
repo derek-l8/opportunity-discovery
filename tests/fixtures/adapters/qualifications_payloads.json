@@ -1,0 +1,35 @@
+{
+  "greenhouse": {
+    "jobs": [{
+      "id": 704,
+      "title": "Hardware Intern",
+      "absolute_url": "https://synthetic.example/jobs/704",
+      "location": {"name": "Boston, MA"},
+      "content": "&amp;lt;p&amp;gt;Acme makes imaginary widgets for fictional customers. Our company introduction describes our history, offices, products, and community. Our company introduction describes our history, offices, products, and community. Our company introduction describes our history, offices, products, and community. Our company introduction describes our history, offices, products, and community. Our company introduction describes our history, offices, products, and community. Our company introduction describes our history, offices, products, and community. Our company introduction describes our history, offices, products, and community. Our company introduction describes our history, offices, products, and community.&amp;lt;/p&amp;gt;&amp;lt;h2&amp;gt;Minimum Qualifications&amp;lt;/h2&amp;gt;&amp;lt;ul&amp;gt;&amp;lt;li&amp;gt;Must be currently enrolled as an undergraduate in Physics or a related STEM major.&amp;lt;/li&amp;gt;&amp;lt;li&amp;gt;Expected graduation between December 2035 and August 2036.&amp;lt;/li&amp;gt;&amp;lt;li&amp;gt;At least 2 years of relevant experience required.&amp;lt;/li&amp;gt;&amp;lt;/ul&amp;gt;&amp;lt;p&amp;gt;Application deadline: February 15, 2035.&amp;lt;/p&amp;gt;&amp;lt;p&amp;gt;Compensation: $28-$34 per hour.&amp;lt;/p&amp;gt;"
+    }],
+    "meta": {"total": 1}
+  },
+  "lever": [{
+    "id": "synthetic-list-qualification",
+    "text": "Research Intern",
+    "hostedUrl": "https://synthetic.example/jobs/lever-1",
+    "description": "<p>A fictional company introduction.</p>",
+    "categories": {"location": "Boston, MA", "commitment": "Intern"},
+    "lists": [{"text": "Minimum Qualifications", "content": "<li>Must be an enrolled undergraduate pursuing a degree in Physics.</li><li>Expected graduation between 2035 and 2036.</li><li>At least 2 years of experience required.</li>"}, {"text": "Preferred Qualifications", "content": "<li>5 years of experience.</li>"}],
+    "additional": "<p>Apply by 2035-02-15.</p><p>Salary: $28 per hour.</p>"
+  }],
+  "ashby": {
+    "jobs": [{
+      "id": "synthetic-ashby-1",
+      "title": "Physics Intern",
+      "jobUrl": "https://synthetic.example/jobs/ashby-1",
+      "employmentType": "Intern",
+      "descriptionHtml": "<p>Location: Boston, MA</p><h2>Required Qualifications</h2><p>Must be enrolled in an undergraduate degree in Physics.</p><p>Expected graduation between 2035 and 2036.</p><p>Application deadline: 2035-02-15.</p><p>Compensation: $28 per hour.</p>"
+    }]
+  },
+  "smartrecruiters": {
+    "id": "synthetic-sr-1", "name": "Physics Intern", "mission": "A fictional company introduction.",
+    "jobAd": {"sections": {"qualifications": {"text": "<p>Must be an undergraduate majoring in Physics.</p><p>Expected graduation between 2035 and 2036.</p>"}, "additionalInformation": {"text": "<p>Location: Boston, MA</p><p>Application deadline: 2035-02-15.</p>"}}},
+    "compensation": {"description": "$28 per hour"}
+  }
+}

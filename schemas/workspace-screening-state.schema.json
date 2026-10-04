@@ -1,0 +1,58 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "workspace-screening-state.schema.json",
+  "title": "Private persisted screening findings, separate from official research",
+  "type": "object",
+  "required": ["schema_version", "records"],
+  "properties": {
+    "schema_version": {"const": "1.0"},
+    "generation_id": {"$ref": "#/$defs/hash"},
+    "custom": {"type": "object"},
+    "records": {
+      "type": "object",
+      "propertyNames": {"pattern": "^opp_[0-9a-f]{32}$"},
+      "additionalProperties": {
+        "type": "object",
+        "required": ["origin", "state", "lane", "reasons", "questions", "candidate_hash", "profile_hash", "screening_version", "screened_at"],
+        "properties": {
+          "origin": {"enum": ["deterministic", "ai-screening"]},
+          "state": {"enum": ["worth-investigating", "needs-clarification", "low-relevance"]},
+          "lane": {"enum": ["research", "early-year-programs", "scholarships", "campus-networking", "technical-commercial", "engineering-internships", "other"]},
+          "reasons": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": ["code", "field", "evidence", "message"],
+              "properties": {
+                "code": {"type": "string"},
+                "field": {"type": "string"},
+                "evidence": {"type": "string"},
+                "message": {"type": "string"}
+              }
+            }
+          },
+          "questions": {"type": "array", "items": {"type": "string"}},
+          "candidate_hash": {"$ref": "#/$defs/hash"},
+          "profile_hash": {"$ref": "#/$defs/hash"},
+          "screening_version": {"type": "string", "minLength": 1},
+          "focus": {
+            "type": "object",
+            "required": ["mode", "match", "priority", "field", "evidence", "message", "program"],
+            "properties": {
+              "mode": {"enum": ["early-opportunities", "standard-internships", "new-grad", null]},
+              "match": {"enum": ["preferred", "related", "other", "unspecified"]},
+              "priority": {"type": "integer", "minimum": 0, "maximum": 2},
+              "field": {"type": "string"},
+              "evidence": {"type": "string"},
+              "message": {"type": "string"},
+              "program": {"type": "boolean"}
+            }
+          },
+          "screened_at": {"type": "string", "format": "date-time"},
+          "custom": {"type": "object"}
+        }
+      }
+    }
+  },
+  "$defs": {"hash": {"type": "string", "pattern": "^[0-9a-f]{64}$"}}
+}

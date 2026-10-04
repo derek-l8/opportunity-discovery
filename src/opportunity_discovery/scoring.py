@@ -271,8 +271,11 @@ def classify(
 ) -> tuple[list[str], ScoreComponents, dict[str, Any], list[str]]:
     """Return (role_family_tags, score_components, signals, reason_codes)."""
     families = scoring_cfg.families or DEFAULT_FAMILIES
-    text = {"title": raw.title or "", "excerpt": raw.description_excerpt or ""}
-    combined = " ".join([raw.title or "", raw.description_excerpt or "", raw.compensation_text or ""])
+    text = {
+        "title": raw.title or "",
+        "excerpt": " ".join(filter(None, [raw.description_excerpt, raw.requirements_text])),
+    }
+    combined = " ".join([raw.title or "", text["excerpt"], raw.compensation_text or ""])
 
     tags: list[str] = []
     components = ScoreComponents()
@@ -366,16 +369,21 @@ def classify(
 
 def extract_explicit_language(raw: RawOpportunity) -> dict[str, str | None]:
     """Extract explicit class-year / graduation-window / major / work-auth language."""
-    combined = " ".join(filter(None, [raw.title, raw.description_excerpt, raw.extra.get("requirements", "")]))
+    combined = " ".join(
+        filter(
+            None,
+            [raw.title, raw.description_excerpt, raw.requirements_text, raw.extra.get("requirements", "")],
+        )
+    )
     out: dict[str, str | None] = {}
     m = CLASS_YEAR_RE.search(combined)
-    out["class_year_language"] = m.group(0) if m else None
+    out["class_year_language"] = raw.class_year_language or (m.group(0) if m else None)
     m = GRAD_WINDOW_RE.search(combined)
-    out["graduation_window_language"] = m.group(0) if m else None
+    out["graduation_window_language"] = raw.graduation_window_language or (m.group(0) if m else None)
     m = MAJOR_RE.search(combined)
-    out["major_language"] = m.group(0) if m else None
+    out["major_language"] = raw.major_language or (m.group(0) if m else None)
     m = WORK_AUTH_RE.search(combined)
-    out["work_auth_language"] = m.group(0) if m else None
+    out["work_auth_language"] = raw.work_auth_language or (m.group(0) if m else None)
     return out
 
 

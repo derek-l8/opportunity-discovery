@@ -15,6 +15,7 @@ from dataclasses import dataclass, field
 from typing import Any, Protocol
 
 from .. import constants as c
+from ..extraction import decoded_text
 from ..http_client import Fetcher, FetchOutcome
 from ..models import AdapterResult, SourceSpec
 
@@ -41,7 +42,7 @@ def bounded_excerpt(text: str | None, limit: int = DEFAULT_EXCERPT_CHARS) -> str
     """Strip markup and bound length; never returns full copyrighted pages."""
     if not text:
         return None
-    cleaned = re.sub(r"<[^>]+>", " ", text)
+    cleaned = decoded_text(text)
     cleaned = re.sub(r"\s+", " ", cleaned).strip()
     if len(cleaned) <= limit:
         return cleaned or None

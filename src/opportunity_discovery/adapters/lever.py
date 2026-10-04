@@ -7,8 +7,10 @@ Public endpoint (no credentials):
 from __future__ import annotations
 
 import json
+import re
 from datetime import UTC, datetime
 
+from ..extraction import description_location, extract_description
 from ..models import AdapterResult, RawOpportunity
 from .base import bounded_excerpt, outcome_to_result, register_adapter
 
@@ -113,8 +115,19 @@ class LeverAdapter:
             )
         records = []
         for posting in postings:
+            sections = posting.get("lists") or []
+            section_text = "\n".join(
+                str(section.get("text") or "") + "\n" + str(section.get("content") or "")
+                for section in sections
+                if isinstance(section, dict)
+            )
+            content = "\n".join(
+                str(posting.get(key) or "")
+                for key in ("description", "descriptionPlain", "additional", "additionalPlain")
+            )
+            facts = extract_description(content, qualification_sections=section_text)
             categories = posting.get("categories") or {}
-            loc = categories.get("location") or None
+            loc = categories.get("location") or description_location(content) or None
             created = posting.get("createdAt")
             posted = None
             if isinstance(created, (int, float)):
@@ -134,11 +147,14 @@ class LeverAdapter:
                     posted_date=posted,
                     employment_type=(
                         "internship"
-                        if "intern" in (posting.get("text") or "").lower()
+                        if re.search(r"\bintern(?:ship)?\b", posting.get("text") or "", re.I)
                         else (categories.get("commitment") or "").lower() or None
                     ),
-                    description_excerpt=bounded_excerpt(posting.get("description"), ctx.excerpt_chars),
-                    extra={"workplaceType": workplace} if workplace else {},
+                    description_excerpt=bounded_excerpt(
+                        facts["requirements_text"] or content, ctx.excerpt_chars
+                    ),
+                    **facts,
+                    extra={"requirements_extracted": True, "workplaceType": workplace},
                 )
             )
         return AdapterResult(

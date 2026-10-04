@@ -1,0 +1,42 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "workspace-screening-response.schema.json",
+  "title": "Private semantic screening response, not official research",
+  "type": "object", "additionalProperties": false,
+  "required": ["schema_version", "generation_id", "profile_hash", "decisions"],
+  "properties": {
+    "schema_version": {"const": "1.0"},
+    "generation_id": {"$ref": "#/$defs/hash"},
+    "profile_hash": {"$ref": "#/$defs/hash"},
+    "decisions": {
+      "type": "array", "minItems": 1, "maxItems": 100,
+      "items": {
+        "type": "object", "additionalProperties": false,
+        "required": ["opportunity_id", "candidate_hash", "state", "reasons", "questions"],
+        "properties": {
+          "opportunity_id": {"type": "string", "pattern": "^opp_[0-9a-f]{32}$"},
+          "candidate_hash": {"$ref": "#/$defs/hash"},
+          "state": {"enum": ["worth-investigating", "needs-clarification", "low-relevance"]},
+          "questions": {"type": "array", "maxItems": 30, "items": {"type": "string", "minLength": 1, "maxLength": 1000}},
+          "reasons": {
+            "type": "array", "minItems": 1, "maxItems": 20,
+            "items": {
+              "type": "object", "additionalProperties": false,
+              "required": ["code", "field", "evidence", "message"],
+              "properties": {
+                "code": {"$ref": "#/$defs/text"},
+                "field": {"$ref": "#/$defs/text"},
+                "evidence": {"$ref": "#/$defs/text"},
+                "message": {"$ref": "#/$defs/text"}
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "$defs": {
+    "hash": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "text": {"type": "string", "minLength": 1, "maxLength": 1000}
+  }
+}

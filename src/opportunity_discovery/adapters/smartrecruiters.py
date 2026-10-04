@@ -9,6 +9,7 @@ from __future__ import annotations
 import json
 from typing import Any
 
+from ..extraction import description_location, extract_description
 from ..models import AdapterResult, RawOpportunity
 from .base import bounded_excerpt, outcome_to_result, parse_json_body, register_adapter
 
@@ -103,6 +104,21 @@ class SmartRecruitersAdapter:
         if isinstance(comp, dict) and comp.get("description"):
             comp_text = str(comp["description"])
         name = posting.get("name") or ""
+        sections = (posting.get("jobAd") or {}).get("sections") or {}
+        qualification = (sections.get("qualifications") or {}).get("text") or ""
+        content = "\n".join(
+            [
+                posting.get("mission") or "",
+                *[
+                    str(section.get("text") or "")
+                    for section in sections.values()
+                    if isinstance(section, dict)
+                ],
+            ]
+        )
+        facts = extract_description(content, qualification_sections=qualification)
+        facts["compensation_text"] = comp_text or facts["compensation_text"]
+        loc_text = loc_text or description_location(content)
         return RawOpportunity(
             title=name.strip(),
             canonical_url=(
@@ -118,7 +134,8 @@ class SmartRecruitersAdapter:
                 "remote" if "remote" in name.lower() or "remote" in (loc_text or "").lower() else None
             ),
             posted_date=released[:10] or None,
-            compensation_text=comp_text,
             employment_type=None,
-            description_excerpt=bounded_excerpt((posting.get("mission") or ""), excerpt_chars),
+            description_excerpt=bounded_excerpt(facts["requirements_text"] or content, excerpt_chars),
+            extra={"requirements_extracted": True},
+            **facts,
         )

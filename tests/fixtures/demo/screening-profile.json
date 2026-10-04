@@ -1,0 +1,17 @@
+{
+  "schema_version": "1.0",
+  "graduation_month": "2036-06",
+  "student_status": "undergraduate",
+  "degree": "bachelors",
+  "year_in_program": 1,
+  "unit_based_standing": null,
+  "remote_work": null,
+  "majors": ["Physics"],
+  "location_regions": [{"label": "Greater Boston", "match_terms": ["Boston", "Cambridge", "Somerville", "Burlington"], "context_terms": ["MA", "Massachusetts"]}],
+  "interest_keywords": ["physics", "hardware", "research", "scholarship", "product", "workshop"],
+  "max_required_experience_years": null,
+  "employer_cap": 2,
+  "stale_after_days": 30,
+  "source_refs": ["knowledge/PROFILE.md"],
+  "custom": {"synthetic": true}
+}

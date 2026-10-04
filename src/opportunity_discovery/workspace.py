@@ -35,6 +35,15 @@ using `schemas/workspace-source-manifest.schema.json` in the engine folder.
 Verify saved copies before clearing inbox items. Update `knowledge/PROFILE.md`
 and `knowledge/CATALOG.md`; link facts to sources, keep important unknowns
 visible, and preserve corrections. Writing samples are optional.
+Ask about missing major, expected graduation, year in program, class standing,
+available geographic regions, remote work, interests, and opportunity focus:
+early exploratory/freshman-sophomore programs, standard undergraduate internships,
+or entry-level full-time jobs. Interpret intended
+metro areas with the user. Ask whether regions are preferences or limits and
+whether short programs elsewhere are acceptable with covered travel. Then import
+structured private screening settings
+with `opdisc workspace-profile`, following the screening profile schema. Keep
+unknown credentials unknown. Do not require the user to write JSON.
 
 ## Opportunity review
 
@@ -42,10 +51,16 @@ When asked, follow the engine's `docs/PRIVATE_WORKSPACE_OPERATIONS.md` and
 `docs/INTEGRATION_CONTRACT.md` for collection and review import. Stop an open
 dashboard before changing board state. Read the profile and current exports;
 check run_summary.json and source_health.json for collection failures.
-The packet is a sample; the full review queue includes unreviewed leads.
+The packet is a sample. Use `opdisc workspace-screen` on the whole collection
+and `opdisc workspace-screening` for bounded, balanced Explore batches. An
+optional semantic screening pass may interpret captured text; import it with
+`opdisc workspace-apply-screening`. Screening is separate from official checks.
 Check official pages and personal fit, preserve uncertainty, and confirm a
 successful import before reporting that the board is updated. State how much
-you reviewed and what remains. Open `Open Dashboard.cmd` in a separate window
+was screened, plausible, officially checked, and still awaiting investigation.
+State what remains unresolved.
+Carry unchanged findings forward; prioritize changed requirements, deadlines,
+and stale checks. Open `Open Dashboard.cmd` in a separate window
 on Windows, or use `opdisc workspace-dashboard WORKSPACE` on Linux.
 
 ## Permissions

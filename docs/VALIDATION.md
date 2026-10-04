@@ -963,3 +963,170 @@ Starting base was `339ad000d09976ead966b38c390c1c5d2dcd4fdd` (`origin/main`, PR 
 | Synthetic demo | `PYTHONPATH=src /data/venv/bin/python scripts/demo_workspace.py /data/opdisc-review/synthetic-demo` | Created 1 active, 1 waiting, 2 dismissed, 1 history record and a fake request/response |
 
 The end-to-end synthetic test additionally rendered all four HTTP lanes, changed pipeline state through the dashboard, created another manual application request, and checked the resulting files. The review importer processed fake structured decisions; no live AI call or real applicant data was used. No browser executable or native Windows host was available, so rendered visual inspection and native PowerShell validation remain unverified. CI defines Windows jobs for Python 3.11–3.14, but no new PR or CI run was started. `validate-sources` was not run because these changes do not alter source adapters, scoring, registry, or public collection behavior; the requested final verification was non-live.
+
+## Full-description extraction and private screening (2026-10-04 UTC)
+
+Implementation and validation ran on native Windows in the existing checkout,
+starting from `07eacde01a82d0498ec5b8b4aa3282d965b6a4c8` on
+`workspace-backups`. Changes remain local, uncommitted, and unpushed.
+
+The existing ignored `.venv` launcher referenced a missing Python installation.
+Validation used an isolated ignored `data/validation/venv` with Python 3.12.14
+and the declared development dependencies. It did not replace the existing
+environment. Commands below use executables from that validation environment.
+
+| Gate | Command / evidence | Result |
+| --- | --- | --- |
+| Full native Windows suite | `python -m pytest -m 'not live' -o addopts='' -q -ra --basetemp <fresh-temp-dir> -o cache_dir=data/validation/pytest-cache` | 334 passed, 8 skipped in 54.68 seconds |
+| Lint | `ruff check src tests scripts/demo_workspace.py` | Passed |
+| Formatting | `ruff format --check src tests scripts/demo_workspace.py` | Passed, 82 files |
+| Types | `mypy src/opportunity_discovery --cache-dir data/validation/mypy-cache` | Passed, 45 source files |
+| Configuration | `opdisc validate-config` | Passed, 272 registered sources |
+| Live source validation | `opdisc --config data/validation/live/config.toml --json validate-sources` | 241 validated with records, 5 validated empty, 2 failed, 24 quarantined |
+| Publication audit | `opdisc --json audit .` | No findings before this documentation addition |
+| Diff integrity | `git diff --check` | Passed before this documentation addition |
+| Browser inspection | Synthetic external workspace, loopback dashboard, Explore | Existing navigation preserved; personal screening, official research, and unresolved questions displayed separately |
+
+The eight skipped tests require symlink creation, which this Windows account
+cannot perform. Windows PowerShell tests ran. No PR, remote CI run, commit,
+push, or publication occurred; other Python versions remain unverified in this
+cycle. Browser inspection used only fictional data; its temporary server was
+stopped afterward.
+
+Synthetic fixtures exercise nested escaped HTML, separate Lever lists,
+requirements beyond a shortened display excerpt, requirement headings ahead of
+company introductions, preferred experience, degree statements beyond the
+requirements bound, explicit and ambiguous deadlines, exported facts, and
+stable IDs after a qualification change. Private tests cover whole-collection
+screening, region/context matching, unknown credentials, recoverable exclusions,
+category balance and employer caps, carried-forward findings, profile/source
+invalidation, official-check freshness, new/changed backlog priority,
+evidence-quoted semantic imports, rejected stale/corrupt inputs, and board-decision
+preservation. Profile, persisted state, and semantic-response schemas are checked
+using fictional examples.
+
+Live probes used a separate database, output directory, and cache below
+`data/validation/live`. Amplitude's Greenhouse endpoint and Amigo's Ashby
+endpoint returned HTTP 404. Those failures were recorded as failures, not empty
+boards or closures; source registrations were not changed.
+
+The current production collection was not recollected or backfilled. Richer
+extracted fields arrive on subsequent successful fetches. Source coverage was
+not expanded in this update. Workday remains limited to listing content;
+SmartRecruiters only extracts detailed sections when the payload supplies them.
+No per-job detail crawling, embedded model provider, or live AI research was
+added. External private screening settings and cached findings are outside the
+checkout and do not update collector data or official review decisions.
+
+## Configurable private opportunity focus (2026-10-04)
+
+The private profile now supports `early-opportunities`, `standard-internships`,
+and `new-grad`, plus null for no preference. Onboarding asks for this choice.
+Preferred leads precede secondary leads, with category balancing within each
+tier. Early mode broadly prefers exploratory programs and dedicated first-two-year
+roles, preserving unresolved requirements and recognized mismatches. Preferred
+early programs are exempt from the employer cap and do not consume job slots.
+New-grad mode prioritizes entry-level full-time job cues; broader programs and
+contract roles remain secondary. Screening version 2 invalidates older cached
+findings without changing candidate identity or application decisions.
+
+Validation used the same native Windows checkout and ignored environment above.
+All changes remain local, uncommitted, and unpushed.
+
+| Gate | Evidence | Result |
+| --- | --- | --- |
+| Full native Windows suite | `python -m pytest -m 'not live' -o addopts='' -q -ra --basetemp <fresh-temp-dir> -o cache_dir=data/validation/pytest-cache` | 354 passed, 8 skipped in 65.24 seconds |
+| Lint and formatting | Ruff, same commands as above | Passed; 82 files formatted |
+| Types | Mypy, same command as above | Passed; 45 source files |
+| Configuration | `opdisc --json validate-config` | 272 sources, 248 enabled, 0 errors |
+| Live source validation | Separate ignored validation config and data paths | 241 with records, 5 valid empty, 2 HTTP 404 failures, 24 quarantined |
+| Publication audit | `opdisc --json audit .` | 169 files scanned, 0 findings before this documentation addition |
+
+The same eight symlink-dependent tests remain skipped for Windows privilege
+limitations. PowerShell tests ran. Synthetic fixtures cover all three stage
+preferences, unknown employment type, all-year versus dedicated early-year
+internships, ordinary discovery/insights job titles, unresolved GPA/subject fit,
+program cap exceptions, explicit mismatches, and invalidation after a preference
+change. Public candidate bytes and stable IDs remain unchanged by private
+screening. Existing dashboard navigation is preserved. No model calls or new
+sources were added. The two live failures remain Amplitude and Amigo; no source
+registrations or production collection data were changed.
+
+## Collection refresh and configurable travel screening (2026-10-04)
+
+A subsequent authorized production refresh completed as
+`run-20261004T204511582690Z`: 248 sources attempted, 246 successful, and the
+same two HTTP 404 failures. All 21,955 previous candidate identities survived;
+85 new identities brought the collection to 22,040. No records were closed.
+Source failures preserved previous successful state. The registry was unchanged.
+
+Full collection requirements text is populated for 18,672 records. The generic
+queue decreased from 6,976 to 6,234; unknown opportunity types decreased from
+4,662 to 3,061, with requirements captured for 4,396 queue records. Graduation
+language is populated for 442 queue records, but only 215 contain a year:
+this is not evidence that every field contains an actionable graduation window.
+Two queue records have explicit deadlines. Workday and generic HTML lists still
+have substantial extraction gaps. Populated fields do not establish correctness
+or personal eligibility.
+
+The audit exposed false academic-year cues from employee benefits and graduate
+school, experienced labels on internship titles, and substring inference from
+Internal/International titles. Regression fixes now constrain academic cues,
+separate dedicated early-year opportunities from sophomore-or-higher minimums,
+and use word boundaries for internship inference in Greenhouse, Lever, Workday,
+and pipeline normalization. Structured source labels remain authoritative;
+conflicting older labels become private screening questions. These later public
+classification corrections have not been backfilled into the production DB.
+
+Private profiles support configurable location policies, with onboarding asking
+whether regions are preferences or limits and whether funded short programs
+elsewhere are acceptable. The travel exception requires a credible program,
+explicit duration of at most 14 days, and source-backed travel coverage;
+housing alone, conditional funding, and ordinary internship relocation do not
+qualify. Explicit state/country mismatches are recoverable exclusions. Missing
+city aliases, funding, duration, and personal credentials remain questions.
+Multiple offices cannot borrow geographic context from each other. Version 6
+invalidates earlier cached screening rules while preserving custom fields,
+identities, and application decisions. Applicant settings and outcomes remain
+outside this repository.
+
+| Gate | Result |
+| --- | --- |
+| Final native Windows suite | 391 passed, 8 skipped in 70.34 seconds |
+| Ruff lint and formatting | Passed; 81 files formatted |
+| Mypy | Passed; 45 source files |
+| Configuration validation | 272 sources, 248 enabled, 0 errors |
+| Final isolated live source validation | 241 with records, 5 valid empty, 2 HTTP 404 failures, 24 quarantined |
+
+The eight skips require Windows symlink privileges. Live validation uses separate
+ignored data, output, and cache paths. Synthetic tests cover funded short
+programs, event dates, unknown/conditional/contradictory travel funding,
+internship relocation, older program labels, explicit foreign locations,
+ambiguous same-state cities, and multi-office context. There are no embedded
+model calls, additional sources, or changes to dashboard sections. Changes
+remain local, uncommitted, and unpushed.
+
+## Local publication-readiness check (2026-10-04)
+
+Rechecked the current extraction, private screening, and source-research diff on
+native Windows. This is an implementation/readiness check, not evidence that the
+proposed program sources have been enabled. Registry coverage remains unchanged.
+
+| Gate | Evidence | Result |
+| --- | --- | --- |
+| Full non-live suite | Validation Python; fresh OS temporary directory outside Git; existing ignored pytest cache | 391 passed, 8 skipped in 57.27 seconds |
+| Ruff lint/format | `ruff check src tests scripts/demo_workspace.py`; `ruff format --check src tests scripts/demo_workspace.py` | Passed; 82 files formatted |
+| Types | `mypy src/opportunity_discovery --cache-dir data/validation/mypy-cache` | Passed; 45 source files |
+| Configuration | `opdisc --json validate-config` | 272 sources, 248 enabled, 0 errors |
+| Publication audit | `opdisc --json audit .` | 171 files, 0 findings |
+| Diff integrity | `git diff --check` | Passed |
+| Packaging | Offline `uv build` using the ignored validation cache/environment, output under `data/validation/push-readiness-build` | Wheel and sdist built; wheel includes extraction/screening modules and dashboard CSS; both archives exclude runtime data/caches |
+
+The eight skips require Windows symlink privileges. Synthetic private-workspace
+tests require temporary paths outside any Git checkout; locating their test
+workspaces inside this repository triggers the intended privacy guards.
+Packaging retains the existing setuptools license-metadata deprecation warnings.
+The latest saved isolated live validation was inspected, not rerun: 241 sources
+with records, 5 valid empty, 2 existing HTTP 404 failures, 24 quarantined.
+No new GitHub CI run was started, so its Linux/Windows Python-version matrix
+remains unverified for this diff. No staging, commit, push or publication occurred.

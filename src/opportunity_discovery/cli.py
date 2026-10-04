@@ -30,6 +30,7 @@ from .workspace_actions import (
 from .workspace_application import ARTIFACT_TYPES, create_application_request
 from .workspace_board import BOARD_VIEWS, PIPELINE_STATES, list_workspace_board
 from .workspace_dashboard import serve_workspace_dashboard
+from .workspace_discovery import default_manifest_path
 from .workspace_recovery import (
     audit_workspace,
     backup_workspace,
@@ -38,11 +39,50 @@ from .workspace_recovery import (
     restore_knowledge_snapshot,
     restore_workspace_backup,
 )
+from .workspace_screening import (
+    LANES,
+    STATES,
+    apply_screening_response,
+    list_personal_feed,
+    screen_collection,
+    set_screening_profile,
+)
 from .workspace_state import (
     WorkspaceStateError,
     apply_workspace_feedback,
     apply_workspace_review,
 )
+
+
+def cmd_workspace_screening(args: argparse.Namespace) -> int:
+    try:
+        root = Path(args.workspace)
+        if args.command == "workspace-profile":
+            result = set_screening_profile(root, json.loads(Path(args.profile).read_text(encoding="utf-8")))
+        else:
+            manifest = Path(args.manifest) if args.manifest else default_manifest_path(root)
+            if args.command == "workspace-screen":
+                result = screen_collection(root, manifest)
+            elif args.command == "workspace-apply-screening":
+                result = apply_screening_response(
+                    root, json.loads(Path(args.response).read_text(encoding="utf-8")), manifest
+                )
+            else:
+                result = list_personal_feed(
+                    root,
+                    manifest,
+                    state_filter=args.state,
+                    lane=args.lane,
+                    search=args.search,
+                    uncapped=args.uncapped,
+                    offset=args.offset,
+                    limit=args.limit,
+                )
+        print(json.dumps(result, indent=2))
+        return 0
+    except (WorkspaceStateError, OSError, ValueError) as exc:
+        print(f"ERROR private screening: {exc}", file=sys.stderr)
+        return 2
 
 
 def _setup_logging(quiet: bool) -> None:
@@ -685,6 +725,26 @@ def build_parser() -> argparse.ArgumentParser:
     p = add("init-workspace", cmd_init_workspace, "initialize an external private workspace")
     p.add_argument("workspace", help="private workspace root")
     p.add_argument("--engine-path", help="path to the public engine checkout")
+    p = add("workspace-profile", cmd_workspace_screening, "import an AI-normalized private screening profile")
+    p.add_argument("workspace")
+    p.add_argument("profile", help="private JSON matching workspace-screening-profile.schema.json")
+    for name, help_text in (
+        ("workspace-screen", "screen the entire collection without AI calls"),
+        ("workspace-screening", "read a bounded personal screening/research batch"),
+        ("workspace-apply-screening", "import a semantic screening pass, separate from research"),
+    ):
+        p = add(name, cmd_workspace_screening, help_text)
+        p.add_argument("workspace")
+        p.add_argument("--manifest")
+        if name == "workspace-apply-screening":
+            p.add_argument("response")
+        if name == "workspace-screening":
+            p.add_argument("--state", choices=("all", *STATES))
+            p.add_argument("--lane", choices=LANES)
+            p.add_argument("--search")
+            p.add_argument("--uncapped", action="store_true")
+            p.add_argument("--offset", type=int, default=0)
+            p.add_argument("--limit", type=int, default=25)
     p = add(
         "workspace-apply-review",
         cmd_workspace_apply_review,
