@@ -28,7 +28,7 @@ For a manual launch from the project folder:
 Open `http://127.0.0.1:8765/` if the browser does not open automatically. Stop the server with Ctrl+C.
 
 - **Home** shows imported review decisions that still need attention, with reasons and a next action.
-- **Explore** searches the complete current review queue, including leads with no imported review.
+- **Explore** uses personal screening across the full collection when configured, with separate research labels. It otherwise searches the public review queue.
 - **Waiting**, **Dismissed**, and **History** show your other board items.
 
 Home can be empty before your first review. If Explore says its export is unavailable, run the collector and check `output/source_health.json`. To use a different export folder, pass `--manifest PATH/TO/export_manifest.json`.
@@ -38,6 +38,122 @@ Select a reviewed item to use **Done**, **Delete**, or **Restore**. Done means n
 **Forget Completely** requires typing `FORGET`. It deletes the current board record and its ID-named opportunity and application folders. The lead can appear again. Earlier reports, knowledge, source files, and backups remain; this is not complete erasure of every copy.
 
 Run one dashboard per workspace and stop it before changing that workspace through CLI commands.
+
+## Screening before research
+
+Your chosen AI prepares the private profile during onboarding. It uses
+[workspace-screening-profile.schema.json](../schemas/workspace-screening-profile.schema.json),
+saves the input outside the checkout, and imports it with:
+
+```powershell
+& $opdisc workspace-profile $workspace (Join-Path $workspace "screening-profile.json")
+& $opdisc workspace-screen $workspace
+& $opdisc workspace-screening $workspace --limit 25
+```
+
+`workspace-profile` validates and saves `.opdisc/screening-profile.json`.
+It never changes the public collector configuration. The profile contains major
+aliases, interests, graduation month, enrollment status, year in the program,
+and separately recorded unit-based class standing. Missing personal facts stay
+null. The experience limit is optional; do not infer a limit of zero for students.
+
+Set `opportunity_focus` to the user's chosen emphasis:
+
+| Setting | First emphasis | Secondary leads |
+| --- | --- | --- |
+| `early-opportunities` | Exploratory programs and dedicated freshman/sophomore roles | Other programs, internships, and student research |
+| `standard-internships` | Undergraduate internships, including junior-year roles | Dedicated early-year roles, programs, and research |
+| `new-grad` | Entry-level full-time jobs; explicit job cues with unknown employment type remain questions | Broader jobs and programs |
+
+Null preserves a feed without a stage preference. The AI asks the user rather
+than inferring this choice from their graduation date. Preferred leads appear
+before secondary leads, with category balancing within each preference tier.
+In early mode, exploratory programs receive broad consideration without an
+exact major/interest keyword match. Known mismatches still mean low relevance;
+unknown GPA, coursework, and class-year eligibility remain questions. Stage
+preference is separate from screening status and official-page verification.
+Academic-year cues must describe students; first-year employee benefits,
+company anniversaries, and graduate-school years do not establish an early
+undergraduate opportunity. A sophomore-or-higher minimum is secondary rather
+than a dedicated early-year cue. A generic public "program" label alone does
+not establish an exploratory program. If an older experienced-role label
+conflicts with an internship title, screening asks about role level instead
+of treating that label as a proven mismatch. Other explicit mismatches remain.
+
+For geographic preferences, the AI translates a natural-language region into
+`location_regions`. Each region has a human-readable `label`, `match_terms`
+(city, county, and regional names), and `context_terms` (state or country names
+and abbreviations). For example, Greater Boston can include Boston, Cambridge,
+and Somerville with Massachusetts/MA context. This is an explicit set of text
+aliases, not geocoding or a distance calculation. If a posting omits context or
+uses an unrecognized city, screening asks about it rather than declaring a
+mismatch. The AI can revise the region when that interpretation is supported.
+Do not apply one user's geographic settings to other installations.
+
+Ask about `location_policy`: `prefer-local` (the backward-compatible default)
+keeps other locations as questions; `local-only` filters explicit geographic
+mismatches; `local-jobs-funded-programs` filters jobs and internships while
+allowing short programs elsewhere with source-backed travel coverage. Short
+means at most 14 days, established by event dates or an explicit program
+duration. Housing alone is not travel coverage, and an internship's relocation
+benefit does not bypass the region limit. Missing or conditional funding and
+unresolved duration remain questions. Explicitly unfunded programs are low
+relevance under this policy. All leads remain recoverable.
+
+The current deterministic exclusion recognizes explicit US states and common
+country names outside the configured contexts. A city in the same state but absent from the metro
+aliases, incomplete location text, or other unresolved geography stays a
+question for the optional AI pass. The AI can expand aliases when supported;
+the collector does not call an AI or infer geographic boundaries.
+
+`workspace-screen` processes every record in manifest-verified `candidates.jsonl`,
+including records outside the generic queue. It saves private findings in
+`.opdisc/screening.json`: worth investigating, needs clarification, or low
+relevance, with evidence reasons and unresolved questions. It preserves
+unchanged findings, removed records, and custom extensions. Changed candidate
+facts, changed profile settings, or a new screening rules version invalidate
+the relevant saved findings. It does not change the application board.
+
+`workspace-screening` reads a bounded batch for your agent; it makes no AI calls
+and writes nothing. Use `--state needs-clarification`, `--lane research`,
+`--search TEXT`, `--offset N`, or `--uncapped` as needed. The employer cap defaults
+to three matching records across the displayed results; it never deletes a lead.
+Preferred exploratory and early-year programs in early mode are exempt and do
+not consume ordinary-role slots, so distinct programs from one employer remain
+visible. Ordinary internships and jobs still use the cap.
+The cap and research staleness window are configurable in the private profile.
+Explore previews unsaved/outdated screening with an explicit label; a dashboard
+read does not silently persist screening.
+Suggested results also respect existing dismissed, completed, and waiting board
+decisions. Use `--state all --uncapped` to recover every matching collected lead.
+
+For semantic interpretation of a small batch, the AI may prepare a
+[workspace-screening-response.schema.json](../schemas/workspace-screening-response.schema.json)
+response and run:
+
+```powershell
+& $opdisc workspace-apply-screening $workspace (Join-Path $workspace "screening-response.json")
+```
+
+The response must match the current export generation, normalized profile hash,
+and each candidate's facts hash from `workspace-screening`. It quotes captured
+candidate fields, applies at most 100 decisions, preserves unresolved personal
+GPA/coursework/authorization/experience/class-standing questions, and cannot
+promote an explicit deterministic mismatch. This is screening, not official
+research: it neither creates a board record nor marks a page as checked.
+Keep these passes small; normalizing shared preferences once is usually more
+useful than asking an AI to read every lead.
+
+Official-page findings still use `workspace-apply-review` below. Coverage counts
+saved current screening, plausible screened leads, reported official checks,
+and actionable leads awaiting investigation. A checked page can still require
+investigation after a material source change, an approaching deadline (21 days),
+an unresolved finding, or the configured staleness interval. Mere collection
+timestamps do not invalidate a check. Imported findings and user decisions are
+preserved until an explicit subsequent review or action changes them.
+Unreviewed leads first seen or materially changed within seven days take
+precedence over an unchanged backlog within each category. An approaching
+deadline uses a 21-day window; neither window establishes official availability.
 
 ## Import an agent's review
 
@@ -59,7 +175,10 @@ workspace="/path/to/Opportunity-Workspace"
 .venv/bin/opdisc workspace-dashboard "$workspace"
 ```
 
-The 40-lead packet is a starting sample, not a complete review. For later sessions, ask your agent to select more leads from `review_queue.jsonl` or the new/changed-lead packets. Imported decisions do not track everything an agent has read, and the starter sample may repeat leads.
+The 40-lead packet is a starting sample, not a complete review. Prefer a bounded
+personal screening batch for later research. Public queues and new/changed-lead
+packets remain available. Imported decisions record successful findings, not
+everything an agent has read; unsaved reading does not count as checked coverage.
 
 ## Prepare an application
 

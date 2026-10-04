@@ -77,6 +77,31 @@ def test_first_run_creates_new_records(env):
     assert summary.detail["sources"][spec.source_id]["records_new"] == 2
 
 
+def test_internal_and_international_titles_do_not_infer_internship(env):
+    cfg, conn, fetcher, spec = env
+    fetcher.add(
+        "https://boards-api.greenhouse.io",
+        200,
+        gh_payload(
+            [
+                job(1, "Product Designer, International", "https://boards.greenhouse.io/acme/jobs/1"),
+                job(2, "Internal Systems Engineer", "https://boards.greenhouse.io/acme/jobs/2"),
+                job(3, "Physics Internship", "https://boards.greenhouse.io/acme/jobs/3"),
+            ]
+        ),
+    )
+    pipeline, _ = make_pipeline(cfg, conn)
+    pipeline.process_source(spec, fetcher)
+    rows = {
+        row["title"]: row
+        for row in conn.execute("SELECT title, employment_type, engagement_type FROM opportunities")
+    }
+    for title in ("Product Designer, International", "Internal Systems Engineer"):
+        assert rows[title]["employment_type"] is None
+        assert rows[title]["engagement_type"] != "internship"
+    assert rows["Physics Internship"]["employment_type"] == "internship"
+
+
 def test_continuation_organization_repairs_on_successful_reobservation(engine_config, tmp_path):
     conn = make_db(tmp_path)
     fetcher = MockFetcher()

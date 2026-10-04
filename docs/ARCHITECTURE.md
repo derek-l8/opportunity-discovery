@@ -35,6 +35,7 @@ workflow.
 | `identity.py` | Stable candidate IDs (priority ladder, no fuzzy merging) |
 | `http_client.py` | Polite fetching: public-destination and redirect validation, response/redirect bounds, concurrency, per-domain throttle, retries, conditional requests, cache fallback, robots.txt |
 | `adapters/` | One adapter per source format; each distinguishes valid-empty from failure; per-source isolation in `run_source` |
+| `extraction.py` | Decode full available ATS descriptions and extract bounded source facts before display truncation |
 | `registry.py` | Load `config/sources.toml`, validate entries, cadence-based due selection |
 | `pipeline.py` | Fetch → observe → reconcile → detect changes → score |
 | `scoring.py` | Deterministic keyword families, signals, effort estimate, season inference |
@@ -42,7 +43,8 @@ workflow.
 | `review_contract.py` | Provider-neutral review-response validation and atomic boundary import |
 | `workspace.py` | External private-workspace initialization; user-owned starters are preserved |
 | `workspace_state.py` | Validated private review/feedback application below an external workspace root |
-| `workspace_discovery.py` | Read-only curated Home and manifest-verified full-queue Explore |
+| `workspace_discovery.py` | Read-only curated Home and manifest-verified Explore |
+| `workspace_screening.py` | External private profile, whole-collection screening, optional semantic imports, category balance, and research freshness |
 | `workspace_recovery.py` | Private knowledge snapshots, ZIP backup/restore, and workspace audit |
 | `runner.py` | The normal workflow behind `opdisc run` |
 | `validate_sources.py` | Live probes that record validation status |
@@ -88,3 +90,11 @@ adapter becomes a `check-failed` health row, never an aborted run and never a
 The workspace modules are not part of the scheduled public collection path.
 They require an explicit workspace path and never write applicant-specific
 state to the collector database or public output directory.
+
+During onboarding an external AI asks about missing preferences and turns the
+user's intended geographic regions into explicit city/metro aliases and
+state/country context. The engine validates and uses that private configuration;
+it does not invoke an AI provider or geocoder. Screening reads all manifest-verified
+candidates, independently of generic public review-queue routing. Optional
+bounded AI interpretations quote captured text and carry separate provenance.
+Only the official-review importer creates verified board decisions.

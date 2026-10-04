@@ -34,6 +34,7 @@ from .workspace_discovery import (
     list_curated_home,
     list_explore,
 )
+from .workspace_screening import LANES, STATES
 from .workspace_state import OPPORTUNITY_ID, WorkspaceStateError, require_workspace
 
 _PAGE_SIZE = 25
@@ -72,7 +73,14 @@ def _badge(value: Any, kind: str = "") -> str:
 
 
 def _filter_options(name: str, current: str, options: tuple[str, ...], label: str) -> str:
-    choices = ['<option value="">All</option>']
+    default = (
+        "Suggested"
+        if name == "screening_state"
+        else "Default"
+        if name in {"uncapped", "personalized"}
+        else "All"
+    )
+    choices = [f'<option value="">{default}</option>']
     choices.extend(
         f'<option value="{_e(value)}"{" selected" if value == current else ""}>{_e(value.replace("-", " ").title())}</option>'
         for value in options
@@ -123,6 +131,16 @@ def _explore_card(item: dict[str, Any], *, selected: str | None, filters: dict[s
     identifier = item["opportunity_id"]
     href = _query(view="explore", item=identifier, **filters)
     title = item.get("title") or "Untitled opportunity"
+    finding = item.get("screening") or {}
+    focus = finding.get("focus") or {}
+    screening = (
+        f'<span class="card-meta">Screening: {_e(str(finding.get("state") or "").replace("-", " "))}'
+        f" · {_e(str(finding.get('lane') or '').replace('-', ' '))}</span>"
+        f'<span class="card-meta">Research: {_e(item.get("research_status"))}</span>'
+        f'<span class="card-meta">Opportunity focus: {_e(focus.get("match"))}</span>'
+        if finding
+        else ""
+    )
     return (
         f'<a class="opportunity-card{" selected" if selected == identifier else ""}" href="{_e(href)}" '
         f'aria-label="View {_e(title)}">'
@@ -132,13 +150,35 @@ def _explore_card(item: dict[str, Any], *, selected: str | None, filters: dict[s
         f'<strong>{_e(title)}</strong><span class="card-meta">{_display(item.get("organization"))}</span>'
         f'<span class="card-meta">First found: {_display(str(item.get("first_seen") or "")[:10])}</span>'
         f'<span class="card-badges">{_badge(item.get("routing_state"))}'
-        f"{_badge(item.get('engagement_type'))}</span></a>"
+        f"{_badge(item.get('engagement_type'))}</span>{screening}</a>"
     )
 
 
 def _explore_detail(item: dict[str, Any]) -> str:
     provenance = item.get("provenance") or []
     source_rows = []
+    finding = item.get("screening") or {}
+    focus = finding.get("focus") or {}
+    screening = ""
+    if finding:
+        reasons = "".join(
+            f'<li>{_e(reason.get("message"))} <span class="muted">{_e(reason.get("evidence"))}</span></li>'
+            for reason in finding.get("reasons") or []
+        )
+        questions = "".join(f"<li>{_e(question)}</li>" for question in finding.get("questions") or [])
+        screening = (
+            '<h3>Personal screening</h3><dl class="fact-grid">'
+            f"{_field('Screening result', finding.get('state'))}"
+            f"{_field('Screening recorded', finding.get('screened_at') if item.get('screening_saved') else 'Preview — not saved')}"
+            f"{_field('Screening method', finding.get('origin') or 'deterministic')}"
+            f"{_field('Opportunity focus', focus.get('mode') or 'No stage preference')}"
+            f"{_field('Stage match', focus.get('match'))}"
+            f"{_field('Official-page research', item.get('research_status'))}</dl>"
+            "<p>Screening interprets collected statements. It does not verify the official page or establish eligibility.</p>"
+            f"<ul>{reasons or '<li>No positive match recorded.</li>'}</ul>"
+            f"<h4>Unresolved questions</h4><ul>{questions or '<li>No screening question recorded. Availability still needs official checking.</li>'}</ul>"
+            f"<p>Investigation: {_e(', '.join(item.get('investigation_reasons') or []).replace('-', ' ') or 'Findings carried forward')}</p>"
+        )
     if isinstance(provenance, list):
         for source in provenance:
             if isinstance(source, dict):
@@ -161,8 +201,10 @@ def _explore_detail(item: dict[str, Any]) -> str:
         f"{_field('First found', item.get('first_seen'))}"
         f"{_field('Public score', item.get('generic_score'))}"
         f"{_field('Source-stated deadline', item.get('stated_deadline'))}"
-        '</dl><div class="section-title"><h3>What the source says</h3></div>'
+        f'</dl>{screening}<div class="section-title"><h3>What the source says</h3></div>'
         f"<p>{_display(item.get('description_excerpt'))}</p>"
+        f"<h4>Captured requirements</h4><p>{_display(item.get('requirements_text'))}</p>"
+        f"<dl class='fact-grid'>{_field('Location', item.get('location_text'))}{_field('Graduation rule', item.get('graduation_window_language'))}{_field('Major language', item.get('major_language'))}{_field('Compensation', item.get('compensation_text'))}</dl>"
         "<h4>Collector provenance</h4>"
         f'<ul class="source-list">{"".join(source_rows) or "<li>No provenance recorded.</li>"}</ul>'
         "</section>"
@@ -376,14 +418,30 @@ def render_dashboard(
     elif view == "explore":
         filters = {
             key: params.get(key, "").strip()
-            for key in ("search", "route", "engagement_type", "review_status")
+            for key in (
+                "search",
+                "route",
+                "engagement_type",
+                "review_status",
+                "screening_state",
+                "lane",
+                "uncapped",
+                "personalized",
+            )
         }
-        if filters["route"] not in {"", "included", "research_needed"}:
+        if filters["route"] not in {"", "included", "research_needed", "excluded"}:
             filters["route"] = ""
         if filters["engagement_type"] not in ("", *ENGAGEMENT_TYPES):
             filters["engagement_type"] = ""
         if filters["review_status"] not in {"", "reviewed", "unreviewed"}:
             filters["review_status"] = ""
+        if filters["screening_state"] not in ("", "all", *STATES):
+            filters["screening_state"] = ""
+        if filters["lane"] not in ("", *LANES):
+            filters["lane"] = ""
+        for key in ("uncapped", "personalized"):
+            if filters[key] not in {"", "yes", "no"}:
+                filters[key] = ""
         public_manifest = manifest_path or default_manifest_path(root)
         try:
             page = list_explore(
@@ -393,6 +451,10 @@ def render_dashboard(
                 route=filters["route"] or None,
                 engagement_type=filters["engagement_type"] or None,
                 review_status=filters["review_status"] or None,
+                screening_state=filters["screening_state"] or None,
+                lane=filters["lane"] or None,
+                uncapped=filters["uncapped"] == "yes",
+                personalized=filters["personalized"] != "no",
                 offset=offset,
                 limit=_PAGE_SIZE,
             )
@@ -401,7 +463,11 @@ def render_dashboard(
             explore_error = str(exc)
             page = {"total": 0, "next_offset": None, "items": []}
         title = "Explore all leads"
-        subtitle = "Search the complete current collector review queue, including leads without AI review."
+        subtitle = (
+            "Personal screening across the collection; official research is shown separately."
+            if page.get("personalized")
+            else "Search the complete current collector review queue, including leads without AI review."
+        )
     else:
         filters = {
             key: params.get(key, "").strip()
@@ -468,15 +534,23 @@ def render_dashboard(
         filters_form = (
             '<p class="view-note">Only successfully imported review decisions appear here. '
             "A failed or absent review never means the queue has nothing worth doing. "
-            'The complete current queue is in <a href="/?view=explore">Explore</a>.</p>'
+            'Collected leads and preliminary screening are in <a href="/?view=explore">Explore</a>.</p>'
         )
     else:
         filter_rows = (
-            _filter_options("route", filters["route"], ("included", "research_needed"), "Collector route")
+            _filter_options(
+                "route", filters["route"], ("included", "research_needed", "excluded"), "Collector route"
+            )
             + _filter_options("engagement_type", filters["engagement_type"], ENGAGEMENT_TYPES, "Type")
             + _filter_options(
                 "review_status", filters["review_status"], ("reviewed", "unreviewed"), "AI review"
             )
+            + _filter_options(
+                "screening_state", filters["screening_state"], ("all", *STATES), "Personal screening"
+            )
+            + _filter_options("lane", filters["lane"], LANES, "Category")
+            + _filter_options("uncapped", filters["uncapped"], ("yes",), "Show beyond employer cap")
+            + _filter_options("personalized", filters["personalized"], ("no",), "Personalized view")
             if view == "explore"
             else _filter_options(
                 "availability",
@@ -534,24 +608,42 @@ def render_dashboard(
             )
         )
     coverage = ""
-    if queue_summary:
+    coverage_summary = page if view == "explore" and not explore_error else queue_summary
+    if coverage_summary:
+        queue_summary = coverage_summary
         coverage = (
             f'<p class="view-note">Current queue: {queue_summary["queue_count"]}; '
             f"reviews imported: {queue_summary['reviewed_count']}; "
             f"no review imported: {queue_summary['unreviewed_count']}. "
             "An imported review may predate newer source changes.</p>"
         )
+        if queue_summary.get("coverage"):
+            report = queue_summary["coverage"]
+            coverage = (
+                f'<p class="view-note">Collection: {queue_summary["collection_count"]}; '
+                f"screened: {report['screened']}; plausible: {report['plausible']}; "
+                f"officially checked (reported): {report['officially_checked']}; "
+                f"awaiting investigation: {report['awaiting_investigation']}. "
+                f"Unsaved or outdated screening: {report['unsaved_screening']}. "
+                f"Opportunity focus: {_e(queue_summary.get('opportunity_focus') or 'No stage preference')}. "
+                f"{queue_summary.get('cap_exempt_programs', 0)} preferred early programs retained outside the employer cap. "
+                f"{queue_summary['hidden_by_cap']} matching leads hidden by the employer cap; use the filter to show them.</p>"
+            )
     elif explore_error and view in {"home", "explore"}:
         coverage = f'<p class="evidence-note" role="status">Explore unavailable: {_e(explore_error)}</p>'
     css = files("opportunity_discovery").joinpath("dashboard.css").read_text(encoding="utf-8")
     stat = (
         "Unavailable"
         if view == "explore" and explore_error
-        else queue_summary["queue_count"]
-        if view == "explore" and queue_summary
+        else page["queue_count"]
+        if view == "explore" and not explore_error
         else page["total"]
     )
-    stat_label = "current queue leads" if view == "explore" else "items in this view"
+    stat_label = (
+        ("current collection leads" if page.get("personalized") else "current queue leads")
+        if view == "explore"
+        else "items in this view"
+    )
     shown_total = "Unavailable" if view == "explore" and explore_error else str(page["total"])
     pagination = (
         "<span>Current queue unavailable</span>"

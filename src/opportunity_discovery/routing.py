@@ -178,7 +178,22 @@ def normalize_routing_fields(raw: RawOpportunity) -> dict[str, Any]:
         raw.career_stage,
         {"new graduate": c.CAREER_NEW_GRAD, "entry level": c.CAREER_ENTRY_LEVEL},
         _CAREER_VALUES,
-    ) or _first_match(text, _CAREER_PATTERNS)
+    )
+    if not career_stage:
+        if engagement in {c.ENGAGEMENT_INTERNSHIP, c.ENGAGEMENT_COOP} and re.search(
+            r"\bintern(?:ship)?\b|\bco[- ]?op\b", raw.title or "", re.I
+        ):
+            career_stage = c.CAREER_STUDENT
+        else:
+            career_stage = _first_match(raw.title or "", _CAREER_PATTERNS)
+            if career_stage == c.UNKNOWN:
+                # A manager or senior colleague in the description is not the
+                # advertised role. Only title evidence infers experienced level.
+                career_stage = _first_match(
+                    text,
+                    tuple(p for p in _CAREER_PATTERNS if p[0] not in {c.CAREER_EXPERIENCED, c.CAREER_STUDENT})
+                    + ((c.CAREER_STUDENT, r"\bstudents?\b|undergrad|freshman|sophomore|currently enrolled"),),
+                )
     if raw.career_stage is None and _DIRECTOR_TITLE_RE.search(raw.title or ""):
         career_stage = c.CAREER_EXPERIENCED
     if career_stage == c.UNKNOWN and engagement in {
@@ -207,7 +222,7 @@ def normalize_routing_fields(raw: RawOpportunity) -> dict[str, Any]:
     )
 
     exp_text = raw.experience_requirement_text
-    if exp_text is None:
+    if exp_text is None and not raw.extra.get("requirements_extracted"):
         match = _RANGE_YEARS_RE.search(text) or _UP_TO_YEARS_RE.search(text) or _MIN_YEARS_RE.search(text)
         if match is None:
             match = _PLAIN_YEARS_RE.search(text)

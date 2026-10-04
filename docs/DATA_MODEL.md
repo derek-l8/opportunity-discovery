@@ -58,6 +58,17 @@ are `application-opened`, `application-closed`, `deadline-changed`,
 
 Missing information is stored as NULL and exported as `"unknown"` — never invented.
 
+Greenhouse, Lever, Ashby, and available SmartRecruiters description content is
+decoded and inspected before display excerpts are shortened. Separate Lever
+lists and requirement headings take precedence over company introductions.
+Bounded source language for student status, graduation, majors, authorization,
+experience, compensation, and relocation is retained independently of the
+display excerpt. Required/preferred degrees are normalized from the unbounded
+transient requirement sections. Only explicit, unambiguous application dates
+with a year become deadlines; missing or conflicting dates stay unknown.
+Full descriptions are not stored. Existing rows acquire richer facts when
+successfully fetched again; this code change does not backfill old exports.
+
 ## Career profiles
 
 `routing.active_profile` selects one of three deterministic public-lead routes.

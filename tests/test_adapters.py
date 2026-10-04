@@ -70,6 +70,17 @@ def test_lever_success_and_remote_signal(mock_fetcher):
     assert result.records[0].posted_date == "2025-08-10"
 
 
+def test_lever_international_title_preserves_explicit_full_time_commitment(mock_fetcher):
+    payload = json.loads(load_fixture("lever_postings.json"))
+    payload[0]["text"] = "International Systems Engineer"
+    payload[0]["categories"]["commitment"] = "Full-time"
+    mock_fetcher.add("https://api.lever.co/v0/postings/acmehw", 200, json.dumps(payload))
+    spec = source(source_id="lever-acmehw", adapter="lever", endpoint_config={"board": "acmehw"})
+    result = run_source(spec, mock_fetcher)
+    assert result.ok
+    assert result.records[0].employment_type == "full-time"
+
+
 def test_lever_paginates_until_short_final_page(mock_fetcher):
     from tests.helpers import source as src
 
@@ -238,6 +249,15 @@ def test_workday_success_uses_post(mock_fetcher):
     assert result.pages_fetched == 1
     assert result.reported_total == 2
     assert result.truncated is False
+
+
+def test_workday_internal_title_is_not_an_internship():
+    from opportunity_discovery.adapters.workday import WorkdayAdapter
+
+    payload = json.loads(load_fixture("workday_jobs.json"))["jobPostings"][0]
+    payload["title"] = "Internal Systems Engineer"
+    record = WorkdayAdapter()._record(payload, "https://acme.wd1.myworkdayjobs.com/External", "acme", 600)
+    assert record.employment_type is None
 
 
 def test_jsonfeed_field_mapping(mock_fetcher):

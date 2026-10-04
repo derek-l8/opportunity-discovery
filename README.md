@@ -20,13 +20,13 @@ python3 -m venv .venv
 
 ## What you get
 
-The collector writes public leads to `output/`. Start with `source_health.json` to see which sources worked. The dashboard's **Explore** view searches the full current review queue, including leads no one has reviewed. **Home** shows only imported review decisions that need attention, so it can be empty even when Explore has leads.
+The collector writes public leads to `output/`. Start with `source_health.json` to see which sources worked. With a private screening profile, **Explore** screens the full collection for personal relevance. Choose a focus on early programs, standard internships, or entry-level full-time jobs; category balancing and an employer cap shape the feed. Preferred early programs are exempt from the cap. Screening and official-page research have separate labels. Without a profile, Explore searches the public review queue. **Home** shows imported research decisions that need attention, so it can be empty even when Explore has leads.
 
 `review_packet.md` is a sample of up to 40 leads for a first review, not the full queue. The complete queue is in `review_queue.jsonl`; `candidates.jsonl` also includes leads outside that queue. A link, score, or stated deadline does not prove that an opportunity is open or that you qualify.
 
 ## Review with your own AI
 
-The [setup guide](docs/AI_SETUP.md) has two prompts: one to organize your personal material, and one to collect leads, investigate them, import findings, and open the dashboard. Your AI handles the files and commands. You can add material and ask for another review later.
+The [setup guide](docs/AI_SETUP.md) has two prompts: one to organize your material and ask about missing screening preferences, and one to collect, screen, investigate, and open the dashboard. Your chosen AI translates preferences such as geographic regions into private settings; ordinary code screens the collection. AI interpretation and official research can then focus on bounded batches. Your AI handles the files and commands.
 
 Check an official page before acting on an opportunity. For manual review imports and Linux commands, see [workspace operations](docs/PRIVATE_WORKSPACE_OPERATIONS.md#import-an-agents-review).
 

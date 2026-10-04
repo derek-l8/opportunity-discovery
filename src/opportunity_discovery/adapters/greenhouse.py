@@ -7,8 +7,10 @@ Public endpoints (no credentials):
 from __future__ import annotations
 
 import json
+import re
 from datetime import UTC, datetime
 
+from ..extraction import description_location, extract_description
 from ..models import AdapterResult, RawOpportunity
 from .base import bounded_excerpt, outcome_to_result, parse_json_body, register_adapter
 
@@ -106,7 +108,7 @@ class GreenhouseAdapter:
     def _record(self, job: dict, org: str, excerpt_chars: int) -> RawOpportunity:
         offices = job.get("offices") or []
         locations = ", ".join(o.get("name", "") for o in offices if isinstance(o, dict) and o.get("name"))
-        loc_text = locations or None
+        loc_text = locations or (job.get("location") or {}).get("name") or None
         updated = job.get("updated_at") or ""
         posted = None
         if updated:
@@ -116,8 +118,10 @@ class GreenhouseAdapter:
             except ValueError:
                 posted = updated[:10]
         content = job.get("content") or ""
-        # Greenhouse content is HTML when content=true.
-        excerpt = bounded_excerpt(content, excerpt_chars)
+        facts = extract_description(content)
+        loc_text = loc_text or description_location(content)
+        # Inspect all content first; the displayed excerpt prioritizes requirements.
+        excerpt = bounded_excerpt(facts["requirements_text"] or content, excerpt_chars)
         title_l = (job.get("title") or "").lower()
         return RawOpportunity(
             title=(job.get("title") or "").strip(),
@@ -132,6 +136,8 @@ class GreenhouseAdapter:
                 else None
             ),
             posted_date=posted,
-            employment_type="internship" if "intern" in title_l else None,
+            employment_type="internship" if re.search(r"\bintern(?:ship)?\b", title_l) else None,
             description_excerpt=excerpt,
+            extra={"requirements_extracted": True},
+            **facts,
         )

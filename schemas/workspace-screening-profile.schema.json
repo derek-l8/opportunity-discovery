@@ -1,0 +1,41 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "workspace-screening-profile.schema.json",
+  "title": "Private AI-normalized undergraduate screening profile",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version"],
+  "properties": {
+    "schema_version": {"const": "1.0"},
+    "graduation_month": {"type": ["string", "null"], "pattern": "^[0-9]{4}-(0[1-9]|1[0-2])$"},
+    "student_status": {"enum": ["undergraduate", "graduate", "not-enrolled", null]},
+    "degree": {"enum": ["bachelors", "masters", "doctorate", "associate", "high-school", null]},
+    "year_in_program": {"type": ["integer", "null"], "minimum": 1, "maximum": 8},
+    "unit_based_standing": {"enum": ["freshman", "sophomore", "junior", "senior", null]},
+    "remote_work": {"type": ["boolean", "null"]},
+    "majors": {"$ref": "#/$defs/strings"},
+    "interest_keywords": {"$ref": "#/$defs/strings"},
+    "opportunity_focus": {"enum": ["early-opportunities", "standard-internships", "new-grad", null]},
+    "location_policy": {"enum": ["prefer-local", "local-only", "local-jobs-funded-programs"], "default": "prefer-local"},
+    "location_regions": {
+      "type": "array", "maxItems": 30,
+      "items": {
+        "type": "object", "additionalProperties": false,
+        "required": ["label", "match_terms", "context_terms"],
+        "properties": {
+          "label": {"type": "string", "minLength": 1, "maxLength": 200},
+          "match_terms": {"allOf": [{"$ref": "#/$defs/strings"}], "minItems": 1},
+          "context_terms": {"$ref": "#/$defs/strings"}
+        }
+      }
+    },
+    "max_required_experience_years": {"type": ["integer", "null"], "minimum": 0, "maximum": 50},
+    "employer_cap": {"type": "integer", "minimum": 1, "maximum": 100},
+    "stale_after_days": {"type": "integer", "minimum": 1, "maximum": 365},
+    "source_refs": {"$ref": "#/$defs/strings"},
+    "custom": {"type": "object"}
+  },
+  "$defs": {
+    "strings": {"type": "array", "maxItems": 100, "items": {"type": "string", "minLength": 1, "maxLength": 200}}
+  }
+}

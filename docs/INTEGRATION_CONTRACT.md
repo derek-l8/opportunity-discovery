@@ -37,6 +37,8 @@ data is `unknown`.
 
 ### The private downstream workflow owns:
 
+- a user-configurable screening profile and preliminary personal feed based on
+  captured source text, before official research;
 - verification of selected leads on canonical official pages before they are
   promoted to anything actionable;
 - personal eligibility, fit, priority, ranking;
@@ -64,6 +66,9 @@ dismissals, or application materials.
 | private workspace `.opdisc/source-manifest.json` | `schemas/workspace-source-manifest.schema.json` |
 | private workspace review input | `schemas/workspace-review.schema.json` |
 | reasoned private feedback input | `schemas/workspace-feedback.schema.json` |
+| private workspace `.opdisc/screening-profile.json` | `schemas/workspace-screening-profile.schema.json` |
+| private workspace `.opdisc/screening.json` | `schemas/workspace-screening-state.schema.json` |
+| optional private semantic screening input | `schemas/workspace-screening-response.schema.json` |
 
 ## Delta packet semantics
 
@@ -114,10 +119,18 @@ and treats any existing `run_summary.json` as an earlier run. In both cases,
 read `source_health.json` for individual source checks.
 
 The private dashboard Home reads imported workspace review decisions, not the
-collector packet. Explore reads the manifest-verified complete current review
-queue and shows unreviewed IDs. Its reviewed count covers only decisions
-recorded on the private board; it is not historical coverage across missed
-export generations. Neither view runs AI review automatically.
+collector packet. With a configured private screening profile, Explore reads
+all manifest-verified `candidates.jsonl` records, including leads excluded from
+the generic queue. Screening status and official research status are separate.
+The private opportunity focus prioritizes early programs, standard internships,
+or entry-level full-time jobs without deciding eligibility. Suggested results
+balance categories within those preference tiers and cap each employer, except
+preferred exploratory and early-year programs in early mode. Explicit filters
+and the uncapped view recover hidden leads. User decisions remain on the board.
+Without that profile, or when public-queue mode is selected, Explore reads the
+complete current review queue. Counts describe the current export generation,
+not historical coverage across missed generations. Neither view runs AI review
+automatically.
 
 ## Duplicate review hints
 

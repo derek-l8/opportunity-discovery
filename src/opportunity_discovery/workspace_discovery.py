@@ -101,8 +101,12 @@ def default_manifest_path(root: Path) -> Path:
     return Path(engine_path) / "output" / "export_manifest.json"
 
 
-def load_current_queue(manifest_path: Path) -> tuple[dict[str, Any], list[dict[str, Any]]]:
+def load_current_queue(
+    manifest_path: Path, *, filename: str = "review_queue.jsonl"
+) -> tuple[dict[str, Any], list[dict[str, Any]]]:
     """Read the complete queue only when its exact artifact matches the manifest."""
+    if filename not in {"review_queue.jsonl", "candidates.jsonl"}:
+        raise WorkspaceStateError("unsupported public candidate artifact")
     try:
         manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
     except (OSError, json.JSONDecodeError) as exc:
@@ -118,16 +122,14 @@ def load_current_queue(manifest_path: Path) -> tuple[dict[str, Any], list[dict[s
     files = manifest.get("files")
     if not isinstance(files, list):
         raise WorkspaceStateError("export manifest files must be an array")
-    entries = [
-        entry for entry in files if isinstance(entry, dict) and entry.get("filename") == "review_queue.jsonl"
-    ]
+    entries = [entry for entry in files if isinstance(entry, dict) and entry.get("filename") == filename]
     if len(entries) != 1:
-        raise WorkspaceStateError("export manifest must identify exactly one review_queue.jsonl")
+        raise WorkspaceStateError(f"export manifest must identify exactly one {filename}")
     expected = entries[0].get("sha256")
     if not isinstance(expected, str) or len(expected) != 64:
         raise WorkspaceStateError("review queue manifest hash is invalid")
     try:
-        payload = (manifest_path.parent / "review_queue.jsonl").read_bytes()
+        payload = (manifest_path.parent / filename).read_bytes()
     except OSError as exc:
         raise WorkspaceStateError(f"current review queue unavailable: {exc}") from exc
     if hashlib.sha256(payload).hexdigest() != expected:
@@ -155,16 +157,39 @@ def list_explore(
     route: str | None = None,
     engagement_type: str | None = None,
     review_status: str | None = None,
+    screening_state: str | None = None,
+    lane: str | None = None,
+    uncapped: bool = False,
+    personalized: bool = True,
     offset: int = 0,
     limit: int = 25,
 ) -> dict[str, Any]:
     """Search every current queue lead, including ones absent from private review."""
-    if route not in (None, "included", "research_needed"):
-        raise WorkspaceStateError("route must be included or research_needed")
+    if route not in (None, "included", "research_needed", "excluded"):
+        raise WorkspaceStateError("invalid collector route")
     if engagement_type is not None and engagement_type not in ENGAGEMENT_TYPES:
         raise WorkspaceStateError("invalid opportunity type")
     if review_status not in (None, "reviewed", "unreviewed"):
         raise WorkspaceStateError("review status must be reviewed or unreviewed")
+    # Import locally: the screening module reuses manifest and board readers.
+    from .workspace_screening import list_personal_feed, screening_profile_exists
+
+    if personalized and screening_profile_exists(root):
+        return list_personal_feed(
+            root,
+            manifest_path,
+            state_filter=screening_state,
+            lane=lane,
+            search=search,
+            uncapped=uncapped,
+            route=route,
+            engagement_type=engagement_type,
+            review_status=review_status,
+            offset=offset,
+            limit=limit,
+        )
+    if screening_state or lane:
+        raise WorkspaceStateError("Configure a screening profile before filtering personal screening.")
     manifest, queue = load_current_queue(manifest_path)
     records = _board_records(root)
     reviewed_ids = {
