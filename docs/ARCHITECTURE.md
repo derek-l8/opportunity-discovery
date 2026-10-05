@@ -36,6 +36,7 @@ workflow.
 | `http_client.py` | Polite fetching: public-destination and redirect validation, response/redirect bounds, concurrency, per-domain throttle, retries, conditional requests, cache fallback, robots.txt |
 | `adapters/` | One adapter per source format; each distinguishes valid-empty from failure; per-source isolation in `run_source` |
 | `extraction.py` | Decode full available ATS descriptions and extract bounded source facts before display truncation |
+| `source_constraints.py` | Parse quoted public requirements, alternatives, waivers, and funding conditions |
 | `registry.py` | Load `config/sources.toml`, validate entries, cadence-based due selection |
 | `pipeline.py` | Fetch → observe → reconcile → detect changes → score |
 | `scoring.py` | Deterministic keyword families, signals, effort estimate, season inference |
@@ -45,6 +46,7 @@ workflow.
 | `workspace_state.py` | Validated private review/feedback application below an external workspace root |
 | `workspace_discovery.py` | Read-only curated Home and manifest-verified Explore |
 | `workspace_screening.py` | External private profile, whole-collection screening, optional semantic imports, category balance, and research freshness |
+| `workspace_constraints.py` | Compare source requirements with documented private facts and prepare compact review inputs |
 | `workspace_recovery.py` | Private knowledge snapshots, ZIP backup/restore, and workspace audit |
 | `runner.py` | The normal workflow behind `opdisc run` |
 | `validate_sources.py` | Live probes that record validation status |

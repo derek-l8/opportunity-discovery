@@ -4,38 +4,215 @@
   "title": "Private AI-normalized undergraduate screening profile",
   "type": "object",
   "additionalProperties": false,
-  "required": ["schema_version"],
+  "required": [
+    "schema_version"
+  ],
   "properties": {
-    "schema_version": {"const": "1.0"},
-    "graduation_month": {"type": ["string", "null"], "pattern": "^[0-9]{4}-(0[1-9]|1[0-2])$"},
-    "student_status": {"enum": ["undergraduate", "graduate", "not-enrolled", null]},
-    "degree": {"enum": ["bachelors", "masters", "doctorate", "associate", "high-school", null]},
-    "year_in_program": {"type": ["integer", "null"], "minimum": 1, "maximum": 8},
-    "unit_based_standing": {"enum": ["freshman", "sophomore", "junior", "senior", null]},
-    "remote_work": {"type": ["boolean", "null"]},
-    "majors": {"$ref": "#/$defs/strings"},
-    "interest_keywords": {"$ref": "#/$defs/strings"},
-    "opportunity_focus": {"enum": ["early-opportunities", "standard-internships", "new-grad", null]},
-    "location_policy": {"enum": ["prefer-local", "local-only", "local-jobs-funded-programs"], "default": "prefer-local"},
+    "schema_version": {
+      "const": "1.0"
+    },
+    "graduation_month": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "pattern": "^[0-9]{4}-(0[1-9]|1[0-2])$"
+    },
+    "student_status": {
+      "enum": [
+        "undergraduate",
+        "graduate",
+        "not-enrolled",
+        null
+      ]
+    },
+    "degree": {
+      "enum": [
+        "bachelors",
+        "masters",
+        "doctorate",
+        "associate",
+        "high-school",
+        null
+      ]
+    },
+    "year_in_program": {
+      "type": [
+        "integer",
+        "null"
+      ],
+      "minimum": 1,
+      "maximum": 8
+    },
+    "unit_based_standing": {
+      "enum": [
+        "freshman",
+        "sophomore",
+        "junior",
+        "senior",
+        null
+      ]
+    },
+    "remote_work": {
+      "type": [
+        "boolean",
+        "null"
+      ]
+    },
+    "majors": {
+      "$ref": "#/$defs/strings"
+    },
+    "major_match_terms": {
+      "$ref": "#/$defs/strings",
+      "description": "AI-normalized degree aliases and broad academic families; screening cues, not a claim that all named disciplines qualify."
+    },
+    "interest_keywords": {
+      "$ref": "#/$defs/strings"
+    },
+    "opportunity_focus": {
+      "enum": [
+        "early-opportunities",
+        "standard-internships",
+        "new-grad",
+        null
+      ]
+    },
+    "location_policy": {
+      "enum": [
+        "prefer-local",
+        "local-only",
+        "local-jobs-funded-programs"
+      ],
+      "default": "prefer-local"
+    },
     "location_regions": {
-      "type": "array", "maxItems": 30,
+      "type": "array",
+      "maxItems": 30,
       "items": {
-        "type": "object", "additionalProperties": false,
-        "required": ["label", "match_terms", "context_terms"],
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "label",
+          "match_terms",
+          "context_terms"
+        ],
         "properties": {
-          "label": {"type": "string", "minLength": 1, "maxLength": 200},
-          "match_terms": {"allOf": [{"$ref": "#/$defs/strings"}], "minItems": 1},
-          "context_terms": {"$ref": "#/$defs/strings"}
+          "label": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200
+          },
+          "match_terms": {
+            "type": "array",
+            "minItems": 1,
+            "maxItems": 500,
+            "items": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200
+            }
+          },
+          "context_terms": {
+            "$ref": "#/$defs/strings"
+          },
+          "scope": {
+            "enum": [
+              "metro",
+              "city"
+            ],
+            "default": "metro",
+            "description": "AI-researched metro membership by default; city scope only when explicitly requested."
+          },
+          "allow_city_only": {
+            "type": "boolean",
+            "default": true,
+            "description": "Accept configured aliases without state/country unless explicit context conflicts."
+          },
+          "source_urls": {
+            "type": "array",
+            "maxItems": 20,
+            "items": {
+              "type": "string",
+              "pattern": "^https?://[^\\s]+$",
+              "maxLength": 2000
+            }
+          }
         }
       }
     },
-    "max_required_experience_years": {"type": ["integer", "null"], "minimum": 0, "maximum": 50},
-    "employer_cap": {"type": "integer", "minimum": 1, "maximum": 100},
-    "stale_after_days": {"type": "integer", "minimum": 1, "maximum": 365},
-    "source_refs": {"$ref": "#/$defs/strings"},
-    "custom": {"type": "object"}
+    "max_required_experience_years": {
+      "type": [
+        "integer",
+        "null"
+      ],
+      "minimum": 0,
+      "maximum": 50
+    },
+    "employer_cap": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 100
+    },
+    "stale_after_days": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 365
+    },
+    "source_refs": {
+      "$ref": "#/$defs/strings"
+    },
+    "custom": {
+      "type": "object"
+    },
+    "completed_degrees": {
+      "type": [
+        "array",
+        "null"
+      ],
+      "maxItems": 10,
+      "items": {
+        "enum": [
+          "bachelors",
+          "masters",
+          "doctorate",
+          "associate",
+          "high-school"
+        ]
+      },
+      "description": "Null means unknown; an explicit empty list means no completed degrees are documented as possessed."
+    },
+    "citizenships": {
+      "type": "array",
+      "maxItems": 30,
+      "items": {
+        "type": "string",
+        "pattern": "^[A-Z]{2}$"
+      }
+    },
+    "institution_regions": {
+      "type": "array",
+      "maxItems": 30,
+      "items": {
+        "type": "string",
+        "pattern": "^[A-Z]{2}$"
+      }
+    },
+    "term_time_work": {
+      "type": [
+        "boolean",
+        "null"
+      ]
+    }
   },
   "$defs": {
-    "strings": {"type": "array", "maxItems": 100, "items": {"type": "string", "minLength": 1, "maxLength": 200}}
+    "strings": {
+      "type": "array",
+      "maxItems": 100,
+      "items": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 200
+      }
+    }
   }
 }

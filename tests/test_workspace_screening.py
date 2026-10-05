@@ -92,16 +92,132 @@ def test_unknown_personal_requirements_remain_questions_and_preferred_rules_do_n
     assert any("GPA" in question for question in result["questions"])
     assert any("coursework" in question for question in result["questions"])
     assert not any(reason["code"] == "graduation-window-mismatch" for reason in result["reasons"])
+    assert not any(
+        "graduation restriction" in q or "experience requirement" in q for q in result["questions"]
+    )
     # A narrow CS rule is unresolved; a general engineering keyword is not an eligibility claim.
     result = screen_candidate(lead(major_language="Computer Science only"), validate_profile(PROFILE))
     assert result["state"] == "needs-clarification"
+
+
+def test_city_aliases_default_to_context_optional_and_strict_mode_is_configurable():
+    profile = validate_profile(PROFILE)
+    assert profile["location_regions"][0]["scope"] == "metro"
+    assert profile["location_regions"][0]["allow_city_only"] is True
+    assert screen_candidate(lead(location_text="Cambridge"), profile)["state"] == "worth-investigating"
+    assert screen_candidate(lead(location_text="Cambridge, UK"), profile)["state"] == "needs-clarification"
+    assert not any(
+        r["code"] == "location-match"
+        for r in screen_candidate(lead(location_text="Cambridge, MA, Canada"), profile)["reasons"]
+    )
+    profile["location_regions"][0]["allow_city_only"] = False
+    assert screen_candidate(lead(location_text="Cambridge"), profile)["state"] == "needs-clarification"
+    assert screen_candidate(lead(location_text="Cambridge, MA"), profile)["state"] == "worth-investigating"
+    assert "scope" not in PROFILE["location_regions"][0]  # Validation never mutates caller settings.
+
+
+def test_large_researched_metro_membership_schema_and_validation_agree():
+    region = {
+        **PROFILE["location_regions"][0],
+        "source_urls": ["https://regional.example/member-cities"],
+        "match_terms": [f"Synthetic City {i}" for i in range(150)],
+    }
+    profile = validate_profile({**PROFILE, "location_regions": [region], "major_match_terms": ["STEM"]})
+    jsonschema.validate(
+        profile, json.loads((SCHEMAS / "workspace-screening-profile.schema.json").read_text())
+    )
+    with pytest.raises(WorkspaceStateError, match="match_terms"):
+        validate_profile({**PROFILE, "location_regions": [{**region, "match_terms": ["x"] * 501}]})
+    with pytest.raises(WorkspaceStateError, match="source_urls"):
+        validate_profile({**PROFILE, "location_regions": [{**region, "source_urls": ["not a URL"]}]})
+
+
+@pytest.mark.parametrize(
+    "language,expected",
+    [
+        ("Must currently be in the first year of university education.", "worth-investigating"),
+        ("Must currently be in the second year of university education.", "low-relevance"),
+        ("Must be in the first or second year of college.", "worth-investigating"),
+        ("Must be in the second year of college or higher.", "needs-clarification"),
+        ("Must be in the second year of college by the start of the program.", "needs-clarification"),
+        ("Sophomore standing is required.", "needs-clarification"),
+        (
+            "Must be at a minimum in your second year. Our senior engineers provide mentorship.",
+            "needs-clarification",
+        ),
+        ("Must currently be in the 1st year of university education.", "worth-investigating"),
+        ("Preferred Qualifications\nSophomore standing.", "worth-investigating"),
+        (
+            "Our company won an award for the second year. Senior engineers mentor our interns.",
+            "worth-investigating",
+        ),
+    ],
+)
+def test_defined_year_uses_known_profile_and_ambiguous_standing_stays_question(language, expected):
+    finding = screen_candidate(lead(class_year_language=language), validate_profile(PROFILE))
+    assert finding["state"] == expected
+
+
+def test_degree_families_match_broad_requirements_but_not_different_named_discipline():
+    profile = validate_profile(
+        {**PROFILE, "majors": ["Chemical Engineering"], "major_match_terms": ["Engineering", "STEM"]}
+    )
+    assert (
+        screen_candidate(lead(major_language="Degree in Engineering or Mathematics required."), profile)[
+            "state"
+        ]
+        == "worth-investigating"
+    )
+    assert (
+        screen_candidate(lead(major_language="Degree in Mechanical Engineering only."), profile)["state"]
+        == "needs-clarification"
+    )
+    assert (
+        screen_candidate(lead(major_language="Degree in a STEM field required."), profile)["state"]
+        == "worth-investigating"
+    )
+    assert (
+        screen_candidate(
+            lead(major_language="Degree in Engineering required, except Chemical Engineering."), profile
+        )["state"]
+        == "needs-clarification"
+    )
+
+
+def test_old_major_noise_and_optional_credentials_do_not_create_blocking_questions():
+    row = lead(
+        major_language="Preferred Qualifications\nCompetitive grants comprise the majority of compensation.",
+        graduation_window_language="Graduating in 2034 preferred.",
+        requirements_text="Preferred Qualifications\nGPA 3.0; calculus coursework; 5 years experience.",
+        experience_requirement={"minimum_years": 5, "text": "5 years experience preferred"},
+    )
+    result = screen_candidate(row, validate_profile(PROFILE))
+    assert result["state"] == "worth-investigating"
+    mandatory = screen_candidate(
+        {
+            **row,
+            "requirements_text": "GPA 3.0 required; calculus coursework required.",
+            "work_auth_language": "US citizenship required.",
+        },
+        validate_profile(PROFILE),
+    )
+    assert mandatory["state"] == "needs-clarification"
+    assert len(mandatory["questions"]) == 3
+    mixed = screen_candidate(
+        {**row, "requirements_text": "GPA 3.0 required; calculus coursework preferred."},
+        validate_profile(PROFILE),
+    )
+    assert any("GPA" in q for q in mixed["questions"])
+    actual_major_rule = screen_candidate(
+        {**row, "requirements_text": "Must be majoring in Chemistry."}, validate_profile(PROFILE)
+    )
+    assert any("major satisfies" in q for q in actual_major_rule["questions"])
 
 
 @pytest.mark.parametrize(
     "language",
     [
         "Graduating before 2037.",
-        "Graduating in 2035 or 2036.",
         "Graduation between 2035 and 2036; program founded in 2030.",
     ],
 )
@@ -534,7 +650,14 @@ def test_old_experienced_label_on_internship_is_a_question_and_true_mismatch_sta
     finding = screen_candidate(row, validate_profile(PROFILE))
     assert finding["state"] == "needs-clarification"
     assert any("role level" in q for q in finding["questions"])
-    finding = screen_candidate({**row, "required_degree": "doctorate"}, validate_profile(PROFILE))
+    finding = screen_candidate(
+        {
+            **row,
+            "required_degree": "doctorate",
+            "requirements_text": "Must currently be pursuing a doctorate degree.",
+        },
+        validate_profile(PROFILE),
+    )
     assert finding["state"] == "low-relevance"
 
 
@@ -565,11 +688,11 @@ def test_configurable_region_limit_filters_explicit_mismatch_but_not_incomplete_
     )
     for location in (
         "Unknown City, MA",
-        "Burlington",
         "Burlington, VT; Unknown City, MA",
         "Burlington, VT, Unknown City, MA",
     ):
         assert screen_candidate(lead(location_text=location), profile)["state"] == "needs-clarification"
+    assert screen_candidate(lead(location_text="Burlington"), profile)["state"] == "worth-investigating"
     with pytest.raises(WorkspaceStateError, match="location_policy"):
         validate_profile({**PROFILE, "location_policy": "made-up"})
 
@@ -584,7 +707,7 @@ def test_configurable_region_limit_filters_explicit_mismatch_but_not_incomplete_
         ("Travel may be covered.", "A two-day program.", "needs-clarification"),
         ("Travel is not covered.", "A two-day program.", "low-relevance"),
         ("Travel is covered.", "Apply two weeks before the program.", "needs-clarification"),
-        ("Travel is covered.", "A six-month program.", "needs-clarification"),
+        ("Travel is covered.", "A six-month program.", "low-relevance"),
         ("Travel is covered. Travel is not reimbursed.", "A two-day program.", "needs-clarification"),
     ],
 )

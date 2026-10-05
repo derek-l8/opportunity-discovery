@@ -85,6 +85,7 @@ class RawOpportunity:
     event_end_date: str | None = None
     application_state: str = c.APPLICATION_UNKNOWN
     requirements_text: str | None = None
+    source_constraints: list[dict[str, Any]] | None = None
     compensation_text: str | None = None
     relocation_text: str | None = None
     description_excerpt: str | None = None  # bounded excerpt only

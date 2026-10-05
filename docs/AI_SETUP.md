@@ -14,21 +14,17 @@ are optional. Start with what you have.
 
 Send this prompt:
 
-> Read WORKSPACE.md and set up my personal information from the material I've
-> provided and anything in inbox. Preserve the original material, build a useful
-> profile and catalog, and keep important unknowns visible. Ask concise questions
-> for missing information that affects screening: major, expected graduation,
-> year in the degree program, any separately known unit-based standing, workable
-> geographic regions, remote-work preferences, interests, and opportunity focus:
-> early exploratory/freshman-sophomore programs, standard undergraduate internships,
-> or entry-level full-time jobs. Interpret locations
-> as the intended metropolitan regions rather than literal city-name filters;
-> confirm material ambiguity. Ask whether locations are preferences or limits,
-> and whether short programs elsewhere are acceptable when travel is covered.
-> Normalize my answers into the private screening
-> profile using docs/PRIVATE_WORKSPACE_OPERATIONS.md, and import it with
-> workspace-profile. Do not invent GPA, coursework, experience, or eligibility.
-> Finish with a short summary of what you saved and any unresolved questions.
+> Read WORKSPACE.md and the current profile instructions in the engine's
+> docs/PRIVATE_WORKSPACE_OPERATIONS.md. Organize my supplied material and inbox
+> into a profile and catalog, preserving the originals. Use documented answers
+> first; ask concise questions about missing information that affects screening,
+> including study stage, major, graduation, interests, and available locations.
+> Ask whether I want early programs, standard internships, or entry-level jobs,
+> and whether short programs elsewhere are acceptable with covered travel.
+> Research surrounding metropolitan regions for my cities unless I request a
+> narrower boundary. Save and import my private screening preferences, then
+> summarize the regions, settings, and unresolved questions. Keep unknown
+> credentials unknown.
 
 Your AI organizes the material in `sources/` and `knowledge/`.
 Read `knowledge/PROFILE.md` to check what it understood.
@@ -49,16 +45,17 @@ and catalog.
 
 Send this prompt when you want recommendations:
 
-> Read WORKSPACE.md and create my first opportunity board. Run collection,
-> screen the full collection with workspace-screen, then read a bounded
-> workspace-screening batch. Investigate plausible leads and specific unresolved
-> requirements. Use a small semantic screening pass when captured text needs
-> interpretation; use official-page research for availability and eligibility.
-> Carry unchanged findings forward and prioritize new leads, material changes,
-> approaching deadlines, and stale useful findings. Save and import your findings,
-> confirm the import worked, then open the dashboard in its own window. Report
-> source failures and coverage: screened, plausible, officially checked, and
-> still awaiting investigation. State what remains unresolved.
+> Read WORKSPACE.md and the current review instructions in the engine's
+> docs/PRIVATE_WORKSPACE_OPERATIONS.md and docs/INTEGRATION_CONTRACT.md. Create my
+> opportunity board: collect leads, screen the full collection, and investigate
+> a recommended compact batch, including promising leads that need clarification.
+> Reuse saved findings and documented profile answers. Prioritize new or changed
+> leads, approaching deadlines, and stale useful findings. Interpret captured
+> requirements when needed and check official pages before recommending action.
+> Keep unresolved facts visible. Save and import your findings, confirm the import,
+> then open the dashboard in its own window. Report source failures and coverage:
+> screened, plausible, officially checked, awaiting investigation, and selected
+> or deferred for later work.
 
 Your AI needs web and command access to complete this step.
 

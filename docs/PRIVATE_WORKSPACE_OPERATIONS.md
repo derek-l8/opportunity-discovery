@@ -56,6 +56,27 @@ It never changes the public collector configuration. The profile contains major
 aliases, interests, graduation month, enrollment status, year in the program,
 and separately recorded unit-based class standing. Missing personal facts stay
 null. The experience limit is optional; do not infer a limit of zero for students.
+Read existing material and settings before asking onboarding questions. Reuse
+documented answers, ask about contradictions once, and distinguish optional
+qualifications from requirements. Keep actual degree names in `majors`; use
+`major_match_terms` for supported aliases and broad academic families, such as
+engineering or STEM where appropriate. These are screening cues, not proof that
+a different specifically named discipline qualifies. Company descriptions and
+words such as "majority" are not major requirements. Explicit university years
+can use `year_in_program`; ambiguous standing and future/rising years stay questions.
+Completing a year, semester, course or credit requirement does not mean a degree
+has been awarded. Reuse documented study progress; keep that question separate
+from the completed-degree inventory.
+
+Record `completed_degrees` separately from current `degree` enrollment: null
+means the inventory is unknown, while `[]` explicitly records that no degrees
+have been completed. Do not infer an empty inventory from missing résumé text.
+Documented inventories use `high-school`, `associate`, `bachelors`, `masters`,
+or `doctorate`. `citizenships` and `institution_regions` contain documented
+two-letter country/region codes, such as `US` or `UK`; absence stays unknown.
+Use `source_refs` for the supporting private material. `term_time_work` is null
+until availability for school-term placements is known; true/false records the
+answer. Citizenship alone never establishes security-clearance eligibility.
 
 Set `opportunity_focus` to the user's chosen emphasis:
 
@@ -80,14 +101,27 @@ not establish an exploratory program. If an older experienced-role label
 conflicts with an internship title, screening asks about role level instead
 of treating that label as a proven mismatch. Other explicit mismatches remain.
 
-For geographic preferences, the AI translates a natural-language region into
-`location_regions`. Each region has a human-readable `label`, `match_terms`
+For geographic preferences, the user's AI researches and translates each city
+into its surrounding metropolitan region by default. Use official regional
+agencies and municipal/county membership lists, rather than guessing a few nearby
+cities. Cities within one region should resolve to the same membership set:
+San Francisco and Fremont both mean the nine-county Bay Area unless the user
+requests a narrower scope. Los Angeles should cover its metro rather than its
+city limits. Summarize included counties and any material boundary ambiguity;
+do not require a separate answer for every municipality.
+
+Save the result in private `location_regions`. Each region has a human-readable `label`, `match_terms`
 (city, county, and regional names), and `context_terms` (state or country names
 and abbreviations). For example, Greater Boston can include Boston, Cambridge,
-and Somerville with Massachusetts/MA context. This is an explicit set of text
-aliases, not geocoding or a distance calculation. If a posting omits context or
-uses an unrecognized city, screening asks about it rather than declaring a
-mismatch. The AI can revise the region when that interpretation is supported.
+and Somerville with Massachusetts/MA context. Include member cities, counties,
+common district names and regional aliases; up to 500 terms per region are
+supported. Store official research links in `source_urls`. `scope` defaults to
+`metro`; set `city` only for a requested narrow scope and restrict aliases accordingly.
+`allow_city_only` defaults to true, so a recognized city matches even if a board
+omits its state. Explicit conflicting state/country context still prevents that
+match. Set it to false for a region with ambiguous names that need context.
+This is an explicit alias set, not geocoding or a distance calculation. An
+unrecognized city stays a question; the AI can research and expand the aliases.
 Do not apply one user's geographic settings to other installations.
 
 Ask about `location_policy`: `prefer-local` (the backward-compatible default)
@@ -99,6 +133,8 @@ duration. Housing alone is not travel coverage, and an internship's relocation
 benefit does not bypass the region limit. Missing or conditional funding and
 unresolved duration remain questions. Explicitly unfunded programs are low
 relevance under this policy. All leads remain recoverable.
+Explicit longer programs also fall outside this short-visit exception, even
+when travel is funded.
 
 The current deterministic exclusion recognizes explicit US states and common
 country names outside the configured contexts. A city in the same state but absent from the metro
@@ -114,8 +150,72 @@ unchanged findings, removed records, and custom extensions. Changed candidate
 facts, changed profile settings, or a new screening rules version invalidate
 the relevant saved findings. It does not change the application board.
 
-`workspace-screening` reads a bounded batch for your agent; it makes no AI calls
-and writes nothing. Use `--state needs-clarification`, `--lane research`,
+`workspace-screening` reads a recommended review batch for your agent; it makes
+no AI calls and writes nothing. Each `review_selection` explains the next action:
+official research, bounded source clarification, shared profile questions,
+carried findings, or deferred lower-priority work. Clear matches and promising
+clarification leads compete in the same batch. Early mode broadly retains
+exploratory programs and dedicated early-year roles with unresolved facts.
+Other clarification leads need relevant captured signals and at most two source
+questions. Unknown personal credentials stay questions; they are grouped in
+`profile_questions` so the agent can ask once and reuse documented answers.
+This summary identifies requirement categories; it does not assert that the
+user's knowledge files lack the answers. Read those files before asking.
+After saving new personal evidence, use `--review-action clarify-profile` to
+read the affected deferred leads in bounded batches and perform the needed
+official eligibility review. Documented answers do not automatically verify a
+posting or clear its screening question. Other next-action lanes can also be
+selected with `--review-action`.
+Academic-standing ambiguity still warrants checking the source's definition.
+An unchanged semantic pass proceeds to official research rather than repeating
+captured-text triage. An unchanged unresolved official check stays pending until
+meaningful changes, a newly approaching deadline, or staleness warrants a recheck.
+A fresh official check within the deadline window carries forward.
+
+The default batch omits unchanged official checks, explicit mismatches, user-held
+leads, opportunities outside the chosen stage, and weaker clarification backlog.
+Source titles targeting experienced/program staff or graduate-only candidates
+are deferred when they conflict with the profile. Inclusive BS/MS/PhD openings
+remain candidates. These are recoverable review deferrals, not new eligibility
+failures. Explore retains its broader feed. Use
+`--include-deferred` to read that feed from the CLI, or
+`--state all --uncapped` to recover every collected lead. Selection changes
+research order, not eligibility or stored screening status. Coverage reports
+selected work separately from the full awaiting-investigation backlog; selected
+counts precede employer caps. A deferred record is not a completed review.
+
+Each private item includes `ai_evidence_packet`: quoted structured source
+constraints, the bounded requirements text, unresolved questions, and documented
+profile facts. It is input for the user's chosen AI, with no embedded model call.
+Required and preferred constraints remain distinct. Disjoint graduation windows
+are alternatives, degree enrollment and completion are separate, and stated
+undergraduate exceptions remain questions instead of graduate-only exclusions.
+Older records without structured facts use their captured language until a
+successful collector refresh supplies the new facts.
+Negated requirements stay optional, and explicit requirements for both degrees
+stay separate from alternative degree options. Conflicting source contexts and
+extraction limits remain visible questions. Partial or conditional travel funding
+does not establish covered travel.
+
+For smaller AI inputs, use `workspace-screening --compact`. This shares the
+documented profile once per batch, preserves candidate hashes and source quotes,
+and removes exact repeated constraint lines from the accompanying requirements
+text. The default full view remains available. Compact output is read-only and
+does not change the screening/review import contracts.
+
+To check missed leads as well as selected ones, read an audit batch:
+
+```powershell
+& $opdisc workspace-screening $workspace --audit-sample --limit 30
+```
+
+This bypasses display caps and interleaves reproducible samples from selected,
+deferred, and low-relevance records, labeled in `audit_group`. Compare each
+sample's reason with its official requirements. This is a stratified diagnostic
+sample, not a population error-rate estimate; do not extrapolate its proportions
+to the entire collection. Use `--offset` to continue the same generation.
+
+Use `--state needs-clarification`, `--lane research`,
 `--search TEXT`, `--offset N`, or `--uncapped` as needed. The employer cap defaults
 to three matching records across the displayed results; it never deletes a lead.
 Preferred exploratory and early-year programs in early mode are exempt and do
@@ -138,9 +238,12 @@ response and run:
 The response must match the current export generation, normalized profile hash,
 and each candidate's facts hash from `workspace-screening`. It quotes captured
 candidate fields, applies at most 100 decisions, preserves unresolved personal
-GPA/coursework/authorization/experience/class-standing questions, and cannot
+GPA/coursework/authorization/experience/class-standing, completed-degree,
+term-time availability, and clearance questions, and cannot
 promote an explicit deterministic mismatch. This is screening, not official
 research: it neither creates a board record nor marks a page as checked.
+Each decision permits up to 128 bounded questions so source clauses can be
+carried forward without dropping unanswered personal requirements.
 Keep these passes small; normalizing shared preferences once is usually more
 useful than asking an AI to read every lead.
 

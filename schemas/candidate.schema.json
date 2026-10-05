@@ -124,59 +124,154 @@
       ]
     },
     "engagement_type": {
-      "enum": ["internship", "co-op", "contract", "research", "fellowship", "program", "event", "full-time", "unknown"]
+      "enum": [
+        "internship",
+        "co-op",
+        "contract",
+        "research",
+        "fellowship",
+        "program",
+        "event",
+        "full-time",
+        "unknown"
+      ]
     },
     "career_stage": {
-      "enum": ["student", "new-grad", "entry-level", "experienced", "unknown"]
+      "enum": [
+        "student",
+        "new-grad",
+        "entry-level",
+        "experienced",
+        "unknown"
+      ]
     },
     "required_degree": {
-      "enum": ["high-school", "associate", "bachelors", "masters", "doctorate", "unknown"]
+      "enum": [
+        "high-school",
+        "associate",
+        "bachelors",
+        "masters",
+        "doctorate",
+        "unknown"
+      ]
     },
     "preferred_degree": {
-      "enum": ["high-school", "associate", "bachelors", "masters", "doctorate", "unknown"]
+      "enum": [
+        "high-school",
+        "associate",
+        "bachelors",
+        "masters",
+        "doctorate",
+        "unknown"
+      ]
     },
     "experience_requirement": {
       "type": "object",
-      "required": ["text", "minimum_years", "maximum_years"],
+      "required": [
+        "text",
+        "minimum_years",
+        "maximum_years"
+      ],
       "properties": {
-        "text": {"type": ["string", "null"]},
-        "minimum_years": {"type": ["integer", "null"], "minimum": 0},
-        "maximum_years": {"type": ["integer", "null"], "minimum": 0}
+        "text": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "minimum_years": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 0
+        },
+        "maximum_years": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 0
+        }
       }
     },
     "active_profile": {
-      "enum": ["student-early-career", "new-grad", "all-opportunities"]
+      "enum": [
+        "student-early-career",
+        "new-grad",
+        "all-opportunities"
+      ]
     },
     "routing_state": {
-      "enum": ["included", "excluded", "research_needed"]
+      "enum": [
+        "included",
+        "excluded",
+        "research_needed"
+      ]
     },
     "eligibility_confidence": {
-      "enum": ["high", "medium", "low"]
+      "enum": [
+        "high",
+        "medium",
+        "low"
+      ]
     },
     "profile_routes": {
       "type": "object",
-      "required": ["student-early-career", "new-grad", "all-opportunities"],
+      "required": [
+        "student-early-career",
+        "new-grad",
+        "all-opportunities"
+      ],
       "additionalProperties": {
         "type": "object",
-        "required": ["routing_state", "eligibility_confidence", "reason_codes"],
+        "required": [
+          "routing_state",
+          "eligibility_confidence",
+          "reason_codes"
+        ],
         "properties": {
-          "routing_state": {"enum": ["included", "excluded", "research_needed"]},
-          "eligibility_confidence": {"enum": ["high", "medium", "low"]},
-          "reason_codes": {"type": "array", "items": {"type": "string"}}
+          "routing_state": {
+            "enum": [
+              "included",
+              "excluded",
+              "research_needed"
+            ]
+          },
+          "eligibility_confidence": {
+            "enum": [
+              "high",
+              "medium",
+              "low"
+            ]
+          },
+          "reason_codes": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
         }
       }
     },
     "routing_reason_codes": {
       "type": "array",
-      "items": {"type": "string"}
+      "items": {
+        "type": "string"
+      }
     },
     "duplicate_state": {
-      "enum": ["unique", "possible_duplicate"]
+      "enum": [
+        "unique",
+        "possible_duplicate"
+      ]
     },
     "possible_duplicate_ids": {
       "type": "array",
       "uniqueItems": true,
-      "items": {"type": "string"}
+      "items": {
+        "type": "string"
+      }
     },
     "posted_date": {
       "type": [
@@ -194,28 +289,54 @@
       "type": "string"
     },
     "overview_url": {
-      "type": ["string", "null"]
+      "type": [
+        "string",
+        "null"
+      ]
     },
     "application_url": {
-      "type": ["string", "null"]
+      "type": [
+        "string",
+        "null"
+      ]
     },
     "program_family_id": {
-      "type": ["string", "null"]
+      "type": [
+        "string",
+        "null"
+      ]
     },
     "cycle_id": {
-      "type": ["string", "null"]
+      "type": [
+        "string",
+        "null"
+      ]
     },
     "event_start_date": {
-      "type": ["string", "null"]
+      "type": [
+        "string",
+        "null"
+      ]
     },
     "event_end_date": {
-      "type": ["string", "null"]
+      "type": [
+        "string",
+        "null"
+      ]
     },
     "application_state": {
-      "enum": ["application-open", "notification-only", "closed", "unknown"]
+      "enum": [
+        "application-open",
+        "notification-only",
+        "closed",
+        "unknown"
+      ]
     },
     "requirements_text": {
-      "type": ["string", "null"]
+      "type": [
+        "string",
+        "null"
+      ]
     },
     "compensation_text": {
       "type": [
@@ -388,6 +509,124 @@
           }
         }
       }
+    },
+    "source_constraints": {
+      "type": [
+        "array",
+        "null"
+      ],
+      "maxItems": 60,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "kind",
+          "evidence",
+          "modality"
+        ],
+        "properties": {
+          "kind": {
+            "enum": [
+              "graduation",
+              "education",
+              "professional-enrollment",
+              "work-authorization",
+              "security-clearance",
+              "institution-region",
+              "duration",
+              "travel-funding"
+            ]
+          },
+          "evidence": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 1000
+          },
+          "modality": {
+            "enum": [
+              "required",
+              "preferred",
+              "unspecified",
+              "not-required"
+            ]
+          },
+          "windows": {
+            "type": [
+              "array",
+              "null"
+            ],
+            "maxItems": 2,
+            "items": {
+              "type": "array",
+              "minItems": 2,
+              "maxItems": 2,
+              "items": {
+                "type": "string",
+                "pattern": "^[0-9]{4}-(0[1-9]|1[0-2])$"
+              }
+            }
+          },
+          "resolved": {
+            "type": "boolean"
+          },
+          "degrees": {
+            "type": "array",
+            "maxItems": 3,
+            "items": {
+              "enum": [
+                "bachelors",
+                "masters",
+                "doctorate"
+              ]
+            }
+          },
+          "state": {
+            "enum": [
+              "enrolled",
+              "completed",
+              "unknown"
+            ]
+          },
+          "exception": {
+            "type": "string",
+            "maxLength": 1000
+          },
+          "regions": {
+            "type": "array",
+            "maxItems": 2,
+            "items": {
+              "enum": [
+                "UK",
+                "EU"
+              ]
+            }
+          },
+          "funding": {
+            "enum": [
+              "covered",
+              "uncovered",
+              "unknown"
+            ]
+          },
+          "degree_operator": {
+            "enum": [
+              "any",
+              "all",
+              "unknown"
+            ]
+          },
+          "study_progress": {
+            "type": "boolean"
+          },
+          "conflicting_context": {
+            "type": "boolean"
+          },
+          "extraction_incomplete": {
+            "type": "boolean"
+          }
+        }
+      },
+      "description": "Null means extraction is unknown; an empty array records a successful empty constraint extraction."
     }
   }
 }

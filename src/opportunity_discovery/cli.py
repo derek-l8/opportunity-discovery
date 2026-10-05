@@ -29,6 +29,7 @@ from .workspace_actions import (
 )
 from .workspace_application import ARTIFACT_TYPES, create_application_request
 from .workspace_board import BOARD_VIEWS, PIPELINE_STATES, list_workspace_board
+from .workspace_constraints import compact_review_batch
 from .workspace_dashboard import serve_workspace_dashboard
 from .workspace_discovery import default_manifest_path
 from .workspace_recovery import (
@@ -41,6 +42,7 @@ from .workspace_recovery import (
 )
 from .workspace_screening import (
     LANES,
+    REVIEW_ACTIONS,
     STATES,
     apply_screening_response,
     list_personal_feed,
@@ -71,13 +73,21 @@ def cmd_workspace_screening(args: argparse.Namespace) -> int:
                 result = list_personal_feed(
                     root,
                     manifest,
-                    state_filter=args.state,
+                    state_filter="all" if args.audit_sample else args.state,
                     lane=args.lane,
                     search=args.search,
-                    uncapped=args.uncapped,
+                    uncapped=args.uncapped or args.audit_sample,
                     offset=args.offset,
                     limit=args.limit,
+                    review_only=not args.include_deferred
+                    and not args.audit_sample
+                    and not args.review_action
+                    and args.state not in ("all", "low-relevance"),
+                    review_action=args.review_action,
+                    audit_sample=args.audit_sample,
                 )
+                if args.compact:
+                    result = compact_review_batch(result)
         print(json.dumps(result, indent=2))
         return 0
     except (WorkspaceStateError, OSError, ValueError) as exc:
@@ -739,6 +749,24 @@ def build_parser() -> argparse.ArgumentParser:
         if name == "workspace-apply-screening":
             p.add_argument("response")
         if name == "workspace-screening":
+            p.add_argument(
+                "--compact", action="store_true", help="share the profile once in a focused AI evidence batch"
+            )
+            p.add_argument(
+                "--audit-sample",
+                action="store_true",
+                help="read a reproducible stratified sample of selected, deferred and excluded leads",
+            )
+            p.add_argument(
+                "--review-action",
+                choices=REVIEW_ACTIONS,
+                help="read a specific next-action lane, including deferred follow-up",
+            )
+            p.add_argument(
+                "--include-deferred",
+                action="store_true",
+                help="read the broader feed, including unchanged checks and deferred questions",
+            )
             p.add_argument("--state", choices=("all", *STATES))
             p.add_argument("--lane", choices=LANES)
             p.add_argument("--search")

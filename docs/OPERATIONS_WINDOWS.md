@@ -14,7 +14,7 @@ git clone https://github.com/derek-l8/opportunity-discovery.git $engine
 After cloning succeeds, enter the project folder and install:
 
 ```powershell
-Set-Location $engine
+Set-Location -LiteralPath $engine -ErrorAction Stop
 .\scripts\install.ps1 -WorkspacePath $workspace
 ```
 
@@ -47,7 +47,7 @@ Use the same project folder and private workspace; do not clone a second copy. I
 
 ```powershell
 $workspace = Join-Path ([Environment]::GetFolderPath("MyDocuments")) "Opportunity-Workspace"
-Set-Location (Join-Path $workspace "engine\opportunity-discovery")
+Set-Location -LiteralPath (Join-Path $workspace "engine\opportunity-discovery") -ErrorAction Stop
 git status --short
 ```
 
@@ -101,6 +101,8 @@ git diff -- config/default.toml config/sources.toml
 Check that your settings are present, then rerun the installer and collector as shown above. If the pull fails, your settings remain in the stash. If `stash pop` reports a conflict, stop: the saved copy remains in the stash, and the affected files contain both versions. Resolve the conflict while keeping your settings and any new required options; your coding agent can help. Do not discard the files or drop the stash to bypass the problem.
 
 ## Optional daily collection
+
+From the project folder:
 
 ```powershell
 .\scripts\register-task.ps1

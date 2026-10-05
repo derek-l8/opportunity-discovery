@@ -53,7 +53,7 @@ def test_migrations_apply_and_are_idempotent(tmp_path):
 
 def test_baseline_database_upgrades_through_migrations_0003_0004_and_0005(tmp_path, monkeypatch):
     migrations = dbm._available_migrations()
-    assert [version for version, _, _ in migrations] == [1, 2, 3, 4, 5]
+    assert [version for version, _, _ in migrations] == [1, 2, 3, 4, 5, 6]
     conn = connect(tmp_path / "baseline-upgrade.sqlite3")
 
     monkeypatch.setattr(dbm, "_available_migrations", lambda: migrations[:2])
@@ -65,8 +65,8 @@ def test_baseline_database_upgrades_through_migrations_0003_0004_and_0005(tmp_pa
     assert current_version(conn) == 4
 
     monkeypatch.setattr(dbm, "_available_migrations", lambda: migrations)
-    assert migrate(conn) == [5]
-    assert current_version(conn) == 5
+    assert migrate(conn) == [5, 6]
+    assert current_version(conn) == 6
     assert migrate(conn) == []
 
     opportunity_columns = {row["name"] for row in conn.execute("PRAGMA table_info(opportunities)").fetchall()}

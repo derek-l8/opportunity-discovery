@@ -1,6 +1,6 @@
 # opportunity-discovery
 
-Collect public internship, research, program, and event leads. The local dashboard lets you search the current review queue. You can ask your own AI agent to investigate leads and import its findings; the app does not run AI or submit applications.
+Collect public internship, research, program, and event leads, then screen them for your interests and manage applications in a local dashboard. This beta is intended for undergraduate students. Your own AI agent organizes your profile, investigates leads, and helps with drafts; the app does not run AI or submit applications.
 
 ## Get started
 
@@ -26,7 +26,7 @@ The collector writes public leads to `output/`. Start with `source_health.json` 
 
 ## Review with your own AI
 
-The [setup guide](docs/AI_SETUP.md) has two prompts: one to organize your material and ask about missing screening preferences, and one to collect, screen, investigate, and open the dashboard. Your chosen AI translates preferences such as geographic regions into private settings; ordinary code screens the collection. AI interpretation and official research can then focus on bounded batches. Your AI handles the files and commands.
+The [setup guide](docs/AI_SETUP.md) has two prompts: one to organize your material and ask about missing screening preferences, and one to collect, screen, investigate, and open the dashboard. Use an AI tool with local file and command access, plus web access for research. Your chosen AI translates preferences such as geographic regions into private settings; ordinary code screens the collection. AI interpretation and official research can then focus on bounded batches.
 
 Check an official page before acting on an opportunity. For manual review imports and Linux commands, see [workspace operations](docs/PRIVATE_WORKSPACE_OPERATIONS.md#import-an-agents-review).
 
@@ -34,7 +34,7 @@ Check an official page before acting on an opportunity. For manual review import
 
 The repository contains the collector and dashboard code. Your profile, source documents, review decisions, and drafts belong in the private folder chosen during setup. Keep personal files out of the Git checkout. See [private workspace setup](docs/WORKSPACE_INITIALIZATION.md) and [review and backup commands](docs/PRIVATE_WORKSPACE_OPERATIONS.md) when you need them.
 
-The default `student-early-career` profile selects student opportunities for review. Set `routing.active_profile` in `config/default.toml` to `new-grad` for new-graduate and entry-level full-time roles, or `all-opportunities` to include every career stage. Changing profiles does not delete collected leads. When updating, [keep your configuration edits](docs/OPERATIONS_WINDOWS.md#keep-your-settings-when-updating).
+To change your personal feed, ask your AI to update your private screening preferences. The collector also has a separate generic setting for the public review queue: `routing.active_profile` in `config/default.toml` defaults to `student-early-career`, with `new-grad` and `all-opportunities` alternatives. Your private feed screens the full collection regardless of that setting. Changing either setting does not delete collected leads. When updating, [keep your configuration edits](docs/OPERATIONS_WINDOWS.md#keep-your-settings-when-updating).
 
 ## Development
 

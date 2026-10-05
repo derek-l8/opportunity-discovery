@@ -22,6 +22,10 @@ human or tool actions. Collection never invokes AI review.
 - explicit compensation/funding/relocation text as stated by the source;
 - explicit class-year / graduation-window / major / work-authorization
   **language** quoted from the source (never an adjudicated status);
+- bounded `source_constraints` extracted before display truncation: quoted
+  requirement evidence, required/preferred modality, graduation alternatives,
+  degree enrollment/completion, undergraduate exceptions, institution-region,
+  authorization, clearance, duration, and travel-funding language;
 - generic technical relevance signals with inspectable components;
 - normalized public engagement type, career stage, degree language, and stated
   experience range;
@@ -34,6 +38,22 @@ human or tool actions. Collection never invokes AI review.
 Every exported candidate is an `unverified-lead`. Aggregator provenance is not
 official verification. Inferred fields are labeled `inferred-signal`. Missing
 data is `unknown`.
+
+These structured constraints describe public source language, not an applicant
+comparison or official-page verification. Migration 6 adds their JSON storage
+without changing candidate identities. At most 60 clauses of 1,000 characters
+each are retained; full descriptions remain transient. Ambiguous dates and
+degree equivalencies remain unresolved. Full-time hours do not override an
+explicit internship/co-op title. Generic profile routing controls public lanes;
+it is not a personal eligibility veto during private verified promotion.
+Explicit collector policy exclusions still block promotion.
+Constraint storage is nullable: null means no extraction is available, while an
+empty array records a successful extraction that found no constraints. Complete
+source refreshes may clear removed qualification facts under the existing field
+ownership policy. Missing descriptions and failed/partial observations preserve
+previous facts. This distinction prevents stale graduation or degree restrictions
+from being revived through legacy fallback. Extraction-limit and conflicting-
+context flags indicate that further source interpretation is needed.
 
 ### The private downstream workflow owns:
 

@@ -138,6 +138,7 @@ def _explore_card(item: dict[str, Any], *, selected: str | None, filters: dict[s
         f" · {_e(str(finding.get('lane') or '').replace('-', ' '))}</span>"
         f'<span class="card-meta">Research: {_e(item.get("research_status"))}</span>'
         f'<span class="card-meta">Opportunity focus: {_e(focus.get("match"))}</span>'
+        f'<span class="card-meta">Next review: {_e((item.get("review_selection") or {}).get("action"))}</span>'
         if finding
         else ""
     )
@@ -625,6 +626,8 @@ def render_dashboard(
                 f"officially checked (reported): {report['officially_checked']}; "
                 f"awaiting investigation: {report['awaiting_investigation']}. "
                 f"Unsaved or outdated screening: {report['unsaved_screening']}. "
+                f"Selected for review: {report.get('selected_for_review', 0)} "
+                f"({report.get('selected_needing_clarification', 0)} need clarification). "
                 f"Opportunity focus: {_e(queue_summary.get('opportunity_focus') or 'No stage preference')}. "
                 f"{queue_summary.get('cap_exempt_programs', 0)} preferred early programs retained outside the employer cap. "
                 f"{queue_summary['hidden_by_cap']} matching leads hidden by the employer cap; use the filter to show them.</p>"
