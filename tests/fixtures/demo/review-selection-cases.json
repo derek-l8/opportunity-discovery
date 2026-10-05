@@ -1,0 +1,9 @@
+[
+  {"title": "Physics Internship", "expected_action": "official-research"},
+  {"title": "Physics Internship", "graduation_window_language": "Graduating before 2037.", "expected_action": "clarify-source"},
+  {"title": "Business Discovery Program", "engagement_type": "program", "requirements_text": null, "major_language": "Degree in Business required.", "location_text": "Unknown City", "expected_action": "official-research"},
+  {"title": "General Coordinator", "engagement_type": "unknown", "requirements_text": null, "major_language": null, "class_year_language": null, "graduation_window_language": null, "location_text": null, "expected_action": "outside-stage-focus"},
+  {"title": "Physics Internship", "requirements_text": "GPA 3.0 required.", "expected_action": "clarify-profile"},
+  {"title": "Physics Internship", "requirements_text": "GPA 3.5 required.", "expected_action": "clarify-profile"},
+  {"title": "Physics Internship", "graduation_window_language": "Graduating in 2034.", "expected_action": "recoverable-exclusion"}
+]

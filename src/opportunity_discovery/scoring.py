@@ -243,11 +243,6 @@ CLASS_YEAR_RE = re.compile(
     re.IGNORECASE,
 )
 GRAD_WINDOW_RE = re.compile(r"(graduat\w+ (date|window|between)|class of \d{4})", re.IGNORECASE)
-MAJOR_RE = re.compile(
-    r"(major\w* in|degree in|pursuing a? ?(bs|ba|b?s|ms|phd)|"
-    r"(electrical|computer|mechanical) engineering|computer science)",
-    re.IGNORECASE,
-)
 WORK_AUTH_RE = re.compile(
     r"(work authorization|sponsorship|authorized to work|"
     r"us citizen|permanent resident|visa sponsor)",
@@ -380,8 +375,9 @@ def extract_explicit_language(raw: RawOpportunity) -> dict[str, str | None]:
     out["class_year_language"] = raw.class_year_language or (m.group(0) if m else None)
     m = GRAD_WINDOW_RE.search(combined)
     out["graduation_window_language"] = raw.graduation_window_language or (m.group(0) if m else None)
-    m = MAJOR_RE.search(combined)
-    out["major_language"] = raw.major_language or (m.group(0) if m else None)
+    from .extraction import academic_major_language
+
+    out["major_language"] = academic_major_language(raw.major_language or raw.requirements_text or combined)
     m = WORK_AUTH_RE.search(combined)
     out["work_auth_language"] = raw.work_auth_language or (m.group(0) if m else None)
     return out

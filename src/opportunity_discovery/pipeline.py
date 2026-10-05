@@ -18,6 +18,7 @@ from .identity import description_hash, identity_key
 from .models import AdapterResult, RawOpportunity, RunSummary, SourceSpec
 from .routing import normalize_routing_fields, route_profiles
 from .scoring import classify, extract_explicit_language, infer_season
+from .source_constraints import parse_constraints
 from .urlnorm import normalize_url
 
 log = logging.getLogger(__name__)
@@ -222,6 +223,7 @@ class Pipeline:
                 "event_end_date": fields["event_end_date"],
                 "application_state": fields["application_state"],
                 "requirements_text": fields["requirements_text"],
+                "source_constraints_json": fields["source_constraints_json"],
                 "compensation_text": fields["compensation_text"],
                 "relocation_text": fields["relocation_text"],
                 "description_excerpt": fields["description_excerpt"],
@@ -325,7 +327,7 @@ class Pipeline:
         self._touch_provenance(opp_id, source, raw, now)
 
         changed: dict[str, dict[str, Any]] = {}
-        material_fields = self.cfg.changes.material_fields
+        material_fields = list(dict.fromkeys([*self.cfg.changes.material_fields, "source_constraints_json"]))
         updates: dict[str, Any] = {"last_seen": now, "last_successful_check": now}
         if existing["organization"] == "↳" and raw.organization and raw.organization.strip() != "↳":
             corrected_organization = raw.organization.strip()
@@ -363,7 +365,25 @@ class Pipeline:
                     updates["description_excerpt"] = fields["description_excerpt"]
                     _set_owner("description")
                 continue
-            if new_val not in (None, "", c.UNKNOWN) and new_val != old_val and _may_overwrite(col):
+            clearable = raw.source_constraints is not None and col in {
+                "requirements_text",
+                "class_year_language",
+                "graduation_window_language",
+                "major_language",
+                "work_auth_language",
+                "required_degree",
+                "preferred_degree",
+                "experience_requirement_text",
+                "experience_min_years",
+                "experience_max_years",
+                "deadline",
+                "deadline_tz",
+            }
+            if (
+                (clearable or new_val not in (None, "", c.UNKNOWN))
+                and new_val != old_val
+                and _may_overwrite(col)
+            ):
                 changed[col] = {"old": old_val, "new": new_val}
                 updates[col] = new_val
                 _set_owner(col)
@@ -425,6 +445,11 @@ class Pipeline:
                 event_end_date=final_value("event_end_date"),
                 application_state=final_value("application_state"),
                 requirements_text=final_value("requirements_text"),
+                source_constraints=(
+                    json.loads(final_value("source_constraints_json"))
+                    if final_value("source_constraints_json") is not None
+                    else None
+                ),
                 compensation_text=final_value("compensation_text"),
                 relocation_text=final_value("relocation_text"),
                 description_excerpt=final_value("description_excerpt"),
@@ -510,6 +535,7 @@ class Pipeline:
                 canonical_url=raw.canonical_url,
                 description_excerpt=raw.description_excerpt,
                 requirements_text=raw.requirements_text,
+                source_constraints=raw.source_constraints,
                 employment_type=employment,
                 engagement_type=raw.engagement_type,
                 career_stage=raw.career_stage,
@@ -520,6 +546,22 @@ class Pipeline:
             )
         )
         official = raw.canonical_url if source.official_source else None
+        constraints = raw.source_constraints
+        if constraints is None:
+            constraints = (
+                parse_constraints(
+                    "\n".join(
+                        str(value or "")
+                        for value in (
+                            raw.requirements_text,
+                            raw.class_year_language,
+                            raw.graduation_window_language,
+                            raw.work_auth_language,
+                        )
+                    )
+                )
+                or None
+            )
         return {
             "organization": raw.organization or source.organization,
             "title": raw.title,
@@ -549,6 +591,9 @@ class Pipeline:
             "event_end_date": raw.event_end_date,
             "application_state": raw.application_state,
             "requirements_text": raw.requirements_text,
+            "source_constraints_json": json.dumps(constraints, sort_keys=True)
+            if constraints is not None
+            else None,
             "compensation_text": raw.compensation_text,
             "relocation_text": raw.relocation_text,
             "description_excerpt": raw.description_excerpt,
@@ -583,6 +628,7 @@ class Pipeline:
                     "graduation_window_language",
                     "major_language",
                     "work_auth_language",
+                    "source_constraints_json",
                     "description",
                 },
             ),
@@ -611,6 +657,7 @@ class Pipeline:
             c.CHANGE_DEADLINE: {"deadline", "deadline_tz"},
             c.CHANGE_REQUIREMENTS: {
                 "requirements_text",
+                "source_constraints_json",
                 "class_year_language",
                 "graduation_window_language",
                 "major_language",

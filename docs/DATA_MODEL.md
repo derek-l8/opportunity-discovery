@@ -42,6 +42,12 @@ Key columns:
   deadline remains separate from event dates.
 - Explicit language captured verbatim-ish: class-year, graduation-window, major,
   work-authorization/sponsorship; requested application components.
+- Source constraints: nullable `source_constraints_json` added by migration 6,
+  exported as `source_constraints`. Bounded quotes record qualification modality,
+  degree enrollment/completion, graduation alternatives, institution regions,
+  authorization, clearance, program duration, and travel funding. NULL means
+  unavailable extraction; `[]` means a successful extraction found no supported
+  constraints. See the [integration contract](INTEGRATION_CONTRACT.md) for details.
 - Deterministic evaluation: role-family tags, signals JSON, score components JSON,
   generic score, reason codes, effort estimate.
 - Profile routing: decisions for all shipped profiles in `profile_routes_json`, plus
@@ -56,7 +62,9 @@ are `application-opened`, `application-closed`, `deadline-changed`,
 `requirements-changed`, `dates-changed`, and `location-changed`. Page presence
 (`active`) remains distinct from whether an application window is open.
 
-Missing information is stored as NULL and exported as `"unknown"` — never invented.
+Missing facts remain NULL or explicit `unknown` values, as defined by the export
+schemas. A failed or incomplete source response preserves the last successful
+facts; a complete description refresh can clear requirements removed by the source.
 
 Greenhouse, Lever, Ashby, and available SmartRecruiters description content is
 decoded and inspected before display excerpts are shortened. Separate Lever

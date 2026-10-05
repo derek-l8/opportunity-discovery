@@ -35,15 +35,25 @@ using `schemas/workspace-source-manifest.schema.json` in the engine folder.
 Verify saved copies before clearing inbox items. Update `knowledge/PROFILE.md`
 and `knowledge/CATALOG.md`; link facts to sources, keep important unknowns
 visible, and preserve corrections. Writing samples are optional.
-Ask about missing major, expected graduation, year in program, class standing,
+Use documented answers first; ask only about missing or contradictory major,
+expected graduation, year in program, class standing,
 available geographic regions, remote work, interests, and opportunity focus:
 early exploratory/freshman-sophomore programs, standard undergraduate internships,
-or entry-level full-time jobs. Interpret intended
-metro areas with the user. Ask whether regions are preferences or limits and
+or entry-level full-time jobs. Default city preferences to their surrounding
+metro areas. Research official regional/municipal sources for city, county and
+regional aliases; save source URLs in the private region settings. Cities within
+the same region should resolve to the same metro, rather than literal city
+filters. Summarize the scope and ask only about material ambiguity or explicit
+city/commute limits. Preserve actual majors and normalize suitable degree aliases
+and broad academic families into major_match_terms. Ask whether regions are preferences or limits and
 whether short programs elsewhere are acceptable with covered travel. Then import
 structured private screening settings
 with `opdisc workspace-profile`, following the screening profile schema. Keep
 unknown credentials unknown. Do not require the user to write JSON.
+Reuse documented citizenship and institution regions. Distinguish current degree
+enrollment from an explicitly documented completed-degree inventory; missing
+inventory is null, not an empty list. Ask about school-term placement availability
+only when relevant. Do not equate citizenship with security-clearance eligibility.
 
 ## Opportunity review
 
@@ -52,9 +62,18 @@ When asked, follow the engine's `docs/PRIVATE_WORKSPACE_OPERATIONS.md` and
 dashboard before changing board state. Read the profile and current exports;
 check run_summary.json and source_health.json for collection failures.
 The packet is a sample. Use `opdisc workspace-screen` on the whole collection
-and `opdisc workspace-screening` for bounded, balanced Explore batches. An
+and `opdisc workspace-screening --compact` for bounded, balanced recommended review batches.
+Follow review_selection: include promising clarification leads alongside clear
+matches, group shared profile questions, and reuse saved findings. Do not spend
+equal research on every plausible lead. Use --include-deferred for the broader
+feed. Unchanged unresolved official checks retain their questions until new
+evidence, changed facts, approaching deadlines or staleness warrant another check. An
 optional semantic screening pass may interpret captured text; import it with
 `opdisc workspace-apply-screening`. Screening is separate from official checks.
+Use ai_evidence_packet to compare quoted requirements with documented facts,
+preserving preferred qualifications, graduation alternatives and undergraduate
+exceptions. For accuracy audits, use --audit-sample to inspect selected, deferred
+and excluded records; the stratified sample is not a population error-rate estimate.
 Check official pages and personal fit, preserve uncertainty, and confirm a
 successful import before reporting that the board is updated. State how much
 was screened, plausible, officially checked, and still awaiting investigation.

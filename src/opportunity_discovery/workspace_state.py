@@ -449,9 +449,9 @@ def _promotion_threshold(decision: dict[str, Any], candidate: dict[str, Any]) ->
     reasons = set(decision["reason_codes"])
     if "profile-relevant" not in reasons:
         failures.append("profile-relevance-not-supported")
-    if candidate.get("routing_state") == "excluded" or any(
-        str(reason).startswith("exclude:") for reason in candidate.get("reason_codes", [])
-    ):
+    # Generic career-profile routing is not applicant eligibility. Explicit
+    # collector policy exclusions remain protected through this import path.
+    if any(str(reason).startswith("exclude:") for reason in candidate.get("reason_codes", [])):
         failures.append("collector-hard-exclusion")
     if candidate.get("active") is False:
         failures.append("collector-record-inactive")

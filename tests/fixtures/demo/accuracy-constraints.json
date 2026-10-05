@@ -1,0 +1,9 @@
+[
+  {"text":"Graduating in fall 2035 or spring 2036.","month":"2036-06","matches":true},
+  {"text":"Graduating in fall 2035 or spring 2037.","month":"2036-06","matches":false},
+  {"text":"Expected graduation between December 2035 and summer 2036.","month":"2036-08","matches":true},
+  {"text":"Graduating in 2035 or 2036.","month":"2036-06","matches":true},
+  {"text":"Graduating in winter 2036.","month":"2036-06","matches":null},
+  {"text":"Graduating before 2037.","month":"2036-06","matches":null},
+  {"text":"Graduating in 2036 preferred.","month":"2036-06","matches":null}
+]

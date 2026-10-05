@@ -119,6 +119,7 @@ def _row_to_candidate(
         "event_end_date": row["event_end_date"],
         "application_state": row["application_state"] or "unknown",
         "requirements_text": row["requirements_text"],
+        "source_constraints": _j("source_constraints_json", None),
         "compensation_text": row["compensation_text"],
         "relocation_text": row["relocation_text"],
         "description_excerpt": excerpt,

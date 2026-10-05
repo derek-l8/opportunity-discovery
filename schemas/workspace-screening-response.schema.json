@@ -17,7 +17,7 @@
           "opportunity_id": {"type": "string", "pattern": "^opp_[0-9a-f]{32}$"},
           "candidate_hash": {"$ref": "#/$defs/hash"},
           "state": {"enum": ["worth-investigating", "needs-clarification", "low-relevance"]},
-          "questions": {"type": "array", "maxItems": 30, "items": {"type": "string", "minLength": 1, "maxLength": 1000}},
+          "questions": {"type": "array", "maxItems": 128, "items": {"type": "string", "minLength": 1, "maxLength": 1000}},
           "reasons": {
             "type": "array", "minItems": 1, "maxItems": 20,
             "items": {

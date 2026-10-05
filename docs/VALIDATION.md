@@ -1,5 +1,83 @@
 # Validation record
 
+## Private review selection (2026-10-04)
+
+`workspace-screening` now selects bounded work from clear matches and promising
+clarification leads. It explains source clarification, official research, shared
+profile questions, carried findings and recoverable deferrals separately from
+screening eligibility. Early programs retain broad consideration; other
+clarification leads require captured relevance and a bounded source question.
+Stage and role-title deferrals do not rewrite eligibility or saved screening.
+Explore remains broad, with explicit CLI recovery and next-action filters.
+
+Unchanged official findings carry forward, including pending unknowns. Changed
+facts, staleness and newly approaching deadlines can return useful leads to
+research. A fresh check within the deadline window does not repeat each session.
+Shared credential questions direct agents to documented knowledge before asking.
+Selection counts are separate from the full awaiting-investigation backlog.
+
+| Gate | Result |
+| --- | --- |
+| Full native Windows non-live suite | 433 passed, 8 skipped in 62.44 seconds |
+| Ruff lint and formatting | Passed; 82 source/test files formatted |
+| Mypy | Passed; 45 source files |
+| Configuration | 272 sources, 248 enabled, 0 errors |
+| Repository publication audit | 173 files scanned, 0 findings |
+| Isolated full live source validation | 241 with records, 5 valid empty, 2 existing HTTP 404 failures, 24 quarantined |
+
+Synthetic cases cover mixed review batches, deferred recovery, grouped GPA
+questions, early-program cap exemptions, saved semantic screening, changed and
+stale official findings, deadlines, degree alternatives and misleading role
+titles. Read-only checks confirm public exports, private screening, reviewed
+board and application records remain unchanged. Current-workspace evidence is
+stored outside this checkout. The eight skips require Windows symlink privileges.
+An initial live check encountered provider DNS failures. The completed retry at
+lower concurrency recovered normal coverage; the remaining failures are
+`greenhouse-amplitude` and `ashby-amigo`. Validation used separate ignored paths,
+without changing the production collector database or exports.
+
+No model dependency, registry edits, staging, commit or push. GitHub CI has not
+run for this local diff; the full hosted platform/version matrix is unverified.
+
+## Metro onboarding and qualification screening (2026-10-04)
+
+City preferences default to AI-researched metro scope. The private profile
+supports up to 500 municipal/regional aliases per region, research URLs, optional
+strict context matching, and normalized major aliases/families. Recognized
+city-only listings match by default; explicit conflicting state/country context
+still prevents a match. Public collection and candidate identity are unchanged.
+
+Major extraction now requires academic-field clauses rather than company
+discipline mentions or words such as "majority". The scoring fallback and
+private screening also sanitize older fields. Optional qualifications do not
+create blocking questions, while mixed mandatory/optional wording remains
+unresolved. Defined current university years use known profile facts; ambiguous
+standing, timing, and genuine credential requirements stay questions. Onboarding
+reuses documented answers before asking for missing or contradictory facts.
+Screening version 9 refreshes cached findings and preserves custom/user state.
+
+| Gate | Result |
+| --- | --- |
+| Full native Windows non-live suite | 415 passed, 8 skipped in 55.12 seconds |
+| Ruff lint and formatting | Passed; 82 files formatted |
+| Mypy | Passed; 45 source files |
+| Configuration | 272 sources, 248 enabled, 0 errors |
+| Isolated full live source validation | 241 with records, 5 valid empty, 2 existing HTTP 404 failures, 24 quarantined |
+| Final extractor live check | Anduril: 2,434 records, HTTP 200 |
+
+The eight skips require Windows symlink privileges. The two source failures are
+`greenhouse-amplitude` and `ashby-amigo`. Live checks use separate ignored paths.
+Synthetic regressions cover context-free aliases, namesake cities, conflicting
+countries, large region lists, unrelated named majors, biographies, optional and
+mixed qualifications, year alternatives, numeric years, and ambiguous academic
+standing. Personal profile research and screening evidence stay in the external
+workspace. Private rescreening checks stable identities, custom fields, unchanged
+public exports, and unchanged reviewed-board/application state.
+
+No embedded model dependency, registry changes, staging, commit, or push.
+GitHub CI has not run for this local diff; its full Windows/Linux version matrix
+remains unverified.
+
 ## Private workspace backups (2026-10-03)
 
 Full backups include new workspace folders by default. Both backup modes include
@@ -1130,3 +1208,148 @@ The latest saved isolated live validation was inspected, not rerun: 241 sources
 with records, 5 valid empty, 2 existing HTTP 404 failures, 24 quarantined.
 No new GitHub CI run was started, so its Linux/Windows Python-version matrix
 remains unverified for this diff. No staging, commit, push or publication occurred.
+
+## Source constraints and private screening accuracy (2026-10-04)
+
+Added source-only constraint extraction before display truncation and additive
+migration 6. Public facts retain required/preferred wording, degree
+enrollment/completion, graduation alternatives, undergraduate exceptions,
+institution-region restrictions, authorization, clearance, duration, and travel
+funding. Internship/co-op titles take precedence over full-time hours. Private
+promotion no longer treats generic career-profile routing as personal eligibility;
+explicit collector policy exclusions and official evidence requirements remain.
+
+Private screening version 10 compares those facts with documented private
+credentials, groups unresolved personal questions, and supplies provider-neutral
+evidence packets. An audit batch interleaves selected, deferred, and excluded
+records without employer caps. It is a reproducible stratified diagnostic sample,
+not a population error-rate estimate. No applicant facts or decisions were added
+to public fixtures, SQLite, or exports; no model dependency was introduced.
+
+| Gate | Result |
+| --- | --- |
+| Full native Windows non-live suite | 468 passed, 8 skipped in 67.45 seconds |
+| Final workspace instruction-template check | 10 passed after the onboarding/review wording update |
+| Ruff lint and formatting | Passed; 86 files formatted |
+| Mypy | Passed; 47 source files |
+| Configuration validation | 272 sources, 248 enabled, 0 errors |
+| Isolated live source validation, concurrency 3 | 241 with records, 5 valid empty, 2 HTTP 404 failures, 24 quarantined |
+| Publication audit | 178 files scanned, 0 findings |
+| Diff integrity | `git diff --check` passed |
+
+Synthetic regressions cover graduation gaps and ambiguous bounds, source clauses
+beyond display limits, alternative qualification headings, experience phrased
+as years across a field, explicit dated application windows, completed-degree
+unknowns, preferred credentials, undergraduate exceptions, unrelated university
+regions, waived clearance, unfunded travel, and long funded programs. Pipeline
+tests verify unchanged identities, exported structured evidence, requirement
+change detection despite identical excerpts, and preservation after fetch failure.
+Private tests verify recoverable audit groups, protected unresolved questions,
+and unchanged public candidate bytes.
+
+The eight skips require Windows symlink privileges. Live failures remain
+`greenhouse-amplitude` and `ashby-amigo`, both HTTP 404; the source registry is
+unchanged. Validation used isolated ignored runtime paths. Existing production
+records acquire full structured facts on successful collection refreshes; legacy
+captured language remains usable meanwhile. These checks do not measure a live
+population false-positive or missed-opportunity rate. GitHub CI was not triggered.
+Changes remain local, unstaged, uncommitted, and unpushed.
+
+## Iterative pre-commit accuracy review (2026-10-04)
+
+Reviewed the local implementation, reproduced additional mistakes, added
+regressions, and repeated targeted and full native Windows validation. Screening
+version 11 handles explicit credential waivers, completed study versus awarded
+degrees, required degree conjunctions, optional headings, dotted abbreviations,
+and partial/conditional or applicant-paid travel. Work-term detection uses
+scheduling evidence rather than graduation seasons or technical names.
+Conflicting repeated source contexts and bounded extraction overflow remain
+questions instead of silently changing eligibility.
+
+Migration 6 remains an unpublished additive migration. Its constraint column is
+nullable so pre-existing unknown facts differ from a successful empty extraction.
+Complete source refreshes clear removed qualification fields under existing
+ownership rules. Missing descriptions and failed observations preserve earlier
+facts. Integration tests cover this lifecycle and stable identities. A bounded
+public-text cache and a plain-text decoding path avoid repeated parsing without
+sharing mutable findings.
+
+The optional `workspace-screening --compact` handoff shares documented profile
+facts once per batch and removes exact repeated requirement lines while retaining
+source quotes, candidate hashes, dates, and academic/location facts. Semantic
+imports permit up to 128 bounded questions so unanswered personal requirements
+can be retained. Dashboard sections and model-free operation are unchanged.
+
+| Gate | Result |
+| --- | --- |
+| Full native Windows non-live suite | 498 passed, 8 skipped in 72.07 seconds |
+| Final workspace instruction-template check | 10 passed in 0.34 seconds |
+| Ruff lint/format | Passed; 86 files formatted |
+| Mypy | Passed; 47 source files |
+| Configuration validation | 272 sources, 248 enabled, 0 errors |
+| Final live source validation against fresh isolated storage | 241 with records, 5 valid empty, 2 HTTP 404 failures, 24 quarantined |
+| Isolated full collection during review | 248 attempted, 246 successful, 2 failed; 21,911 new records, 645 changed, 0 closed |
+| Offline packaging | Wheel and sdist built; new modules and migration present; runtime paths excluded |
+| Fresh wheel installation | Offline temporary Windows environment; new modules imported and compact CLI help loaded |
+| Publication audit | 178 files scanned, 0 findings |
+| Diff integrity | `git diff --check` passed |
+
+A small official-source diagnostic checked 15 current public listings: 14 matched
+an official provider ID or canonical job path; one HTTP 403 remained unresolved.
+Changed titles were retained as changes, not treated as closures. Diagnostic
+evidence and all applicant comparisons were saved only in the external private
+workspace. This sample does not establish a population eligibility/error rate,
+and no review decisions were imported into an application board.
+
+The eight skips require Windows symlink privileges. The two registry failures
+remain `greenhouse-amplitude` and `ashby-amigo`, both HTTP 404. The registry was
+not modified. Generated collection/build/validation artifacts remain ignored.
+The full GitHub Linux/Windows Python-version matrix has not been run for this
+local diff. No staging, commit, push, or publication occurred.
+
+## Public repository and reader walkthrough (2026-10-05)
+
+Reviewed the README, Windows installation/update path, AI onboarding, workspace
+operations, troubleshooting, and representative extraction/screening code using
+the public-repository and reader-experience reviews. Clarified the undergraduate
+audience, AI tool access requirements, and separate personal/public feed settings.
+Shortened the two onboarding prompts while directing agents to current engine
+guides, including installations with preserved custom workspace instructions.
+Windows path examples now stop on a failed directory change. Technical references
+describe the new constraint column and public/private module responsibilities.
+
+| Check | Result |
+| --- | --- |
+| Local Markdown links and anchors | 37 checked, 0 errors |
+| Native PowerShell syntax | 5 scripts and 24 documentation command blocks parsed, 0 errors |
+| Current publication audit | 178 files scanned, 0 findings |
+| Bounded history audit | 6 revisions, 965 file versions; 0 credential, personal-path, or generated-file findings |
+| CLI examples | Screening help confirms compact, audit, and recovery options |
+| Diff integrity | `git diff --check` passed |
+| Refreshed packaging | Wheel and sdist built offline; current README in package metadata; all 55 runtime files match the previously tested wheel; new modules/migration present and runtime artifacts excluded |
+
+Reused the matching 498-pass native Windows suite and final isolated live-source
+validation above; this walkthrough changed documentation only. Packaging is
+refreshed after the README and guide edits. GitHub's current main is `6a58edf`;
+all eight Linux/Windows Python 3.11–3.14 jobs in
+[its CI run](https://github.com/derek-l8/opportunity-discovery/actions/runs/37242620127)
+passed. That run covers the base revision; the local diff awaits its own CI run.
+The public About description matches the implemented collector/dashboard and AI
+handoffs. No staging, commit, push, publication, or GitHub settings changes occurred.
+
+## Registry endpoint repairs (2026-10-05)
+
+Updated Amplitude from its retired Greenhouse endpoint to the Ashby board linked
+by https://amplitude.com/careers. Updated Amigo AI to Concurrence and the
+`concurrence` Ashby board linked by its official careers pages;
+https://amigo.ai/careers redirects to https://www.concurrence.com/careers.
+Retained source IDs `greenhouse-amplitude` and `ashby-amigo` for provenance
+continuity. Existing candidate identities and stored history were not rewritten;
+the Greenhouse-to-Ashby move can introduce new provider identities.
+
+Both entries passed `opdisc validate-sources --source-id` through the existing
+Ashby adapter using isolated ignored storage: Amplitude returned 36 records and
+Concurrence returned 11, both HTTP 200. Configuration validation reports 272
+sources, 248 enabled, and 0 errors. Registry tests passed (3 tests). Other registry
+entries are unchanged. No production collection, private-board update, staging,
+commit, or push occurred.

@@ -12,6 +12,7 @@ from typing import Any
 
 from . import constants as c
 from .models import RawOpportunity
+from .source_constraints import parse_constraints, program_evidence, staff_role
 
 
 @dataclass(frozen=True)
@@ -174,6 +175,31 @@ def normalize_routing_fields(raw: RawOpportunity) -> dict[str, Any]:
     if raw.engagement_type is None and legacy in legacy_map:
         engagement = legacy_map[legacy]
 
+    # Hours and provider metadata do not override an explicit student role.
+    if re.search(r"\bintern(?:ship)?\b", raw.title or "", re.I):
+        engagement = c.ENGAGEMENT_INTERNSHIP
+    elif re.search(r"\bco[- ]?op\b", raw.title or "", re.I):
+        engagement = c.ENGAGEMENT_COOP
+    elif (
+        raw.engagement_type is None
+        and engagement
+        in {
+            c.ENGAGEMENT_EVENT,
+            c.ENGAGEMENT_PROGRAM,
+            c.ENGAGEMENT_FELLOWSHIP,
+        }
+        and not program_evidence(
+            raw.title or "",
+            raw.requirements_text or "",
+            configured=bool(raw.program_family_id or raw.overview_url),
+        )
+    ):
+        engagement = (
+            c.ENGAGEMENT_FULL_TIME
+            if legacy in {"full-time", "fulltime", "full time", "permanent"} or staff_role(raw.title or "")
+            else c.UNKNOWN
+        )
+
     career_stage = _canonical(
         raw.career_stage,
         {"new graduate": c.CAREER_NEW_GRAD, "entry level": c.CAREER_ENTRY_LEVEL},
@@ -220,6 +246,33 @@ def normalize_routing_fields(raw: RawOpportunity) -> dict[str, Any]:
     preferred_degree = _canonical(raw.preferred_degree, degree_aliases, _DEGREE_VALUES) or _first_match(
         text, _PREFERRED_DEGREE_PATTERNS
     )
+    constraints = (
+        raw.source_constraints
+        if raw.source_constraints is not None
+        else parse_constraints(raw.requirements_text or "")
+    )
+    all_education = [rule for rule in constraints if rule["kind"] == "education"]
+    education = [
+        rule for rule in constraints if rule["kind"] == "education" and rule["modality"] == "required"
+    ]
+    if all_education and not education:
+        required_degree = c.UNKNOWN
+    if education:
+        if any(rule["exception"] or rule.get("degree_operator") == "unknown" for rule in education):
+            required_degree = c.UNKNOWN
+        else:
+            order = ("bachelors", "masters", "doctorate")
+            # Alternatives within a clause permit the lowest stated degree;
+            # separate mandatory clauses must all be satisfied.
+            minima = [
+                (max if rule.get("degree_operator") == "all" else min)(
+                    order.index(d) for d in rule["degrees"]
+                )
+                for rule in education
+                if rule["degrees"]
+            ]
+            if minima:
+                required_degree = order[max(minima)]
 
     exp_text = raw.experience_requirement_text
     if exp_text is None and not raw.extra.get("requirements_extracted"):

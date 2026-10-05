@@ -1612,16 +1612,16 @@ provenance_note = "discovered via public aggregate feeds; live probe returned 32
 source_id = "greenhouse-amplitude"
 display_name = "Amplitude"
 organization = "Amplitude"
-adapter = "greenhouse"
-landing_url = "https://boards.greenhouse.io/amplitude"
+adapter = "ashby"
+landing_url = "https://jobs.ashbyhq.com/amplitude"
 endpoint_config = { board = "amplitude" }
 categories = ["internship", "early-career"]
 tags = ["ats", "official-board"]
 cadence_hours = 24
 official_source = true
 validation_status = "validated"
-last_validated = "2026-08-22"
-provenance_note = "discovered via public aggregate feeds; live probe returned 32 postings (2026-08-22)"
+last_validated = "2026-10-05"
+provenance_note = "Official https://amplitude.com/careers links to the amplitude Ashby board; public API returned 36 postings (2026-10-05). Replaces the former Greenhouse endpoint (HTTP 404); source_id retained for provenance continuity."
 
 [[sources]]
 source_id = "ashby-modal"
@@ -2315,18 +2315,18 @@ provenance_note = "discovered via public aggregate feeds; live probe returned 14
 
 [[sources]]
 source_id = "ashby-amigo"
-display_name = "Amigo AI"
-organization = "Amigo AI"
+display_name = "Concurrence (formerly Amigo AI)"
+organization = "Concurrence"
 adapter = "ashby"
-landing_url = "https://jobs.ashbyhq.com/amigo"
-endpoint_config = { board = "amigo" }
+landing_url = "https://jobs.ashbyhq.com/concurrence"
+endpoint_config = { board = "concurrence" }
 categories = ["internship", "early-career"]
 tags = ["ats", "official-board"]
 cadence_hours = 24
 official_source = true
 validation_status = "validated"
-last_validated = "2026-08-22"
-provenance_note = "discovered via public aggregate feeds; live probe returned 14 postings (2026-08-22)"
+last_validated = "2026-10-05"
+provenance_note = "https://amigo.ai/careers redirects to https://www.concurrence.com/careers, whose official job pages link to the concurrence Ashby board; public API returned 11 postings (2026-10-05). Replaces the former amigo board (HTTP 404); source_id retained for provenance continuity."
 
 [[sources]]
 source_id = "ashby-archy"

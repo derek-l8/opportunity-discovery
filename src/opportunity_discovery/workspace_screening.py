@@ -11,11 +11,22 @@ import json
 import re
 from collections import Counter, deque
 from datetime import UTC, date, datetime, timedelta
+from functools import lru_cache
 from pathlib import Path
 from typing import Any
 
+from .extraction import academic_major_language, required_statements
+from .source_constraints import (
+    duration_limits,
+    graduation_windows,
+    program_evidence,
+    staff_role,
+    term_time_placement,
+    travel_funding,
+)
 from .workspace_board import _lane as board_lane
 from .workspace_board import _pipeline_state
+from .workspace_constraints import candidate_constraints, compare_constraints, evidence_packet
 from .workspace_discovery import _board_records, _has_imported_decision, _page, load_current_queue
 from .workspace_state import (
     OPPORTUNITY_ID,
@@ -29,10 +40,22 @@ from .workspace_state import (
     require_workspace,
 )
 
-SCREENING_VERSION = "6"
+SCREENING_VERSION = "11"
 FOCUS_MODES = ("early-opportunities", "standard-internships", "new-grad")
 LOCATION_POLICIES = ("prefer-local", "local-only", "local-jobs-funded-programs")
 STATES = ("worth-investigating", "needs-clarification", "low-relevance")
+REVIEW_ACTIONS = (
+    "official-research",
+    "clarify-source",
+    "clarify-profile",
+    "reuse-findings",
+    "await-new-evidence",
+    "low-priority",
+    "outside-stage-focus",
+    "role-outside-focus",
+    "recoverable-exclusion",
+    "respect-user-decision",
+)
 LANES = (
     "research",
     "early-year-programs",
@@ -52,6 +75,7 @@ MATERIAL_FIELDS = (
     "engagement_type",
     "career_stage",
     "required_degree",
+    "source_constraints",
     "preferred_degree",
     "experience_requirement",
     "class_year_language",
@@ -101,7 +125,12 @@ def validate_profile(document: Any) -> dict[str, Any]:
         "graduation_month",
         "student_status",
         "degree",
+        "completed_degrees",
+        "citizenships",
+        "institution_regions",
+        "term_time_work",
         "majors",
+        "major_match_terms",
         "location_regions",
         "location_policy",
         "year_in_program",
@@ -122,7 +151,12 @@ def validate_profile(document: Any) -> dict[str, Any]:
         "graduation_month": None,
         "student_status": None,
         "degree": None,
+        "completed_degrees": None,
+        "citizenships": [],
+        "institution_regions": [],
+        "term_time_work": None,
         "majors": [],
+        "major_match_terms": [],
         "location_regions": [],
         "location_policy": "prefer-local",
         "year_in_program": None,
@@ -137,7 +171,7 @@ def validate_profile(document: Any) -> dict[str, Any]:
         "custom": {},
         **profile,
     }
-    for field in ("majors", "interest_keywords", "source_refs"):
+    for field in ("majors", "major_match_terms", "interest_keywords", "source_refs"):
         values = result[field]
         if (
             not isinstance(values, list)
@@ -149,21 +183,47 @@ def validate_profile(document: Any) -> dict[str, Any]:
     regions = result["location_regions"]
     if not isinstance(regions, list) or len(regions) > 30:
         raise WorkspaceStateError("location_regions must be a bounded array")
-    for region in regions:
-        if not isinstance(region, dict) or set(region) != {"label", "match_terms", "context_terms"}:
+    result["location_regions"] = []
+    for original in regions:
+        if not isinstance(original, dict):
+            raise WorkspaceStateError("each location region must be an object")
+        region = dict(original)
+        required = {"label", "match_terms", "context_terms"}
+        if not required <= set(region) or set(region) - required - {
+            "scope",
+            "allow_city_only",
+            "source_urls",
+        }:
             raise WorkspaceStateError("each region requires label, match_terms and context_terms")
+        region.setdefault("scope", "metro")
+        region.setdefault("allow_city_only", True)
+        region.setdefault("source_urls", [])
+        if region["scope"] not in {"metro", "city"} or type(region["allow_city_only"]) is not bool:
+            raise WorkspaceStateError("invalid region scope or allow_city_only")
+        urls = region["source_urls"]
+        if (
+            not isinstance(urls, list)
+            or len(urls) > 20
+            or not all(
+                isinstance(url, str) and len(url) <= 2000 and re.fullmatch(r"https?://[^\s]+", url)
+                for url in urls
+            )
+        ):
+            raise WorkspaceStateError("invalid region source_urls")
         if not isinstance(region["label"], str) or not 1 <= len(region["label"].strip()) <= 200:
             raise WorkspaceStateError("invalid location region label")
         for field in ("match_terms", "context_terms"):
             values = region[field]
             if (
                 not isinstance(values, list)
-                or len(values) > 100
+                or len(values) > (500 if field == "match_terms" else 100)
                 or not all(isinstance(term, str) and 0 < len(term.strip()) <= 200 for term in values)
                 or field == "match_terms"
                 and not values
             ):
                 raise WorkspaceStateError(f"invalid region {field}")
+            region[field] = list(dict.fromkeys(term.strip() for term in values))
+        result["location_regions"].append(region)
     if result["year_in_program"] is not None and (
         type(result["year_in_program"]) is not int or not 1 <= result["year_in_program"] <= 8
     ):
@@ -186,6 +246,27 @@ def validate_profile(document: Any) -> dict[str, Any]:
         raise WorkspaceStateError("invalid student_status")
     if result["degree"] not in (None, "bachelors", "masters", "doctorate", "associate", "high-school"):
         raise WorkspaceStateError("invalid degree")
+    completed = result["completed_degrees"]
+    if completed is not None and (
+        not isinstance(completed, list)
+        or len(completed) > 10
+        or any(
+            degree not in {"bachelors", "masters", "doctorate", "associate", "high-school"}
+            for degree in completed
+        )
+    ):
+        raise WorkspaceStateError("completed_degrees must be documented degree options, null for unknown")
+    for field in ("citizenships", "institution_regions"):
+        values = result[field]
+        if (
+            not isinstance(values, list)
+            or len(values) > 30
+            or any(not isinstance(v, str) or not re.fullmatch(r"[A-Z]{2}", v) for v in values)
+        ):
+            raise WorkspaceStateError(f"invalid {field}; use documented two-letter country/region codes")
+        result[field] = sorted(set(values))
+    if result["term_time_work"] is not None and type(result["term_time_work"]) is not bool:
+        raise WorkspaceStateError("term_time_work must be boolean or null")
     if result["opportunity_focus"] not in (None, *FOCUS_MODES):
         raise WorkspaceStateError("invalid opportunity_focus")
     if result["location_policy"] not in LOCATION_POLICIES:
@@ -325,8 +406,10 @@ def _focus_match(candidate: dict[str, Any], mode: str | None) -> dict[str, Any]:
         internship = False
     # Generic public routing may infer "program" from workplace benefit text.
     # A title or an explicitly configured program page is stronger evidence.
-    program = engagement in {"event", "fellowship"} or bool(
-        _PROGRAM_FORM.search(title) or candidate.get("program_family_id") or candidate.get("overview_url")
+    program = program_evidence(
+        title,
+        qualifiers + " " + str(candidate.get("description_excerpt") or ""),
+        configured=bool(candidate.get("program_family_id") or candidate.get("overview_url")),
     )
     if not (
         _PROGRAM_FORM.search(title) or candidate.get("program_family_id") or candidate.get("overview_url")
@@ -531,6 +614,108 @@ def _location_parts(location: str) -> list[str]:
     return re.split(r"[;|\n]|\s+and\s+|\s*/\s*", separated)
 
 
+def _region_matches(part: str, region: dict[str, Any]) -> bool:
+    if not any(_contains(part, term) for term in region["match_terms"]):
+        return False
+    # Never borrow context from another office or accept a known namesake city
+    # in another state/country, even when the configured country also matches.
+    if _outside_region_context(part, [region]):
+        return False
+    explicit_countries = {
+        country for country, aliases in _COUNTRIES.items() if any(_contains(part, alias) for alias in aliases)
+    }
+    configured_countries = {
+        country
+        for country, aliases in _COUNTRIES.items()
+        if any(term.casefold() == alias.casefold() for term in region["context_terms"] for alias in aliases)
+    }
+    if any(
+        term.casefold() in {code.casefold(), name.casefold()}
+        for term in region["context_terms"]
+        for code, name in _US_STATES.items()
+    ):
+        configured_countries.add("US")
+    if configured_countries and explicit_countries - configured_countries:
+        return False
+    if not region["context_terms"] or any(_contains(part, term) for term in region["context_terms"]):
+        return True
+    return bool(region.get("allow_city_only", True))
+
+
+def _major_matches(major: str, profile: dict[str, Any]) -> bool:
+    if re.search(r"\b(?:not|except|excluding|excluded)\b|other than", major, re.I):
+        return False  # Negative/exception clauses need interpretation, not a keyword approval.
+    for term in [*profile["majors"], *profile.get("major_match_terms", [])]:
+        text = major
+        if term.casefold() == "engineering":
+            # A broad engineering requirement can fit a configured engineering
+            # family. A different named discipline is not that broad requirement.
+            text = re.sub(
+                r"\b(?:electrical|electronic|computer|mechanical|aerospace|civil|chemical|"
+                r"industrial|biomedical|nuclear|software|systems|materials|manufacturing)\s+engineering\b",
+                "",
+                text,
+                flags=re.I,
+            )
+        elif term.casefold() == "science":
+            text = re.sub(r"\b(?:computer|data|social|political|physical)\s+science\b", "", text, flags=re.I)
+        if _contains(text, term):
+            return True
+    return False
+
+
+def _defined_program_year(student: str) -> set[int]:
+    # Future/rising standing still needs the opportunity's timing checked.
+    if re.search(
+        r"\brising\b|\bby\b|\bat (?:the )?(?:start|time)\b|\bnext\b|\bwill\b|"
+        r"or higher|at least|or equivalent",
+        student,
+        re.I,
+    ):
+        return set()
+    years = set()
+    for number, word in enumerate(("first", "second", "third", "fourth"), 1):
+        if re.search(
+            r"\b(?:" + word + "|" + str(number) + r"(?:st|nd|rd|th)?)"
+            r"[ -]year\s+(?:of|in)\s+(?:(?:their|your|the|an?)\s+)?"
+            r"(?:university|college|undergraduate|degree)\b",
+            student,
+            re.I,
+        ):
+            years.add(number)
+    if years:
+        for group in re.findall(
+            r"((?:first|second|third|fourth)(?:\s*(?:,|and|or)\s*(?:first|second|third|fourth))+)[ -]year",
+            student,
+            re.I,
+        ):
+            years.update(
+                number
+                for number, word in enumerate(("first", "second", "third", "fourth"), 1)
+                if word in group.lower()
+            )
+    return years
+
+
+def _academic_standing_language(student: str) -> str:
+    statements = re.split(r"\n+|(?<=[.!?])\s+", required_statements(student))
+    return "\n".join(
+        statement
+        for statement in statements
+        if re.search(
+            r"\bstudents?\b|undergrad|university|college|\benrolled\b|class standing|"
+            r"\bfreshm[ae]n\b|\bsophomores?\b|\b(?:junior|senior)\s+(?:standing|year)\b",
+            statement,
+            re.I,
+        )
+        or (
+            re.search(r"\b(?:must|minimum|completed|eligible)\b", statement, re.I)
+            and re.search(r"\b(?:first|second|third|fourth|1st|2nd|3rd|4th)[ -]year\b", statement, re.I)
+            and not re.search(r"\bemploy(?:ee|ment)\b|\bbenefits?\b", statement, re.I)
+        )
+    )
+
+
 def _outside_region_context(location: str, regions: list[dict[str, Any]]) -> bool:
     """Explicit disjoint states/countries prove exclusion; missing aliases do not.
 
@@ -590,6 +775,15 @@ def _outside_region_context(location: str, regions: list[dict[str, Any]]) -> boo
 
 
 def _short_program(candidate: dict[str, Any]) -> bool:
+    durations = [
+        duration_limits(rule["evidence"])
+        for rule in candidate_constraints(candidate)
+        if rule["kind"] == "duration"
+    ]
+    if any(duration and duration[0] > 14 for duration in durations):
+        return False
+    if any(duration and duration[1] <= 14 for duration in durations):
+        return True
     start, end = candidate.get("event_start_date"), candidate.get("event_end_date")
     if start and end:
         try:
@@ -623,28 +817,18 @@ def _short_program(candidate: dict[str, Any]) -> bool:
 
 
 def _travel_funding(candidate: dict[str, Any]) -> tuple[str, str, str]:
+    captured = [rule for rule in candidate_constraints(candidate) if rule["kind"] == "travel-funding"]
+    if captured:
+        states = {rule["funding"] for rule in captured}
+        if len(states) == 1:
+            return captured[0]["funding"], "source_constraints", captured[0]["evidence"]
+        return "unknown", "source_constraints", ""
     findings: dict[str, tuple[str, str]] = {}
     for field in ("relocation_text", "compensation_text", "requirements_text", "description_excerpt"):
         for sentence in re.split(r"[.;\n]", str(candidate.get(field) or "")):
             if not re.search(r"\b(?:travel|airfare|flights?|transportation)\b", sentence, re.I):
                 continue
-            if re.search(
-                r"\b(?:not|no|unfunded|own expense|self.funded|responsible for|may|might|could|eligible)\b",
-                sentence,
-                re.I,
-            ):
-                if re.search(
-                    r"\b(?:not covered|not reimbursed|no (?:travel|funding)|own expense|"
-                    r"self.funded|responsible for)\b",
-                    sentence,
-                    re.I,
-                ):
-                    findings["uncovered"] = (field, sentence.strip())
-                continue
-            if re.search(
-                r"\b(?:cover(?:ed|s)?|reimburse(?:d|s|ment)?|paid|provided|arranged)\b", sentence, re.I
-            ):
-                findings["covered"] = (field, sentence.strip())
+            findings[travel_funding(sentence)] = (field, sentence.strip())
     if len(findings) == 1:
         state, (field, evidence) = next(iter(findings.items()))
         return state, field, evidence[:600]
@@ -694,7 +878,17 @@ def screen_candidate(candidate: dict[str, Any], profile: dict[str, Any]) -> dict
                 mismatch=True,
             )
     degree = candidate.get("required_degree")
-    if degree in {"masters", "doctorate"} and profile["degree"] in {"bachelors", "associate", "high-school"}:
+    constraints = candidate_constraints(candidate)
+    constraint_reasons, constraint_questions, constraint_failures = compare_constraints(candidate, profile)
+    reasons.extend(constraint_reasons)
+    questions.extend(constraint_questions)
+    mismatches.extend(constraint_failures)
+    if (
+        not any(rule["kind"] == "education" for rule in constraints)
+        and candidate.get("source_constraints") != []
+        and degree in {"masters", "doctorate"}
+        and profile["degree"] in {"bachelors", "associate", "high-school"}
+    ):
         reason(
             "graduate-degree-required",
             "required_degree",
@@ -702,11 +896,29 @@ def screen_candidate(candidate: dict[str, Any], profile: dict[str, Any]) -> dict
             "Source requires a graduate degree.",
             mismatch=True,
         )
+    graduation_rules = [
+        rule
+        for rule in constraints
+        if rule["kind"] == "graduation" and rule["modality"] not in {"preferred", "not-required"}
+    ]
     graduation = str(candidate.get("graduation_window_language") or "")
-    if graduation:
-        window = _graduation_range(graduation)
-        if window and profile["graduation_month"]:
-            matches = window[0] <= profile["graduation_month"] <= window[1]
+    if (
+        not graduation_rules
+        and candidate.get("source_constraints") != []
+        and graduation
+        and required_statements(graduation)
+    ):
+        graduation_rules = [
+            {
+                "evidence": required_statements(graduation),
+                "windows": graduation_windows(required_statements(graduation)),
+            }
+        ]
+    for graduation_rule in graduation_rules:
+        graduation = graduation_rule["evidence"]
+        windows = graduation_rule["windows"]
+        if windows and profile["graduation_month"]:
+            matches = any(low <= profile["graduation_month"] <= high for low, high in windows)
             reason(
                 "graduation-window-match" if matches else "graduation-window-mismatch",
                 "graduation_window_language",
@@ -728,11 +940,30 @@ def screen_candidate(candidate: dict[str, Any], profile: dict[str, Any]) -> dict
             student,
             "Source mentions enrolled or undergraduate students.",
         )
-    if re.search(r"\b(?:junior|senior|sophomore|first.year|second.year)\b", student, re.I):
-        questions.append("Confirm whether class standing means units or years in program: " + student)
-    major = str(candidate.get("major_language") or "")
+    standing = _academic_standing_language(student)
+    if re.search(
+        r"\b(?:freshman|junior|senior|sophomore|(?:first|second|third|fourth|1st|2nd|3rd|4th)[ -]year)\b",
+        standing,
+        re.I,
+    ):
+        years = _defined_program_year(standing)
+        if years and profile["year_in_program"] is not None:
+            matches = profile["year_in_program"] in years
+            reason(
+                "program-year-match" if matches else "program-year-mismatch",
+                "class_year_language",
+                student,
+                "Known year in program matches the explicitly defined university year."
+                if matches
+                else "Known year in program differs from the explicitly defined university year.",
+                mismatch=not matches,
+            )
+        else:
+            questions.append("Confirm whether class standing means units or years in program: " + student)
+    major = academic_major_language(str(candidate.get("major_language") or ""), required_only=True)
+    major = major or academic_major_language(requirements, required_only=True)
     if major:
-        if any(re.search(r"\b" + re.escape(value) + r"\b", major, re.I) for value in profile["majors"]):
+        if _major_matches(major, profile):
             reason(
                 "major-mentioned",
                 "major_language",
@@ -745,11 +976,9 @@ def screen_candidate(candidate: dict[str, Any], profile: dict[str, Any]) -> dict
     if isinstance(experience, dict) and experience.get("minimum_years") is not None:
         value = profile["max_required_experience_years"]
         evidence = str(experience.get("text") or "")
-        if (
-            value is None
-            or not re.search(r"required|minimum|must|at least|\+", evidence, re.I)
-            or re.search(r"preferred|a plus", evidence, re.I)
-        ):
+        if not required_statements(evidence):
+            pass
+        elif value is None or not re.search(r"required|minimum|must|at least|\+", evidence, re.I):
             questions.append("Confirm experience requirement and your qualifying experience: " + evidence)
         elif experience["minimum_years"] > value:
             reason(
@@ -774,14 +1003,7 @@ def screen_candidate(candidate: dict[str, Any], profile: dict[str, Any]) -> dict
         region_matches = [
             region["label"]
             for region in profile["location_regions"]
-            if any(
-                any(_contains(part, value) for value in region["match_terms"])
-                and (
-                    not region["context_terms"]
-                    or any(_contains(part, value) for value in region["context_terms"])
-                )
-                for part in _location_parts(location)
-            )
+            if any(_region_matches(part, region) for part in _location_parts(location))
         ]
         if region_matches:
             reason("location-match", "location_text", location, "Source lists a configured location.")
@@ -795,6 +1017,11 @@ def screen_candidate(candidate: dict[str, Any], profile: dict[str, Any]) -> dict
             )
             if program_exception:
                 funding, field, evidence = _travel_funding(candidate)
+                long_program = any(
+                    (limits := duration_limits(rule["evidence"])) and limits[0] > 14
+                    for rule in constraints
+                    if rule["kind"] == "duration"
+                )
                 if _short_program(candidate) and funding == "covered":
                     reason(
                         "funded-program-travel",
@@ -802,12 +1029,13 @@ def screen_candidate(candidate: dict[str, Any], profile: dict[str, Any]) -> dict
                         evidence,
                         "Source covers travel for a short out-of-region program.",
                     )
-                elif funding == "uncovered" and outside:
+                elif (funding == "uncovered" or long_program) and outside:
                     reason(
                         "location-outside-regions",
                         field,
                         evidence,
-                        "Out-of-region program explicitly lacks covered travel.",
+                        "The out-of-region program is explicitly unfunded "
+                        "or longer than the short-visit exception.",
                         mismatch=True,
                     )
                 else:
@@ -828,15 +1056,32 @@ def screen_candidate(candidate: dict[str, Any], profile: dict[str, Any]) -> dict
             questions.append("Confirm location or relocation feasibility: " + location)
     elif not location and candidate.get("engagement_type") not in {"event", "program"}:
         questions.append("Work location has not been captured.")
-    if re.search(r"\bGPA\b|grade.point", requirements, re.I):
+    required = required_statements(requirements)
+    if re.search(r"\bGPA\b|grade.point", required, re.I):
         questions.append("Confirm the applicable GPA and how the program measures it.")
-    if re.search(r"coursework|completed.*courses?|prerequisites?", requirements, re.I):
+    if re.search(
+        r"prerequisites?|completed.{0,40}courses?|(?:must|required).{0,50}coursework|coursework.{0,40}required",
+        required,
+        re.I,
+    ):
         questions.append("Confirm required coursework against your completed courses.")
-    if candidate.get("work_auth_language"):
-        questions.append(
-            "Confirm the exact work-authorization or citizenship requirement: "
-            + str(candidate["work_auth_language"])
-        )
+    # Authorization clauses are interpreted individually above, excluding
+    # benefits/EEO statements and reusing documented citizenship.
+    if re.search(r"\bintern(?:ship)?\b|\bco[ -]?op\b", title, re.I) and term_time_placement(
+        title, requirements
+    ):
+        if profile["term_time_work"] is None:
+            questions.append("Confirm term-time work availability for this internship or co-op.")
+        elif profile["term_time_work"] is False and not re.search(
+            r"summer|part.time|flexible", title + " " + requirements, re.I
+        ):
+            reason(
+                "term-time-outside-preference",
+                "title/requirements_text",
+                title,
+                "Term-time work is outside documented availability.",
+                mismatch=True,
+            )
     interests = [
         value
         for value in profile["interest_keywords"]
@@ -871,7 +1116,7 @@ def screen_candidate(candidate: dict[str, Any], profile: dict[str, Any]) -> dict
         "state": state,
         "lane": _lane(candidate),
         "reasons": reasons,
-        "questions": list(dict.fromkeys(questions)),
+        "questions": list(dict.fromkeys(q if len(q) <= 1000 else q[:997] + "..." for q in questions)),
         "candidate_hash": candidate_fingerprint(candidate),
         "profile_hash": _hash(profile),
         "screening_version": SCREENING_VERSION,
@@ -879,8 +1124,13 @@ def screen_candidate(candidate: dict[str, Any], profile: dict[str, Any]) -> dict
     }
 
 
+@lru_cache(maxsize=8192)
+def _term_pattern(value: str) -> re.Pattern[str]:
+    return re.compile(r"(?<!\w)" + re.escape(value.strip()) + r"(?!\w)", re.I)
+
+
 def _contains(text: str, value: str) -> bool:
-    return bool(re.search(r"(?<!\w)" + re.escape(value.strip()) + r"(?!\w)", text, re.I))
+    return bool(_term_pattern(value).search(text))
 
 
 def _state(root: Path) -> dict[str, Any]:
@@ -1005,7 +1255,7 @@ def apply_screening_response(root: Path, document: Any, manifest_path: Path) -> 
         questions = decision["questions"]
         if (
             not isinstance(questions, list)
-            or len(questions) > 30
+            or len(questions) > 128
             or not all(isinstance(q, str) and 0 < len(q) <= 1000 for q in questions)
         ):
             raise WorkspaceStateError("invalid semantic screening questions")
@@ -1017,9 +1267,10 @@ def apply_screening_response(root: Path, document: Any, manifest_path: Path) -> 
                 raise WorkspaceStateError("invalid semantic screening reason fields")
             if not all(isinstance(value, str) and 0 < len(value) <= 1000 for value in reason.values()):
                 raise WorkspaceStateError("invalid semantic screening reason text")
-            if reason["field"] not in MATERIAL_FIELDS or reason["evidence"] not in str(
-                candidate.get(reason["field"]) or ""
-            ):
+            quoted = str(candidate.get(reason["field"]) or "")
+            if reason["field"] == "source_constraints":
+                quoted = "\n".join(rule["evidence"] for rule in candidate_constraints(candidate))
+            if reason["field"] not in MATERIAL_FIELDS or reason["evidence"] not in quoted:
                 raise WorkspaceStateError("semantic screening evidence must quote a captured candidate field")
         # Questions about unknown personal credentials must not disappear merely
         # through interpreting collector text. Official review is a separate path.
@@ -1033,6 +1284,13 @@ def apply_screening_response(root: Path, document: Any, manifest_path: Path) -> 
                     "Confirm the exact work-authorization",
                     "Confirm whether class standing",
                     "Confirm experience requirement",
+                    "Confirm completed degrees",
+                    "Confirm term-time work availability",
+                    "Confirm additional security-clearance",
+                    "Confirm completed study duration",
+                    "Confirm current degree enrollment",
+                    "Confirm professional-school enrollment",
+                    "Confirm institution location",
                 )
             )
         ]
@@ -1059,32 +1317,223 @@ def apply_screening_response(root: Path, document: Any, manifest_path: Path) -> 
 def _research(
     candidate: dict[str, Any], record: dict[str, Any], profile: dict[str, Any], now: datetime
 ) -> tuple[str, list[str]]:
-    if not _has_imported_decision(record):
-        return "not-checked", ["unreviewed-opportunity"]
-    review = record["review"]
+    review = record.get("review") or {}
     evidence = review.get("official_evidence") or record.get("verified_facts") or {}
+    deadline = evidence.get("exact_deadline") or candidate.get("stated_deadline")
+    deadline_near = False
+    deadline_date = None
+    if deadline:
+        try:
+            deadline_date = date.fromisoformat(str(deadline)[:10])
+            deadline_near = 0 <= (deadline_date - now.date()).days <= 21
+        except ValueError:
+            pass
+    if not _has_imported_decision(record):
+        return "not-checked", ["unreviewed-opportunity", *(["deadline-approaching"] if deadline_near else [])]
     checked = evidence.get("checked_at")
     if not checked:
-        return "not-checked", ["official-check-missing"]
+        return "not-checked", ["official-check-missing", *(["deadline-approaching"] if deadline_near else [])]
     needs: list[str] = []
     snapshot = record.get("collector_snapshot") or {}
     if candidate_fingerprint(candidate) != candidate_fingerprint(snapshot):
         needs.append("source-facts-changed")
     if now - _parsed_timestamp(checked, "official checked_at") >= timedelta(days=profile["stale_after_days"]):
         needs.append("stale-official-check")
-    deadline = evidence.get("exact_deadline") or candidate.get("stated_deadline")
-    if deadline:
-        try:
-            days = (date.fromisoformat(str(deadline)[:10]) - now.date()).days
-            if 0 <= days <= 21:
-                needs.append("deadline-approaching")
-        except ValueError:
-            pass
+    # A check performed during the deadline window already addresses it. Do
+    # not schedule the same unchanged page again every session until it closes.
+    if (
+        deadline_near
+        and deadline_date
+        and _parsed_timestamp(checked, "official checked_at").date() < (deadline_date - timedelta(days=21))
+    ):
+        needs.append("deadline-approaching")
     if (record.get("eligibility") or {}).get("conclusion") == "unknown" or evidence.get(
         "availability"
     ) == "unknown":
         needs.append("unresolved-official-findings")
     return ("recheck-needed" if needs else "checked-current"), needs
+
+
+_PROFILE_QUESTIONS = {
+    "study_progress": (
+        "Confirm completed study duration",
+        "Reuse documented completed years, terms or credits; "
+        "current enrollment alone does not establish completion.",
+    ),
+    "completed_degrees": (
+        "Confirm completed degrees",
+        "Reuse documented degree completions; current enrollment alone does not establish them.",
+    ),
+    "term_time_work": (
+        "Confirm term-time work availability",
+        "Confirm term-time availability once; preserve opportunity-specific date questions.",
+    ),
+    "security_clearance": (
+        "Confirm additional security-clearance",
+        "Keep clearance conditions separate from documented citizenship.",
+    ),
+    "gpa": ("Confirm the applicable GPA", "Provide documented GPA and its grading scale if known."),
+    "coursework": ("Confirm required coursework", "Provide completed coursework if known."),
+    "work_authorization": (
+        "Confirm the exact work-authorization",
+        "Clarify documented work authorization or citizenship, if you wish to provide it.",
+    ),
+    "class_standing": (
+        "Confirm whether class standing",
+        "Keep academic standing separate from years in the degree program.",
+    ),
+    "experience": (
+        "Confirm experience requirement",
+        "Clarify qualifying experience rather than inferring zero years.",
+    ),
+}
+
+
+def _review_role_conflict(candidate: dict[str, Any], profile: dict[str, Any]) -> str | None:
+    """Conservative review deferral; never rewrite eligibility or public labels."""
+    title = str(candidate.get("title") or "")
+    internship = bool(re.search(r"\bintern(?:ship)?\b|\bco[ -]?op\b", title, re.I))
+    staff_program = profile["opportunity_focus"] in {
+        "early-opportunities",
+        "standard-internships",
+    } and staff_role(title)
+    experienced = re.search(
+        r"\b(?:senior|sr\.?|principal|director|head|VP)\b.*\b(?:engineer|analyst|recruiter|"
+        r"controller|consultant|manager|specialist|executive|officer|scientist|developer|coordinator)\b|"
+        r"experienced professionals",
+        title,
+        re.I,
+    ) and not re.search(r"\bsenior (?:year|design|students?)\b", title, re.I)
+    if not internship and (staff_program or experienced):
+        return "The title targets an experienced or program-staff role; defer routine student review."
+    undergraduate_exception = any(rule.get("exception") for rule in candidate_constraints(candidate))
+    if not undergraduate_exception and profile["degree"] in {"bachelors", "associate", "high-school"}:
+        undergraduate_option = re.search(r"\b(?:BS|BA|BSc|bachelor\w*|undergrad\w*)\b", title, re.I)
+        if (
+            re.search(r"\b(?:PhD|doctoral|MBA)\b|\([^)]*\b(?:MS|MSc)\b[^)]*\)", title, re.I)
+            and not undergraduate_option
+        ):
+            return "The title targets graduate-degree candidates; retain it outside routine student research."
+        academic = required_statements(str(candidate.get("class_year_language") or ""))
+        if re.search(
+            r"\b(?:law school|doctoral|PhD|MBA|master['’]?s?|graduate)\b.{0,50}\bstudents?\b|"
+            r"\b(?:enrolled|pursuing)\b.{0,50}\b(?:law school|doctoral|PhD|MBA|master['’]?s?)\b",
+            academic,
+            re.I,
+        ) and not re.search(r"\b(?:BS|BA|BSc|bachelor\w*|undergrad\w*)\b", academic, re.I):
+            return "Enrollment language targets graduate/professional study; defer the unresolved degree fit."
+    return None
+
+
+def _review_selection(
+    finding: dict[str, Any],
+    research: str,
+    priorities: list[str],
+    actionable: bool,
+    role_conflict: str | None = None,
+) -> dict[str, Any]:
+    """Choose useful next work, independently of eligibility or official checks."""
+    questions = finding["questions"]
+    profile_questions = [
+        key for key, (prefix, _) in _PROFILE_QUESTIONS.items() if any(q.startswith(prefix) for q in questions)
+    ]
+    source_questions = [
+        q
+        for q in questions
+        if not any(
+            q.startswith(prefix) for key, (prefix, _) in _PROFILE_QUESTIONS.items() if key != "class_standing"
+        )
+    ]
+    focus = finding["focus"]
+    reasons = {reason["code"] for reason in finding["reasons"]}
+    preferred_early = focus["mode"] == "early-opportunities" and focus["match"] == "preferred"
+    broad_program = preferred_early and focus["program"]
+    relevant = focus["match"] in {"preferred", "related", "unspecified"} and (
+        bool(reasons & {"interest-match", "major-mentioned", "student-language", "graduation-window-match"})
+        or finding["origin"] == "ai-screening"
+    )
+    meaningful_change = bool(
+        set(priorities) & {"source-facts-changed", "deadline-approaching", "stale-official-check"}
+    )
+    selected, action, message = (
+        False,
+        "low-priority",
+        "Captured facts do not yet show a strong match with a bounded research question.",
+    )
+    if not actionable:
+        action, message = (
+            "respect-user-decision",
+            "Existing completed, dismissed or waiting decision carries forward.",
+        )
+    elif finding["state"] == "low-relevance":
+        action, message = (
+            "recoverable-exclusion",
+            "An explicit mismatch is retained for recovery, outside the default review batch.",
+        )
+    elif role_conflict:
+        action, message = "role-outside-focus", role_conflict
+    elif research == "checked-current":
+        action, message = (
+            "reuse-findings",
+            "Current official findings carry forward; no repeat check is needed.",
+        )
+    elif research == "recheck-needed" and not meaningful_change:
+        action, message = (
+            "await-new-evidence",
+            "An unchanged official check is still unresolved; carry its questions forward."
+            " Repeat only when new evidence warrants it.",
+        )
+    elif (
+        meaningful_change
+        and research == "recheck-needed"
+        and (finding["state"] == "worth-investigating" or preferred_early or relevant)
+    ):
+        selected, action, message = (
+            True,
+            "official-research",
+            "Revisit a useful lead because facts changed, a deadline is approaching, or its check is stale.",
+        )
+    elif focus["match"] == "other":
+        action, message = (
+            "outside-stage-focus",
+            "Outside the selected opportunity stage; retain in Explore rather than routine review.",
+        )
+    elif finding["state"] == "worth-investigating":
+        selected, action, message = (
+            True,
+            "official-research",
+            "Plausible captured fit; verify availability and eligibility on the official page.",
+        )
+    elif broad_program:
+        selected, action, message = (
+            True,
+            "official-research",
+            "Explore a preferred early program broadly, including unresolved subject fit or travel funding.",
+        )
+    elif not source_questions and profile_questions:
+        action, message = (
+            "clarify-profile",
+            "Group the shared personal questions before spending another page review on the same unknowns.",
+        )
+    elif source_questions and (preferred_early or relevant and len(source_questions) <= 2):
+        selected, action, message = (
+            True,
+            "clarify-source",
+            "A promising lead has a source question; interpret captured text, then check the official page."
+            " Preferred early-year roles retain broader consideration.",
+        )
+    if selected and action == "clarify-source" and finding["origin"] == "ai-screening":
+        action, message = (
+            "official-research",
+            "Captured-text triage is saved; research remaining questions without repeating that pass.",
+        )
+    return {
+        "selected": selected,
+        "action": action,
+        "message": message,
+        "source_questions": source_questions,
+        "profile_questions": profile_questions,
+    }
 
 
 def list_personal_feed(
@@ -1098,6 +1547,9 @@ def list_personal_feed(
     route: str | None = None,
     engagement_type: str | None = None,
     review_status: str | None = None,
+    review_only: bool = False,
+    review_action: str | None = None,
+    audit_sample: bool = False,
     offset: int = 0,
     limit: int = 25,
     now: datetime | None = None,
@@ -1105,6 +1557,8 @@ def list_personal_feed(
     """Read-only Feed across the whole collection; cached or explicitly labeled preview."""
     if state_filter not in (None, "all", *STATES) or lane not in (None, *LANES):
         raise WorkspaceStateError("invalid screening filter")
+    if review_action not in (None, *REVIEW_ACTIONS):
+        raise WorkspaceStateError("invalid review action filter")
     profile = load_profile(root)
     manifest, candidates = load_current_queue(manifest_path, filename="candidates.jsonl")
     cached = _state(root)["records"]
@@ -1113,6 +1567,9 @@ def list_personal_feed(
     items = []
     counts: Counter[str] = Counter()
     lanes: Counter[str] = Counter()
+    selection_counts: Counter[str] = Counter()
+    profile_question_counts: Counter[str] = Counter()
+    selected = selected_clarification = 0
     screened = plausible = checked = awaiting = reviewed = 0
     for candidate in candidates:
         identifier = candidate["opportunity_id"]
@@ -1139,11 +1596,22 @@ def list_personal_feed(
                 priorities.append("source-facts-changed")
         user_state = record.get("user_state") or {}
         actionable = board_lane(record, user_state, _pipeline_state(user_state)) == "active"
+        role_conflict = _review_role_conflict(candidate, profile)
+        selection = _review_selection(finding, research, priorities, actionable, role_conflict)
+        selection_counts[selection["action"]] += 1
+        selected += selection["selected"]
+        selected_clarification += selection["selected"] and finding["state"] == "needs-clarification"
+        if selection["selected"] or selection["action"] == "clarify-profile":
+            profile_question_counts.update(selection["profile_questions"])
         reviewed += imported
         checked += research != "not-checked"
         awaiting += actionable and finding["state"] != "low-relevance" and research != "checked-current"
         counts[finding["state"]] += 1
         lanes[finding["lane"]] += 1
+        if review_only and not selection["selected"]:
+            continue
+        if review_action and selection["action"] != review_action:
+            continue
         if not state_filter and (finding["state"] == "low-relevance" or not actionable):
             continue
         if (
@@ -1181,6 +1649,8 @@ def list_personal_feed(
                 "research_status": research,
                 "review_status": "reviewed" if imported else "unreviewed",
                 "investigation_reasons": priorities,
+                "review_selection": selection,
+                "ai_evidence_packet": evidence_packet(candidate, finding, profile),
             }
         )
     items.sort(
@@ -1190,7 +1660,9 @@ def list_personal_feed(
             "deadline-approaching" not in item["investigation_reasons"],
             "new-opportunity" not in item["investigation_reasons"],
             item["research_status"] == "checked-current",
-            item["screening"]["state"] != "worth-investigating",
+            len(item["review_selection"]["source_questions"])
+            if review_only
+            else item["screening"]["state"] != "worth-investigating",
             -len(item["screening"]["reasons"]),
             item["opportunity_id"],
         )
@@ -1222,6 +1694,27 @@ def list_personal_feed(
                     cap_exempt += exempt
                     if not exempt:
                         employer_counts[employer] += 1
+    if audit_sample:
+        groups: dict[str, deque[dict[str, Any]]] = {
+            name: deque() for name in ("selected", "deferred", "excluded")
+        }
+        for item in sorted(
+            balanced, key=lambda item: _hash([manifest["generation_id"], item["opportunity_id"]])
+        ):
+            group = (
+                "excluded"
+                if item["screening"]["state"] == "low-relevance"
+                else "selected"
+                if item["review_selection"]["selected"]
+                else "deferred"
+            )
+            groups[group].append({**item, "audit_group": group})
+        sampled = []
+        while any(groups.values()):
+            for bucket in groups.values():
+                if bucket:
+                    sampled.append(bucket.popleft())
+        balanced = sampled
     return {
         **_page(balanced, offset, limit),
         "collection_count": len(candidates),
@@ -1239,11 +1732,22 @@ def list_personal_feed(
         "state_counts": dict(counts),
         "lane_counts": dict(lanes),
         "generation_id": manifest["generation_id"],
+        "review_batch": review_only,
+        "sampling_method": "stratified-selected-deferred-excluded; not a population error-rate estimate"
+        if audit_sample
+        else None,
+        "review_action_counts": dict(selection_counts),
+        "profile_questions": [
+            {"field": key, "affected_leads": count, "message": _PROFILE_QUESTIONS[key][1]}
+            for key, count in sorted(profile_question_counts.items())
+        ],
         "coverage": {
             "screened": screened,
             "plausible": plausible,
             "officially_checked": checked,
             "awaiting_investigation": awaiting,
             "unsaved_screening": len(candidates) - screened,
+            "selected_for_review": selected,
+            "selected_needing_clarification": selected_clarification,
         },
     }
